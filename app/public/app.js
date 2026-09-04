@@ -969,11 +969,14 @@ function quickExportSignOff() {
 
 
 // ==========================================
+
+
+// ==========================================
 // 6. XUẤT BÁO CÁO IN / PDF TIÊU HAO THAN (A4 LANDSCAPE)
 // ==========================================
 function printCoalReport() {
   if (!rawCoalData || rawCoalData.length === 0) {
-    alert("Không có dữ liệu than để in báo cáo!");
+    alert("Không có dữ liệu than để in báo cáo! Vui lòng chờ tải dữ liệu hoặc chọn kỳ khác.");
     return;
   }
 
@@ -1033,7 +1036,7 @@ function printCoalReport() {
   const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
   const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
 
-  // Build table rows
+  // Build rows
   const rowsHtml = rawCoalData.map(r => {
     const isDrying = r.firing_type && r.firing_type.includes("Không");
     const issued = Number(r.issued_weight || 0);
@@ -1108,12 +1111,31 @@ function printCoalReport() {
       print-color-adjust: exact !important;
     }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       font-size: 11px;
       color: #0f172a;
       margin: 0;
-      padding: 5px;
+      padding: 10px;
       background: #fff;
+    }
+    .print-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .btn-print-action {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
     }
     .header-table {
       width: 100%;
@@ -1239,9 +1261,17 @@ function printCoalReport() {
     .sig-space {
       height: 55px;
     }
+    @media print {
+      .print-bar { display: none !important; }
+      body { padding: 0; }
+    }
   </style>
 </head>
 <body>
+  <div class="print-bar">
+    <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
+  </div>
+
   <!-- HEADER -->
   <table class="header-table">
     <tr>
@@ -1400,16 +1430,33 @@ function printCoalReport() {
 </html>
   `;
 
-  // Create iframe to print
+  // Try opening new print window
+  const printWindow = window.open('', '_blank');
+  if (printWindow) {
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      try {
+        printWindow.print();
+      } catch (e) {
+        console.warn("Auto print failed:", e);
+      }
+    }, 400);
+    return;
+  }
+
+  // Fallback: If popup was blocked
   let iframe = document.getElementById("print-iframe");
   if (!iframe) {
     iframe = document.createElement("iframe");
     iframe.id = "print-iframe";
     iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    iframe.style.top = "-10000px";
+    iframe.style.left = "-10000px";
+    iframe.style.width = "1000px";
+    iframe.style.height = "1000px";
     iframe.style.border = "none";
     document.body.appendChild(iframe);
   }
@@ -1422,5 +1469,5 @@ function printCoalReport() {
   setTimeout(() => {
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
-  }, 250);
+  }, 400);
 }
