@@ -1,10 +1,11 @@
 -- =========================================================================
 -- SEED DATA CHO SUPABASE (ĐẦY ĐỦ THÁNG 1 ĐẾN THÁNG 8 NĂM 2026)
+-- Tương thích 100% chuẩn cú pháp PostgreSQL
 -- =========================================================================
 
 -- Insert into master_norms_version (1 records)
 INSERT INTO master_norms_version (version_code, version_name, effective_from_month, effective_from_year, description, is_active, created_at) VALUES
-  ('DM-2026-V1', 'Định mức Tiêu hao Chuẩn Đầu Năm 2026', 1, 2026, 'Định mức cơ sở áp dụng từ Tháng 01/2026 cho 2 Dây chuyền', 1, '2026-09-04 09:37:11');
+  ('DM-2026-V1', 'Định mức Tiêu hao Chuẩn Đầu Năm 2026', 1, 2026, 'Định mức cơ sở áp dụng từ Tháng 01/2026 cho 2 Dây chuyền', TRUE, '2026-09-04 09:37:11');
 
 -- Insert into master_norms_detail (46 records)
 INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value) VALUES
