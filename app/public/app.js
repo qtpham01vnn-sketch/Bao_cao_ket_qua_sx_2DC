@@ -1083,24 +1083,31 @@ function renderDashboardCoalTable(coalList, currentMetric = "all") {
     return;
   }
 
-  let sumIssued = 0, sumComp = 0, sumProd = 0, sumUsed = 0;
+  let sumIssued = 0, sumComp = 0, sumProd = 0, sumUsed = 0, sumAsh = 0;
   tbody.innerHTML = coalList.map((c, idx) => {
     sumIssued += c.issued_weight || 0;
     sumComp += c.compensation_weight || 0;
     sumUsed += c.total_used_weight || 0;
+    sumAsh += c.ash_weight || 0;
     sumProd += c.production_m2 || 0;
 
     const isExcessAsh = (c.excess_ash_weight || 0) > 0 || ((c.ash_rate || 0) > (c.std_ash_rate || 16));
     const isComp = (c.compensation_weight || 0) > 0;
+    const isNoProd = !c.production_m2 || c.production_m2 === 0;
+
+    const rateLumpStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_lump, 2);
+    const rateWithAshStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_with_ash, 2);
+    const rateTotalStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_total, 2);
 
     return `
-      <tr class="hover:bg-[#13284d]/50 text-slate-200 transition">
+      <tr class="hover:bg-[#13284d]/50 text-slate-200 transition ${isNoProd ? 'opacity-80 bg-[#09152b]/40' : ''}">
         <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
         <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <span>${c.coal_supplier || 'Than nung'}</span>
             ${isExcessAsh ? '<span class="px-1 py-0.2 rounded text-[8px] bg-red-500/20 text-red-300 border border-red-500/30">Cám vượt</span>' : ''}
             ${isComp ? '<span class="px-1 py-0.2 rounded text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30">Lĩnh bù</span>' : ''}
+            ${isNoProd ? '<span class="px-1 py-0.2 rounded text-[8px] bg-slate-800 text-slate-400 border border-slate-700">Đốt sấy</span>' : ''}
           </div>
           <div class="text-[9.5px] text-slate-400 font-normal">DC: ${c.line || '-'} • KT: ${c.size || '-'}</div>
         </td>
@@ -1113,16 +1120,18 @@ function renderDashboardCoalTable(coalList, currentMetric = "all") {
         <td class="p-2 text-right font-black text-slate-200 border border-[#1e3a6a]/40 font-mono">${formatNumber(c.issued_weight, 0)}</td>
         <td class="p-2 text-right font-bold text-amber-300 border border-[#1e3a6a]/40 font-mono">${isComp ? formatNumber(c.compensation_weight, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-white border border-[#1e3a6a]/40 font-mono">${formatNumber(c.production_m2, 0)}</td>
-        <td class="p-2 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_lump' ? 'bg-cyan-950/40 border-cyan-500' : ''}">${formatNumber(c.rate_lump, 2)}</td>
-        <td class="p-2 text-right font-bold text-amber-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_with_ash' ? 'bg-amber-950/40 border-amber-500' : ''}">${formatNumber(c.rate_with_ash, 2)}</td>
-        <td class="p-2 text-right font-black text-emerald-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_total' || currentMetric === 'all' ? 'bg-emerald-950/30' : ''}">${formatNumber(c.rate_total, 2)}</td>
-        <td class="p-2 text-slate-300 border border-[#1e3a6a]/40 text-[9.5px]">${c.note || '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_lump' ? 'bg-cyan-950/40 border-cyan-500' : ''}">${rateLumpStr}</td>
+        <td class="p-2 text-right font-bold text-amber-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_with_ash' ? 'bg-amber-950/40 border-amber-500' : ''}">${rateWithAshStr}</td>
+        <td class="p-2 text-right font-black text-emerald-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_total' || currentMetric === 'all' ? 'bg-emerald-950/30' : ''}">${rateTotalStr}</td>
+        <td class="p-2 text-slate-300 border border-[#1e3a6a]/40 text-[9.5px]">${c.note || (isNoProd ? 'Không tính tiêu hao (sấy/chuyển tiếp)' : '-')}</td>
       </tr>
     `;
   }).join("");
 
   const overallLumpRate = sumProd > 0 ? (sumIssued / sumProd) : 0;
+  const overallWithAshRate = sumProd > 0 ? ((sumIssued + sumAsh) / sumProd) : 0;
   const overallRate = sumProd > 0 ? (sumUsed / sumProd) : 0;
+
   if (tfoot) {
     tfoot.innerHTML = `
       <tr class="bg-[#09152b] text-white border-t-2 border-amber-500/60 font-black">
@@ -1131,7 +1140,7 @@ function renderDashboardCoalTable(coalList, currentMetric = "all") {
         <td class="p-2 text-right text-amber-300 font-mono text-[11px]">${formatNumber(sumComp, 0)}</td>
         <td class="p-2 text-right text-white font-mono text-[11px]">${formatNumber(sumProd, 0)}</td>
         <td class="p-2 text-right text-cyan-300 font-mono text-[11px]">${formatNumber(overallLumpRate, 2)}</td>
-        <td class="p-2 text-right text-amber-300 font-mono text-[11px]">-</td>
+        <td class="p-2 text-right text-amber-300 font-mono text-[11px]">${formatNumber(overallWithAshRate, 2)}</td>
         <td class="p-2 text-right text-emerald-300 font-mono text-[11px]">${formatNumber(overallRate, 2)}</td>
         <td class="p-2 text-slate-400 text-[9.5px]">TỔNG THỰC HIỆN</td>
       </tr>
