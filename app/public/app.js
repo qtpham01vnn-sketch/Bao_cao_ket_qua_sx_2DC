@@ -133,6 +133,66 @@ let currentDashSizeP4 = "all";
 // ==========================================
 // SECTION 1 HANDLERS
 // ==========================================
+// SMART CASCADE SLICER HELPER
+// ==========================================
+function updateSizeSlicerAvailability(sec, line) {
+  const prefix = sec === 1 ? "btn-size-" : `btn-p${sec}-size-`;
+  const allSizes = ["30x60", "50x50", "40x80", "60x60"];
+
+  allSizes.forEach(sz => {
+    const btn = document.getElementById(prefix + sz);
+    if (!btn) return;
+    if (line === "DC1") {
+      // DC1 only has 30x60
+      if (sz === "30x60") {
+        btn.style.display = "";
+      } else {
+        btn.style.display = "none";
+      }
+    } else if (line === "DC2") {
+      // DC2 has 50x50, 40x80, 60x60
+      if (sz === "30x60") {
+        btn.style.display = "none";
+      } else {
+        btn.style.display = "";
+      }
+    } else {
+      // 'all' line shows all sizes
+      btn.style.display = "";
+    }
+  });
+
+  // Auto-reset current selected size if incompatible with selected line
+  if (sec === 1) {
+    if (line === "DC1" && ["50x50", "40x80", "60x60"].includes(currentDashSize)) {
+      currentDashSize = "all";
+    } else if (line === "DC2" && currentDashSize === "30x60") {
+      currentDashSize = "all";
+    }
+  } else if (sec === 2) {
+    if (line === "DC1" && ["50x50", "40x80", "60x60"].includes(currentDashSizeP2)) {
+      currentDashSizeP2 = "all";
+    } else if (line === "DC2" && currentDashSizeP2 === "30x60") {
+      currentDashSizeP2 = "all";
+    }
+  } else if (sec === 3) {
+    if (line === "DC1" && ["50x50", "40x80", "60x60"].includes(currentDashSizeP3)) {
+      currentDashSizeP3 = "all";
+    } else if (line === "DC2" && currentDashSizeP3 === "30x60") {
+      currentDashSizeP3 = "all";
+    }
+  } else if (sec === 4) {
+    if (line === "DC1" && ["50x50", "40x80", "60x60"].includes(currentDashSizeP4)) {
+      currentDashSizeP4 = "all";
+    } else if (line === "DC2" && currentDashSizeP4 === "30x60") {
+      currentDashSizeP4 = "all";
+    }
+  }
+}
+
+// ==========================================
+// SECTION 1 HANDLERS (Tổng quan)
+// ==========================================
 function setDashMonth(m) {
   currentDashMonth = m;
   updateSlicerButtonStyles(1);
@@ -141,6 +201,7 @@ function setDashMonth(m) {
 
 function setDashLine(l) {
   currentDashLine = l;
+  updateSizeSlicerAvailability(1, l);
   updateSlicerButtonStyles(1);
   loadDashboardData();
 }
@@ -169,6 +230,7 @@ function setDashMonthP2(m) {
 
 function setDashLineP2(l) {
   currentDashLineP2 = l;
+  updateSizeSlicerAvailability(2, l);
   updateSlicerButtonStyles(2);
   loadDashboardData();
 }
@@ -195,6 +257,7 @@ function setDashMonthP3(m) {
 
 function setDashLineP3(l) {
   currentDashLineP3 = l;
+  updateSizeSlicerAvailability(3, l);
   updateSlicerButtonStyles(3);
   loadDashboardData();
 }
@@ -216,6 +279,7 @@ function setDashMonthP4(m) {
 
 function setDashLineP4(l) {
   currentDashLineP4 = l;
+  updateSizeSlicerAvailability(4, l);
   updateSlicerButtonStyles(4);
   loadDashboardData();
 }
@@ -234,16 +298,19 @@ function syncSectionToP1(sec) {
     currentDashMonthP2 = currentDashMonth;
     currentDashLineP2 = currentDashLine;
     currentDashSizeP2 = currentDashSize;
+    updateSizeSlicerAvailability(2, currentDashLineP2);
     updateSlicerButtonStyles(2);
   } else if (sec === 3) {
     currentDashMonthP3 = currentDashMonth;
     currentDashLineP3 = currentDashLine;
     currentDashSizeP3 = currentDashSize;
+    updateSizeSlicerAvailability(3, currentDashLineP3);
     updateSlicerButtonStyles(3);
   } else if (sec === 4) {
     currentDashMonthP4 = currentDashMonth;
     currentDashLineP4 = currentDashLine;
     currentDashSizeP4 = currentDashSize;
+    updateSizeSlicerAvailability(4, currentDashLineP4);
     updateSlicerButtonStyles(4);
   }
   loadDashboardData();
@@ -262,6 +329,11 @@ function syncAllSectionsToP1() {
   currentDashLineP4 = currentDashLine;
   currentDashSizeP4 = currentDashSize;
 
+  updateSizeSlicerAvailability(1, currentDashLine);
+  updateSizeSlicerAvailability(2, currentDashLineP2);
+  updateSizeSlicerAvailability(3, currentDashLineP3);
+  updateSizeSlicerAvailability(4, currentDashLineP4);
+
   updateSlicerButtonStyles(0);
   loadDashboardData();
 }
@@ -272,16 +344,19 @@ function resetSectionFilter(sec) {
     currentDashLineP2 = "all";
     currentDashSizeP2 = "all";
     currentDashBrandP2 = "all";
+    updateSizeSlicerAvailability(2, "all");
     updateSlicerButtonStyles(2);
   } else if (sec === 3) {
     currentDashMonthP3 = "all";
     currentDashLineP3 = "all";
     currentDashSizeP3 = "all";
+    updateSizeSlicerAvailability(3, "all");
     updateSlicerButtonStyles(3);
   } else if (sec === 4) {
     currentDashMonthP4 = "all";
     currentDashLineP4 = "all";
     currentDashSizeP4 = "all";
+    updateSizeSlicerAvailability(4, "all");
     updateSlicerButtonStyles(4);
   }
   loadDashboardData();
@@ -325,6 +400,11 @@ function resetDashFilters() {
   const coalSearch = document.getElementById("dash-coal-search");
   if (coalSearch) coalSearch.value = "";
 
+  updateSizeSlicerAvailability(1, "all");
+  updateSizeSlicerAvailability(2, "all");
+  updateSizeSlicerAvailability(3, "all");
+  updateSizeSlicerAvailability(4, "all");
+
   updateSlicerButtonStyles(0);
   loadDashboardData();
 }
@@ -332,13 +412,14 @@ function resetDashFilters() {
 function updateSlicerButtonStyles(section = 0) {
   const months = ["all", "1", "3", "4", "5", "6", "7", "8"];
   const lines = ["all", "DC1", "DC2"];
-  const sizes = ["all", "30x60", "50x50", "40x80"];
+  const sizes = ["all", "30x60", "50x50", "40x80", "60x60"];
 
   const activeCls = "px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 transition text-center";
   const inactiveCls = "px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center";
 
   // Section 1
   if (section === 0 || section === 1) {
+    updateSizeSlicerAvailability(1, currentDashLine);
     months.forEach(m => {
       const btn = document.getElementById("btn-month-" + m);
       if (btn) btn.className = `dash-slicer-btn ${currentDashMonth === m ? activeCls : inactiveCls}`;
@@ -355,6 +436,7 @@ function updateSlicerButtonStyles(section = 0) {
 
   // Section 2
   if (section === 0 || section === 2) {
+    updateSizeSlicerAvailability(2, currentDashLineP2);
     months.forEach(m => {
       const btn = document.getElementById("btn-p2-month-" + m);
       if (btn) btn.className = `p2-slicer-btn ${currentDashMonthP2 === m ? activeCls : inactiveCls}`;
@@ -371,6 +453,7 @@ function updateSlicerButtonStyles(section = 0) {
 
   // Section 3
   if (section === 0 || section === 3) {
+    updateSizeSlicerAvailability(3, currentDashLineP3);
     months.forEach(m => {
       const btn = document.getElementById("btn-p3-month-" + m);
       if (btn) btn.className = `p3-slicer-btn ${currentDashMonthP3 === m ? activeCls : inactiveCls}`;
@@ -387,6 +470,7 @@ function updateSlicerButtonStyles(section = 0) {
 
   // Section 4
   if (section === 0 || section === 4) {
+    updateSizeSlicerAvailability(4, currentDashLineP4);
     months.forEach(m => {
       const btn = document.getElementById("btn-p4-month-" + m);
       if (btn) btn.className = `p4-slicer-btn ${currentDashMonthP4 === m ? activeCls : inactiveCls}`;
