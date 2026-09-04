@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phương Nam - Quản Lý Sản Xuất 2 Dây Chuyền 2026</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              darkBg: "#091428",
+              darkCard: "#0f2042",
+              darkBorder: "#1e3a6a",
+              cyan: "#06b6d4",
+              emerald: "#10b981",
+              amber: "#f59e0b"
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-[#091428] text-slate-100 transition-colors duration-300 min-h-screen flex flex-col font-sans">
+  
+  <!-- App Shell -->
+  <div class="flex flex-1 h-screen overflow-hidden">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside id="sidebar" class="w-64 bg-[#0a1832] border-r border-[#1e3a6a]/60 flex flex-col justify-between shrink-0 shadow-2xl z-20">
+      <div>
+        <!-- Brand Header -->
+        <div class="p-5 border-b border-[#1e3a6a]/40 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg font-black text-lg text-slate-900">
+            PN
+          </div>
+          <div>
+            <h1 class="text-sm font-black text-white tracking-wider uppercase leading-tight">PHƯƠNG NAM</h1>
+            <p class="text-[11px] text-slate-400 font-medium tracking-wide">QUẢN LÝ SẢN XUẤT</p>
+          </div>
+        </div>
+
+        <div class="px-4 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+          Không gian điều hành
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="px-2 space-y-1 overflow-y-auto max-h-[calc(100vh-230px)]">
+          <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600/90 text-white shadow">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <span>Tổng quan</span>
+          </button>
+
+          <button onclick="switchTab('summary')" id="nav-summary" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            <span>Sản lượng · chất lượng</span>
+          </button>
+
+          <button onclick="switchTab('brands')" id="nav-brands" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="tag" class="w-4 h-4"></i>
+            <span>Thương hiệu</span>
+          </button>
+
+          <button onclick="switchTab('norms')" id="nav-norms" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="layers" class="w-4 h-4"></i>
+            <span>Định mức phiên bản</span>
+          </button>
+
+          <button onclick="switchTab('consumption')" id="nav-consumption" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            <span>Tiêu hao vật tư</span>
+          </button>
+
+          <button onclick="switchTab('coal')" id="nav-coal" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="flame" class="w-4 h-4"></i>
+            <span>Sử dụng than</span>
+          </button>
+
+          <button onclick="switchTab('import')" id="nav-import" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+            <span>Import Excel</span>
+          </button>
+
+          <button onclick="switchTab('export-report')" id="nav-export-report" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="file-check-2" class="w-4 h-4"></i>
+            <span>Báo cáo trình ký</span>
+          </button>
+
+          <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            <span>Quản trị</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- User footer -->
+      <div class="p-3 border-t border-[#1e3a6a]/40 bg-[#081224]">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-[11px] text-slate-400">Bản chạy thử trên máy</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-full bg-emerald-800 text-white flex items-center justify-center text-xs font-bold">
+            A
+          </div>
+          <div>
+            <div class="text-xs font-bold text-white">Quản trị viên</div>
+            <div class="text-[10px] text-slate-400">admin@local</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN WORKSPACE -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden bg-[#091428]">
+      
+      <!-- TOP BAR -->
+      <header class="h-14 border-b border-[#1e3a6a]/40 px-6 flex items-center justify-between bg-[#0a1832] z-10">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-xs text-slate-300">
+          <span>Điều hành sản xuất</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span id="breadcrumb-current" class="font-bold text-white">Tổng quan</span>
+        </div>
+
+        <!-- Right Quick Controls -->
+        <div class="flex items-center gap-3">
+          <!-- Theme Toggle Button -->
+          <button onclick="toggleTheme()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/30 text-xs font-semibold text-cyan-300 transition">
+            <i data-lucide="sun" id="theme-icon" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span id="theme-text">Tone Sáng Doanh Nghiệp</span>
+          </button>
+
+          <!-- Export Signoff shortcut -->
+          <button onclick="quickExportSignOff()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Xuất Excel Trình Ký (T8)</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN BODY (Scrollable) -->
+      <main class="flex-1 overflow-y-auto p-6 space-y-6" id="main-content">
+        
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <div id="tab-dashboard" class="tab-pane space-y-6">
+          
+          <!-- Unified Slicers Card -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="dash-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
+                  <select id="dash-filter-month" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả các kỳ (T1-T8)</option>
+                    <option value="1">Tháng 01</option>
+                    <option value="3">Tháng 03</option>
+                    <option value="4">Tháng 04</option>
+                    <option value="5">Tháng 05</option>
+                    <option value="6">Tháng 06</option>
+                    <option value="7">Tháng 07</option>
+                    <option value="8" selected>Tháng 08</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
+                  <select id="dash-filter-line" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả dây chuyền</option>
+                    <option value="DC1">DC1</option>
+                    <option value="DC2">DC2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
+                  <select id="dash-filter-size" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kích thước</option>
+                    <option value="30x60">30x60</option>
+                    <option value="50x50">50x50</option>
+                    <option value="40x80">40x80</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <span id="dash-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                  • Tháng 08 / 2026
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400 font-medium">Sản Lượng Thu Hồi (m²)</span>
+                <i data-lucide="package" class="w-4 h-4 text-cyan-400"></i>
+              </div>
+              <div class="text-2xl font-black text-white" id="kpi-actual-total">0</div>
+              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
+                <span>Kế hoạch: <b id="kpi-plan-total" class="text-slate-200">0</b></span>
+                <span id="kpi-completion-rate" class="font-bold text-emerald-400">0%</span>
+              </div>
+            </div>
+
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400 font-medium">Tỷ Lệ Chất Lượng A1 (%)</span>
+                <i data-lucide="award" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <div class="text-2xl font-black text-emerald-400" id="kpi-a1-pct">0%</div>
+              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
+                <span>Sản lượng A1: <b id="kpi-a1-m2" class="text-slate-200">0 m²</b></span>
+                <span>Tỷ lệ B: <b id="kpi-b-pct" class="text-amber-400">0%</b></span>
+              </div>
+            </div>
+
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400 font-medium">TB Sản Lượng / Ngày (m²)</span>
+                <i data-lucide="trending-up" class="w-4 h-4 text-blue-400"></i>
+              </div>
+              <div class="text-2xl font-black text-cyan-300" id="kpi-avg-day">0</div>
+              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
+                <span>Số ngày chạy: <b id="kpi-prod-days" class="text-slate-200">0 ngày</b></span>
+                <span>Dừng 2MF: <b id="kpi-stop-2mf" class="text-rose-400">0 p/ng</b></span>
+              </div>
+            </div>
+
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-400 font-medium">Tiêu Hao Than Khí Hóa</span>
+                <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+              </div>
+              <div class="text-2xl font-black text-amber-400" id="kpi-coal-rate">0 kg/m²</div>
+              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
+                <span>Tổng cấp: <b id="kpi-coal-total" class="text-slate-200">0 kg</b></span>
+                <span>Nhiệt trị TB: <b id="kpi-coal-heat" class="text-slate-200">0 Kcal</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 text-cyan-400"></i>
+                Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)
+              </h3>
+              <div class="h-64">
+                <canvas id="chart-monthly-trend"></canvas>
+              </div>
+            </div>
+
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
+                Cơ Cấu Sản Lượng Theo Thương Hiệu
+              </h3>
+              <div class="h-64">
+                <canvas id="chart-brand-dist"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= TAB 2: DATA I (SẢN LƯỢNG · CHẤT LƯỢNG) ================= -->
+        <div id="tab-summary" class="tab-pane hidden space-y-6">
+          <div class="text-xs text-slate-400">
+            Dữ liệu theo kỳ, có lịch sử thay đổi và nguồn đối chiếu.
+          </div>
+
+          <!-- Slicers Bar -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="summary-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
+                  <select id="summary-filter-month" onchange="loadSummaryData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kỳ</option>
+                    <option value="1">Tháng 01</option>
+                    <option value="3">Tháng 03</option>
+                    <option value="4">Tháng 04</option>
+                    <option value="5">Tháng 05</option>
+                    <option value="6">Tháng 06</option>
+                    <option value="7">Tháng 07</option>
+                    <option value="8" selected>Tháng 08</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
+                  <select id="summary-filter-line" onchange="loadSummaryData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả dây chuyền</option>
+                    <option value="DC1">DC1</option>
+                    <option value="DC2">DC2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
+                  <select id="summary-filter-size" onchange="loadSummaryData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kích thước</option>
+                    <option value="30x60">30x60</option>
+                    <option value="50x50">50x50</option>
+                    <option value="40x80">40x80</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="summary-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                  • Tháng 08 / 2026
+                </span>
+                <button onclick="alert('Thêm bản ghi sản lượng')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Thêm dữ liệu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-xs font-bold text-slate-200" id="summary-row-count">
+                8 dòng dữ liệu
+              </div>
+              <div class="relative w-72">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
+                <input type="text" id="summary-search-input" oninput="filterSummaryClient()" placeholder="Tìm trong bảng..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/40">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-[#091428] text-slate-400 font-semibold border-b border-[#1e3a6a]/60">
+                  <tr>
+                    <th class="p-3">Kỳ</th>
+                    <th class="p-3">DC</th>
+                    <th class="p-3">Kích thước</th>
+                    <th class="p-3">Dòng sản phẩm</th>
+                    <th class="p-3">KH / TH</th>
+                    <th class="p-3 text-right">SL ép</th>
+                    <th class="p-3 text-right">A1</th>
+                    <th class="p-3 text-right">A</th>
+                    <th class="p-3 text-right">B</th>
+                    <th class="p-3 text-right">Tổng m²</th>
+                    <th class="p-3 text-center">Ngày SX</th>
+                    <th class="p-3 text-center">Dừng phút/ngày</th>
+                    <th class="p-3">Nguồn</th>
+                    <th class="p-3 text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="summary-table-body" class="divide-y divide-[#1e3a6a]/30 text-slate-200">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 3: DATA II (THƯƠNG HIỆU) ================= -->
+        <div id="tab-brands" class="tab-pane hidden space-y-6">
+          <div class="text-xs text-slate-400">
+            Dữ liệu theo kỳ, có lịch sử thay đổi và nguồn đối chiếu.
+          </div>
+
+          <!-- Slicers Bar -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="brands-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
+                  <select id="brands-filter-month" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kỳ</option>
+                    <option value="1">Tháng 01</option>
+                    <option value="3">Tháng 03</option>
+                    <option value="4">Tháng 04</option>
+                    <option value="5">Tháng 05</option>
+                    <option value="6">Tháng 06</option>
+                    <option value="7">Tháng 07</option>
+                    <option value="8" selected>Tháng 08</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
+                  <select id="brands-filter-line" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả dây chuyền</option>
+                    <option value="DC1" selected>DC1</option>
+                    <option value="DC2">DC2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
+                  <select id="brands-filter-size" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kích thước</option>
+                    <option value="30x60">30x60</option>
+                    <option value="50x50">50x50</option>
+                    <option value="40x80">40x80</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="brands-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                  • Tháng 08 / 2026
+                </span>
+                <button onclick="alert('Thêm dữ liệu thương hiệu')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Thêm dữ liệu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-xs font-bold text-slate-200" id="brands-row-count">
+                33 dòng dữ liệu
+              </div>
+              <div class="relative w-72">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
+                <input type="text" id="brands-search-input" oninput="filterBrandsClient()" placeholder="Tìm trong bảng..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/40">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-[#091428] text-slate-400 font-semibold border-b border-[#1e3a6a]/60">
+                  <tr>
+                    <th class="p-3">Kỳ</th>
+                    <th class="p-3">DC</th>
+                    <th class="p-3">Kích thước</th>
+                    <th class="p-3">Men</th>
+                    <th class="p-3">Thương hiệu</th>
+                    <th class="p-3 text-center">Loại</th>
+                    <th class="p-3 text-right">Sản lượng m²</th>
+                    <th class="p-3">Nguồn</th>
+                    <th class="p-3 text-center">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="brands-table-body" class="divide-y divide-[#1e3a6a]/30 text-slate-200">
+                </tbody>
+                <!-- Summary Footer Row for A1 - A - B Cross Check -->
+                <tfoot id="brands-table-foot" class="bg-[#060e1d] font-bold border-t-2 border-emerald-500/40 text-slate-100">
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Comparison Summary Cards below table -->
+            <div class="mt-4 p-4 rounded-xl bg-[#091428] border border-blue-500/20 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div class="flex flex-col">
+                <span class="text-slate-400 font-medium">Tổng Sản Lượng A1:</span>
+                <span class="text-base font-bold text-emerald-400" id="foot-sum-a1">0 m²</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-slate-400 font-medium">Tổng Sản Lượng A:</span>
+                <span class="text-base font-bold text-blue-400" id="foot-sum-a">0 m²</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-slate-400 font-medium">Tổng Sản Lượng B:</span>
+                <span class="text-base font-bold text-amber-400" id="foot-sum-b">0 m²</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-slate-400 font-medium">Tổng Cộng (A1+A+B):</span>
+                <span class="text-base font-black text-white" id="foot-sum-total">0 m²</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 4: ĐỊNH MỨC PHIÊN BẢN ================= -->
+        <div id="tab-norms" class="tab-pane hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-white">Quản Lý Phiên Bản Định Mức Tiêu Hao (Men · Xương · Vật Tư)</h2>
+              <p class="text-xs text-slate-400">Bảo toàn dữ liệu lịch sử các tháng cũ, chỉ áp dụng phiên bản mới từ thời điểm có hiệu lực.</p>
+            </div>
+            <button onclick="openCreateVersionModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>Tạo Phiên Bản Mới</span>
+            </button>
+          </div>
+
+          <!-- Versions List Grid -->
+          <div id="norm-versions-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          </div>
+
+          <!-- Norm Details Table -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider" id="current-norm-title">
+                Chi tiết định mức: DM-2026-V1
+              </h3>
+              <button onclick="saveNormDetails()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow">
+                Lưu Thay Đổi Định Mức
+              </button>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/40">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-[#091428] text-slate-400 font-semibold border-b border-[#1e3a6a]/60">
+                  <tr>
+                    <th class="p-3">Tên Nguyên Vật Tư</th>
+                    <th class="p-3">Dây Chuyền</th>
+                    <th class="p-3">Kích Thước</th>
+                    <th class="p-3">ĐVT</th>
+                    <th class="p-3 text-right">Định Mức Quy Định</th>
+                  </tr>
+                </thead>
+                <tbody id="norm-details-body" class="divide-y divide-[#1e3a6a]/30 text-slate-200">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 5: TIÊU HAO VẬT TƯ (DATA III) ================= -->
+        <div id="tab-consumption" class="tab-pane hidden space-y-6">
+          <div class="text-xs text-slate-400">
+            Dữ liệu theo kỳ, có lịch sử thay đổi và nguồn đối chiếu.
+          </div>
+
+          <!-- Slicers Bar -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="consumption-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
+                  <select id="consumption-filter-month" onchange="loadConsumptionData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kỳ</option>
+                    <option value="1">Tháng 01</option>
+                    <option value="3">Tháng 03</option>
+                    <option value="4">Tháng 04</option>
+                    <option value="5">Tháng 05</option>
+                    <option value="6">Tháng 06</option>
+                    <option value="7">Tháng 07</option>
+                    <option value="8" selected>Tháng 08</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
+                  <select id="consumption-filter-line" onchange="loadConsumptionData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả dây chuyền</option>
+                    <option value="DC1" selected>DC1</option>
+                    <option value="DC2">DC2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
+                  <select id="consumption-filter-size" onchange="loadConsumptionData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kích thước</option>
+                    <option value="30x60">30x60</option>
+                    <option value="50x50">50x50</option>
+                    <option value="40x80">40x80</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="consumption-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                  • Tháng 08 / 2026
+                </span>
+                <button onclick="alert('Thêm dữ liệu tiêu hao')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Thêm dữ liệu</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-xs font-bold text-slate-200" id="consumption-row-count">
+                18 dòng dữ liệu
+              </div>
+              <div class="relative w-72">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
+                <input type="text" id="consumption-search-input" oninput="filterConsumptionClient()" placeholder="Tìm trong bảng..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/40">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-[#091428] text-slate-400 font-semibold border-b border-[#1e3a6a]/60">
+                  <tr>
+                    <th class="p-3">Kỳ</th>
+                    <th class="p-3">DC</th>
+                    <th class="p-3">Kích thước</th>
+                    <th class="p-3">Nguyên liệu / vật tư</th>
+                    <th class="p-3">ĐVT</th>
+                    <th class="p-3 text-right">Định mức kỳ</th>
+                    <th class="p-3 text-right">Lượng sử dụng</th>
+                    <th class="p-3 text-right">SL tính tiêu hao</th>
+                    <th class="p-3 text-right">Tiêu hao thực tế</th>
+                    <th class="p-3 text-right">Vượt (+) / giảm (-)</th>
+                    <th class="p-3 text-center">Trạng thái</th>
+                    <th class="p-3">Nguồn</th>
+                  </tr>
+                </thead>
+                <tbody id="consumption-table-body" class="divide-y divide-[#1e3a6a]/30 text-slate-200">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+                        <!-- ================= TAB 6: SỬ DỤNG THAN (DATA IV - CHUẨN 100% FORM GỐC) ================= -->
+        <div id="tab-coal" class="tab-pane hidden space-y-6">
+          
+          <!-- Slicers Bar -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex flex-wrap items-center gap-4">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="coal-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026">2026</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
+                  <select id="coal-filter-month" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kỳ (T1-T8)</option>
+                    <option value="1">Tháng 01</option>
+                    <option value="3">Tháng 03</option>
+                    <option value="4">Tháng 04</option>
+                    <option value="5">Tháng 05</option>
+                    <option value="6">Tháng 06</option>
+                    <option value="7">Tháng 07</option>
+                    <option value="8" selected>Tháng 08</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
+                  <select id="coal-filter-line" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả dây chuyền</option>
+                    <option value="DC1" selected>DC1</option>
+                    <option value="DC2">DC2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
+                  <select id="coal-filter-size" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kích thước</option>
+                    <option value="30x60">30x60</option>
+                    <option value="50x50">50x50</option>
+                    <option value="40x80">40x80</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Phân loại đốt</label>
+                  <select id="coal-filter-firing" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả (Nung + Sấy lò)</option>
+                    <option value="Có tính tiêu hao">Có tính tiêu hao</option>
+                    <option value="Không tính tiêu hao">Sấy lò (Không tính tiêu hao)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="coal-badge-period" class="px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold">
+                  • Tháng 08 / 2026 - DC1 (300*600)
+                </span>
+                <button onclick="alert('Thêm dữ liệu tiêu hao than')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Thêm dữ liệu than</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coal Summary KPI Cards Grid (8 Cards) -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5">
+            <!-- Rate Lump -->
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao Than Cục</span>
+                <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+              </div>
+              <div class="text-xl font-black text-amber-300" id="coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                <span>KL Lĩnh: <b id="coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+              </div>
+            </div>
+
+            <!-- Rate With Ash -->
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao (Có Cám)</span>
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+              </div>
+              <div class="text-xl font-black text-cyan-300" id="coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                <span>Xuất cám: <b id="coal-kpi-ash-wt" class="text-slate-200">0 kg</b> (<span id="coal-kpi-ash-pct" class="text-cyan-400">0%</span>)</span>
+              </div>
+            </div>
+
+            <!-- Rate Total (Cuc + Cam + Bu) -->
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#0f2042] to-amber-950/20 shadow-lg">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] text-amber-300 font-bold">Tiêu Hao (Cục+Cám+Bù)</span>
+                <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+              </div>
+              <div class="text-xl font-black text-white" id="coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+              <div class="text-[10px] text-slate-300 mt-1 flex items-center justify-between">
+                <span>Lĩnh bù: <b id="coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
+                <span>Vượt TC: <b id="coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
+              </div>
+            </div>
+
+            <!-- Total Production m2 -->
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] text-slate-400 font-medium">Sản Lượng Nung (m²)</span>
+                <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+              </div>
+              <div class="text-xl font-black text-emerald-400" id="coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
+              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                <span>Tổng than SD: <b id="coal-kpi-total-used" class="text-slate-200">0 kg</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Container with Excel Grid Styling -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+              <div class="text-xs font-bold text-slate-200" id="coal-row-count">
+                0 dòng dữ liệu
+              </div>
+              <div class="relative w-72">
+                <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
+                <input type="text" id="coal-search-input" oninput="filterCoalClient()" placeholder="Tìm theo loại than, kho, ngày đốt..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]">
+              <table class="table-excel-grid text-xs text-left">
+                <thead>
+                  <!-- Tier 1 Headers (11 Main Groups) -->
+                  <tr class="text-[11px] bg-[#071020] text-slate-300 font-bold">
+                    <th rowspan="2" class="p-2.5 text-center w-10">STT</th>
+                    <th rowspan="2" class="p-2.5 text-left min-w-[240px]">TÊN LOẠI THAN</th>
+                    <th colspan="4" class="p-2 text-center text-cyan-300 bg-cyan-950/30">Chất lượng lô than</th>
+                    <th rowspan="2" class="p-2.5 text-right min-w-[90px] font-bold text-slate-100">KL. Lĩnh<br><span class="text-[9px] font-normal text-slate-400">(kg)</span></th>
+                    <th colspan="2" class="p-2 text-center text-amber-300 bg-amber-950/30">Xuất cám (kg)</th>
+                    <th rowspan="2" class="p-2.5 text-right min-w-[75px] text-emerald-400">Lĩnh bù<br><span class="text-[9px] font-normal text-slate-400">(kg)</span></th>
+                    <th rowspan="2" class="p-2.5 text-right min-w-[85px] text-rose-400">Cám vượt<br>tiêu chuẩn (kg)</th>
+                    <th rowspan="2" class="p-2.5 text-right min-w-[105px] font-bold text-amber-300">Tổng sử dụng<br><span class="text-[9px] font-normal text-slate-400">(cục+cám+bù)</span></th>
+                    <th rowspan="2" class="p-2.5 text-right min-w-[95px] font-bold text-emerald-300">Sản lượng<br><span class="text-[9px] font-normal text-slate-400">(m²)</span></th>
+                    <th colspan="3" class="p-2 text-center text-purple-300 bg-purple-950/30">Tiêu hao</th>
+                    <th rowspan="2" class="p-2.5 text-left min-w-[170px]">Ghi chú</th>
+                  </tr>
+                  <!-- Tier 2 Sub-headers (9 Sub-columns) -->
+                  <tr class="text-[10px] bg-[#091428] text-slate-400 font-semibold">
+                    <!-- Quality (4) -->
+                    <th class="p-1.5 text-right">Nhiệt trị<br><span class="text-[8px] text-slate-500">(Kcal)</span></th>
+                    <th class="p-1.5 text-right">Tỷ lệ %<br>cám TT</th>
+                    <th class="p-1.5 text-right">Tỷ lệ %<br>cám TC</th>
+                    <th class="p-1.5 text-right">Tỷ lệ %<br>xít đá</th>
+                    <!-- Ash (2) -->
+                    <th class="p-1.5 text-right">SL (kg)</th>
+                    <th class="p-1.5 text-right">% cám</th>
+                    <!-- Rates (3) -->
+                    <th class="p-1.5 text-right font-bold text-amber-300">kg/m²</th>
+                    <th class="p-1.5 text-right font-bold text-cyan-300">Tiêu hao<br>(có cám) kg/m²</th>
+                    <th class="p-1.5 text-right font-black text-white">Tiêu hao<br>(cục+cám+bù) kg/m²</th>
+                  </tr>
+                </thead>
+                <tbody id="coal-table-body" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                </tbody>
+                <tfoot id="coal-table-foot" class="text-xs font-semibold">
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 7: IMPORT EXCEL ================= -->
+        <div id="tab-import" class="tab-pane hidden space-y-6">
+          <div class="p-6 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-5 max-w-4xl mx-auto">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">Cổng Tự Động Import 3 File Báo Cáo Tháng</h2>
+              <p class="text-xs text-slate-400 mt-1">Chọn đồng thời 3 file Excel định kỳ (KQSX DC1, KQSX DC2, Tiêu hao Than), hệ thống sẽ tự động bóc tách và đổ dữ liệu vào 4 khối Data.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Tháng báo cáo:</label>
+                <select id="import-month-select" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2 focus:outline-none">
+                  <option value="9">Tháng 09/2026</option>
+                  <option value="10">Tháng 10/2026</option>
+                  <option value="11">Tháng 11/2026</option>
+                  <option value="12">Tháng 12/2026</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Năm:</label>
+                <input type="number" value="2026" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2 focus:outline-none" readonly />
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="p-4 rounded-lg bg-[#091428] border border-blue-500/20 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-400"></i>
+                  <div>
+                    <div class="text-xs font-bold text-white">1. File Báo cáo KQSX Dây chuyền 1</div>
+                    <div class="text-[11px] text-slate-400">Ví dụ: 01. BÁO CÁO THÁNG 8-2026.xlsx</div>
+                  </div>
+                </div>
+                <input type="file" id="file-dc1" class="text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer" />
+              </div>
+
+              <div class="p-4 rounded-lg bg-[#091428] border border-blue-500/20 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="file-spreadsheet" class="w-5 h-5 text-blue-400"></i>
+                  <div>
+                    <div class="text-xs font-bold text-white">2. File Báo cáo KQSX Dây chuyền 2</div>
+                    <div class="text-[11px] text-slate-400">Ví dụ: 02. BÁO CÁO KQSX THÁNG 8.2026 DC2.xlsx</div>
+                  </div>
+                </div>
+                <input type="file" id="file-dc2" class="text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer" />
+              </div>
+
+              <div class="p-4 rounded-lg bg-[#091428] border border-blue-500/20 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i data-lucide="file-spreadsheet" class="w-5 h-5 text-amber-400"></i>
+                  <div>
+                    <div class="text-xs font-bold text-white">3. File Báo cáo Tiêu hao Than Khí Hóa</div>
+                    <div class="text-[11px] text-slate-400">Ví dụ: 03. THANG 8-2026 TIÊU HAO THAN.xlsx</div>
+                  </div>
+                </div>
+                <input type="file" id="file-coal" class="text-xs text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer" />
+              </div>
+            </div>
+
+            <button onclick="submitMonthlyImport()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl shadow-lg transition">
+              Tiến Hành Xử Lý & Trích Xuất Dữ Liệu
+            </button>
+
+            <!-- Logs Output -->
+            <div id="import-logs-box" class="hidden p-4 rounded-lg bg-[#060c18] border border-blue-500/30 text-xs font-mono text-cyan-300 space-y-1">
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 8: BÁO CÁO TRÌNH KÝ (FORM MẪU) ================= -->
+        <div id="tab-export-report" class="tab-pane hidden space-y-6">
+          <div class="flex items-center justify-between no-print">
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2 bg-[#0f2042] px-3 py-1.5 rounded-lg border border-[#1e3a6a]/60">
+                <span class="text-xs text-slate-400">Kỳ Báo Cáo:</span>
+                <select id="export-select-month" onchange="renderFormMauPreview()" class="bg-transparent text-xs font-bold text-cyan-300 focus:outline-none cursor-pointer">
+                  <option value="1">Tháng 01/2026</option>
+                  <option value="3">Tháng 03/2026</option>
+                  <option value="4">Tháng 04/2026</option>
+                  <option value="5">Tháng 05/2026</option>
+                  <option value="6">Tháng 06/2026</option>
+                  <option value="7">Tháng 07/2026</option>
+                  <option value="8" selected>Tháng 08/2026</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition shadow">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>In Báo Cáo / Xuất PDF</span>
+              </button>
+              <button onclick="downloadFormMauExcel()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>Tải File Excel (.xlsx)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- FORM MẪU CONTAINER -->
+          <div class="p-8 bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 overflow-x-auto print-area" id="form-mau-printable">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b-2 border-slate-800 pb-4 mb-6">
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</h3>
+                <h4 class="text-[11px] font-semibold text-slate-500">PHÂN XƯỞNG SẢN XUẤT 2 DÂY CHUYỀN</h4>
+              </div>
+              <div class="text-right">
+                <h2 class="text-sm font-black uppercase text-blue-900" id="form-mau-header-title">BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG 08/2026</h2>
+                <div class="text-[11px] text-slate-500 italic">Áp dụng chuẩn Form Mẫu Trình Ký Ban Giám Đốc</div>
+              </div>
+            </div>
+
+            <!-- Content injected dynamically -->
+            <div id="form-mau-content" class="space-y-6 text-xs leading-relaxed">
+            </div>
+
+            <!-- Signature block -->
+            <div class="grid grid-cols-4 gap-4 mt-12 pt-6 border-t border-slate-300 text-center text-xs font-semibold">
+              <div>
+                <div class="text-slate-500 mb-12">NGƯỜI LẬP BIỂU</div>
+                <div class="font-bold text-slate-800">(Ký & ghi rõ họ tên)</div>
+              </div>
+              <div>
+                <div class="text-slate-500 mb-12">TRƯỞNG CA SẢN XUẤT</div>
+                <div class="font-bold text-slate-800">(Ký & ghi rõ họ tên)</div>
+              </div>
+              <div>
+                <div class="text-slate-500 mb-12">QUẢN ĐỐC PHÂN XƯỞNG</div>
+                <div class="font-bold text-slate-800">(Ký & ghi rõ họ tên)</div>
+              </div>
+              <div>
+                <div class="text-slate-500 mb-12">BAN GIÁM ĐỐC PHÊ DUYỆT</div>
+                <div class="font-bold text-slate-800">(Ký & ghi rõ họ tên)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= TAB 9: QUẢN TRỊ ================= -->
+        <div id="tab-admin" class="tab-pane hidden space-y-6">
+          <div class="p-6 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4 max-w-3xl">
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Thông Tin Hệ Thống & Cấu Hình CSDL</h2>
+            <div class="space-y-2 text-xs text-slate-300">
+              <div>• <b>Cơ sở dữ liệu:</b> SQLite 3 (`production_data.db`)</div>
+              <div>• <b>Chế độ bảo vệ file Excel:</b> Read-Only tuyệt đối (không ghi đè file gốc)</div>
+              <div>• <b>Chuẩn định mức:</b> Versioned Norms (Temporal Logic)</div>
+              <div>• <b>Số cổng mạng nội bộ:</b> Port 8080</div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Create Version Modal -->
+  <div id="modal-create-version" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-[#1e3a6a]/60 pb-3">
+        <h3 class="text-sm font-bold text-white">Tạo Phiên Bản Định Mức Mới</h3>
+        <button onclick="closeModal('modal-create-version')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Mã phiên bản (VD: DM-2026-V2):</label>
+          <input type="text" id="new-version-code" placeholder="DM-2026-V2" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Tên phiên bản:</label>
+          <input type="text" id="new-version-name" placeholder="Định mức cập nhật Quý 3/2026" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Hiệu lực từ Tháng:</label>
+            <select id="new-version-month" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none">
+              <option value="9">Tháng 09</option>
+              <option value="10">Tháng 10</option>
+              <option value="11">Tháng 11</option>
+              <option value="12">Tháng 12</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Năm:</label>
+            <input type="number" id="new-version-year" value="2026" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Sao chép định mức từ:</label>
+          <select id="new-version-copy-from" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none">
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Ghi chú / Căn cứ thay đổi:</label>
+          <textarea id="new-version-desc" rows="2" placeholder="Căn cứ thông báo điều chỉnh định mức men phủ DC2..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none"></textarea>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#1e3a6a]/60">
+        <button onclick="closeModal('modal-create-version')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold">Hủy</button>
+        <button onclick="submitCreateVersion()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow">Xác Nhận Tạo</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js?v=20260904_final"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 32, 66, 0.4);
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a6a;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* Light Theme Variables */
+html:not(.dark) body {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+html:not(.dark) #sidebar {
+  background-color: #064e3b;
+  border-right-color: #047857;
+}
+html:not(.dark) header {
+  background-color: #ffffff;
+  border-bottom-color: #e2e8f0;
+}
+html:not(.dark) #breadcrumb-current {
+  color: #0f172a;
+}
+html:not(.dark) .slicers-bar {
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+html:not(.dark) .slicers-bar select,
+html:not(.dark) .slicers-bar input {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+html:not(.dark) .bg-\[\#0f2042\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) .bg-\[\#091428\] {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+html:not(.dark) thead {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+}
+html:not(.dark) tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+html:not(.dark) tbody td {
+  color: #1e293b !important;
+}
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  #sidebar, header, .no-print {
+    display: none !important;
+  }
+  #main-content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+}
+
+
+/* Excel-like Grid Border Styling */
+.table-excel-grid {
+  border-collapse: collapse !important;
+  width: 100%;
+}
+.table-excel-grid th, .table-excel-grid td {
+  border: 1px solid rgba(40, 75, 130, 0.75) !important;
+}
+.table-excel-grid thead th {
+  border: 1px solid rgba(50, 90, 150, 0.9) !important;
+}
+.light-mode .table-excel-grid th, .light-mode .table-excel-grid td {
+  border: 1px solid #cbd5e1 !important;
+}
+.light-mode .table-excel-grid thead th {
+  border: 1px solid #94a3b8 !important;
+}

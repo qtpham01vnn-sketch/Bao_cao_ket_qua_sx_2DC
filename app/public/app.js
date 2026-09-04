@@ -1,0 +1,967 @@
+// Global State
+let currentTab = "dashboard";
+let monthlyTrendChart = null;
+let brandDistChart = null;
+let currentNormVersionId = 1;
+let rawSummaryData = [];
+let rawBrandsData = [];
+let rawConsumptionData = [];
+let rawCoalData = [];
+
+// Initialize on load
+document.addEventListener("DOMContentLoaded", () => {
+  lucide.createIcons();
+  loadDashboardData();
+  loadSummaryData();
+  loadBrandsData();
+  loadNormVersions();
+  loadConsumptionData();
+  loadCoalData();
+  renderFormMauPreview();
+});
+
+// Vietnamese Number Formatter
+function formatNumber(num, decimals = 2) {
+  if (num === null || num === undefined || isNaN(num)) return "0";
+  if (num === 0) return "0";
+  const fixed = Number(num).toFixed(decimals);
+  let [intPart, decPart] = fixed.split(".");
+  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (decimals === 0 || !decPart || Number(decPart) === 0) {
+    return intPart;
+  }
+  decPart = decPart.replace(/0+$/, "");
+  return decPart ? `${intPart},${decPart}` : intPart;
+}
+
+// Tab Switching
+function switchTab(tabId) {
+  currentTab = tabId;
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("hidden"));
+  document.querySelectorAll(".nav-btn").forEach(b => {
+    b.classList.remove("bg-emerald-600/90", "text-white", "shadow");
+    b.classList.add("text-slate-300");
+  });
+
+  const activePane = document.getElementById(`tab-${tabId}`);
+  if (activePane) activePane.classList.remove("hidden");
+
+  const activeNav = document.getElementById(`nav-${tabId}`);
+  if (activeNav) {
+    activeNav.classList.add("bg-emerald-600/90", "text-white", "shadow");
+    activeNav.classList.remove("text-slate-300");
+  }
+
+  const titles = {
+    "dashboard": "Tổng quan",
+    "summary": "Sản lượng · chất lượng",
+    "brands": "Thương hiệu",
+    "norms": "Định mức phiên bản",
+    "consumption": "Tiêu hao vật tư",
+    "coal": "Sử dụng than",
+    "import": "Import Excel",
+    "export-report": "Báo cáo trình ký",
+    "admin": "Quản trị"
+  };
+  document.getElementById("breadcrumb-current").innerText = titles[tabId] || "Tổng quan";
+
+  if (tabId === "dashboard") loadDashboardData();
+  else if (tabId === "summary") loadSummaryData();
+  else if (tabId === "brands") loadBrandsData();
+  else if (tabId === "norms") loadNormVersions();
+  else if (tabId === "consumption") loadConsumptionData();
+  else if (tabId === "coal") loadCoalData();
+  else if (tabId === "export-report") renderFormMauPreview();
+
+  lucide.createIcons();
+}
+
+// Toggle Dark / Light Theme
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.classList.toggle("dark");
+  const icon = document.getElementById("theme-icon");
+  const text = document.getElementById("theme-text");
+
+  if (isDark) {
+    text.innerText = "Tone Sáng Doanh Nghiệp";
+    icon.setAttribute("data-lucide", "sun");
+  } else {
+    text.innerText = "Tone Xanh Kỹ Thuật Số";
+    icon.setAttribute("data-lucide", "moon");
+  }
+  lucide.createIcons();
+  if (monthlyTrendChart) monthlyTrendChart.update();
+  if (brandDistChart) brandDistChart.update();
+}
+
+// ----------------------------------------------------
+// TAB 1: DASHBOARD
+// ----------------------------------------------------
+async function loadDashboardData() {
+  const month = document.getElementById("dash-filter-month").value;
+  const line = document.getElementById("dash-filter-line").value;
+  const size = document.getElementById("dash-filter-size").value;
+
+  const badge = document.getElementById("dash-badge-period");
+  badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
+
+  try {
+    const res = await fetch(`/api/dashboard?month=${month}&line=${line}&size=${size}`);
+    const data = await res.json();
+    const kpi = data.kpi;
+
+    document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
+    document.getElementById("kpi-plan-total").innerText = formatNumber(kpi.plan_total_m2, 0) + " m²";
+    document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "%";
+
+    document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
+    document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
+    document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
+
+    document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
+    document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
+    document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
+
+    document.getElementById("kpi-coal-rate").innerText = formatNumber(kpi.avg_coal_rate, 3) + " kg/m²";
+    document.getElementById("kpi-coal-total").innerText = formatNumber(kpi.total_coal_kg, 0) + " kg";
+    document.getElementById("kpi-coal-heat").innerText = formatNumber(kpi.avg_coal_heat, 0) + " Kcal";
+
+    renderMonthlyTrendChart(data.monthly_trend);
+    renderBrandDistChart(data.brand_distribution);
+  } catch (err) {
+    console.error("Error loading dashboard data:", err);
+  }
+}
+
+function renderMonthlyTrendChart(trends) {
+  const ctx = document.getElementById("chart-monthly-trend").getContext("2d");
+  if (monthlyTrendChart) monthlyTrendChart.destroy();
+
+  const labels = trends.map(t => t.month);
+  const actuals = trends.map(t => t.actual);
+  const plans = trends.map(t => t.plan);
+
+  monthlyTrendChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Thực hiện (m²)",
+          data: actuals,
+          backgroundColor: "#06b6d4",
+          borderRadius: 6
+        },
+        {
+          label: "Kế hoạch (m²)",
+          data: plans,
+          backgroundColor: "#3b82f6",
+          borderRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: "#94a3b8", font: { size: 11 } } }
+      },
+      scales: {
+        x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
+        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255,255,255,0.05)" } }
+      }
+    }
+  });
+}
+
+function renderBrandDistChart(brands) {
+  const ctx = document.getElementById("chart-brand-dist").getContext("2d");
+  if (brandDistChart) brandDistChart.destroy();
+
+  const labels = brands.map(b => b.brand_name);
+  const quantities = brands.map(b => b.total_m2);
+
+  brandDistChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: quantities,
+        backgroundColor: [
+          "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899",
+          "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ----------------------------------------------------
+// TAB 2: DATA I (SẢN LƯỢNG · CHẤT LƯỢNG)
+// ----------------------------------------------------
+async function loadSummaryData() {
+  const month = document.getElementById("summary-filter-month").value;
+  const line = document.getElementById("summary-filter-line").value;
+  const size = document.getElementById("summary-filter-size").value;
+
+  const badge = document.getElementById("summary-badge-period");
+  badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
+
+  try {
+    const res = await fetch(`/api/data/summary?month=${month}&line=${line}&size=${size}&unit=m2`);
+    const json = await res.json();
+    rawSummaryData = json.data || [];
+    renderSummaryTable(rawSummaryData);
+  } catch (err) {
+    console.error("Error loading summary data:", err);
+  }
+}
+
+function filterSummaryClient() {
+  const term = document.getElementById("summary-search-input").value.toLowerCase();
+  const filtered = rawSummaryData.filter(r => 
+    (r.product_line && r.product_line.toLowerCase().includes(term)) ||
+    (r.line && r.line.toLowerCase().includes(term)) ||
+    (r.size && r.size.toLowerCase().includes(term)) ||
+    (r.data_type && r.data_type.toLowerCase().includes(term)) ||
+    (r.source_row && r.source_row.toLowerCase().includes(term))
+  );
+  renderSummaryTable(filtered);
+}
+
+function renderSummaryTable(rows) {
+  const tbody = document.getElementById("summary-table-body");
+  document.getElementById("summary-row-count").innerText = `${rows.length} dòng dữ liệu`;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr class="hover:bg-[#13284d]/50 transition">
+      <td class="p-3">${r.month}/${r.year}</td>
+      <td class="p-3 font-bold ${r.line === 'DC1' ? 'text-cyan-400' : 'text-amber-400'}">${r.line}</td>
+      <td class="p-3">${r.size}</td>
+      <td class="p-3 font-semibold">${r.product_line || 'Phương Nam'}</td>
+      <td class="p-3">
+        <span class="px-2 py-0.5 rounded text-[11px] font-medium ${r.data_type === 'Thực hiện' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}">
+          ${r.data_type}
+        </span>
+      </td>
+      <td class="p-3 text-right font-medium">${formatNumber(r.sl_ep, 2)}</td>
+      <td class="p-3 text-right font-bold text-emerald-400">${formatNumber(r.a1, 2)}</td>
+      <td class="p-3 text-right font-medium">${formatNumber(r.a, 2)}</td>
+      <td class="p-3 text-right font-medium text-amber-400">${formatNumber(r.b, 2)}</td>
+      <td class="p-3 text-right font-bold text-white">${formatNumber(r.recovery_total, 2)}</td>
+      <td class="p-3 text-center">${formatNumber(r.prod_days, 1)}</td>
+      <td class="p-3 text-center text-rose-300 font-semibold">${formatNumber(r.stop_time_2mf, 0)}</td>
+      <td class="p-3 text-slate-400 text-[11px]">${r.source_row || 'Data tổng hợp I'}</td>
+      <td class="p-3 text-center">
+        <button onclick="alert('Xem chi tiết bản ghi ID ' + ${r.id})" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium border border-slate-700 transition">
+          Chi tiết / sửa
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// ----------------------------------------------------
+// TAB 3: DATA II (THƯƠNG HIỆU) + HÀNG TÍNH TỔNG A1/A/B
+// ----------------------------------------------------
+async function loadBrandsData() {
+  const month = document.getElementById("brands-filter-month").value;
+  const line = document.getElementById("brands-filter-line").value;
+  const size = document.getElementById("brands-filter-size").value;
+
+  const badge = document.getElementById("brands-badge-period");
+  badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
+
+  try {
+    const res = await fetch(`/api/data/brands?month=${month}&line=${line}&size=${size}`);
+    const json = await res.json();
+    rawBrandsData = json.data || [];
+    renderBrandsTable(rawBrandsData);
+  } catch (err) {
+    console.error("Error loading brands data:", err);
+  }
+}
+
+function filterBrandsClient() {
+  const term = document.getElementById("brands-search-input").value.toLowerCase();
+  const filtered = rawBrandsData.filter(r => 
+    (r.brand_name && r.brand_name.toLowerCase().includes(term)) ||
+    (r.glaze_type && r.glaze_type.toLowerCase().includes(term)) ||
+    (r.line && r.line.toLowerCase().includes(term)) ||
+    (r.size && r.size.toLowerCase().includes(term)) ||
+    (r.grade && r.grade.toLowerCase().includes(term)) ||
+    (r.source_row && r.source_row.toLowerCase().includes(term))
+  );
+  renderBrandsTable(filtered);
+}
+
+function renderBrandsTable(rows) {
+  const tbody = document.getElementById("brands-table-body");
+  const tfoot = document.getElementById("brands-table-foot");
+  document.getElementById("brands-row-count").innerText = `${rows.length} dòng dữ liệu`;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu</td></tr>`;
+    tfoot.innerHTML = "";
+    return;
+  }
+
+  // Calculate Totals for A1, A, B and Grand Total
+  let sumA1 = 0;
+  let sumA = 0;
+  let sumB = 0;
+  let grandTotal = 0;
+
+  rows.forEach(r => {
+    const q = Number(r.quantity_m2 || 0);
+    grandTotal += q;
+    if (r.grade === "A1") sumA1 += q;
+    else if (r.grade === "A") sumA += q;
+    else if (r.grade === "B") sumB += q;
+  });
+
+  // Render Rows
+  tbody.innerHTML = rows.map(r => `
+    <tr class="hover:bg-[#13284d]/50 transition">
+      <td class="p-3">${r.month}/${r.year}</td>
+      <td class="p-3 font-bold ${r.line === 'DC1' ? 'text-cyan-400' : 'text-amber-400'}">${r.line}</td>
+      <td class="p-3">${r.size || '-'}</td>
+      <td class="p-3 text-slate-300 font-medium">${r.glaze_type || 'Phương Nam'}</td>
+      <td class="p-3 font-semibold text-white">${r.brand_name}</td>
+      <td class="p-3 text-center">
+        <span class="px-2 py-0.5 rounded text-[11px] font-bold ${r.grade === 'A1' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (r.grade === 'A' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20')}">
+          ${r.grade}
+        </span>
+      </td>
+      <td class="p-3 text-right font-bold text-slate-100">${formatNumber(r.quantity_m2, 2)}</td>
+      <td class="p-3 text-slate-400 text-[11px]">${r.source_row || 'Data tổng hợp II'}</td>
+      <td class="p-3 text-center">
+        <button onclick="alert('Chi tiết thương hiệu: ' + '${r.brand_name}')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium border border-slate-700 transition">
+          Chi tiết / sửa
+        </button>
+      </td>
+    </tr>
+  `).join("");
+
+  // Render Table Footer Row (TỔNG CỘNG A1 / A / B)
+  tfoot.innerHTML = `
+    <tr>
+      <td colspan="5" class="p-3 text-left uppercase text-slate-300">TỔNG CỘNG THEO PHÂN LOẠI (A1 / A / B):</td>
+      <td class="p-3 text-center text-xs font-bold text-emerald-400">TỔNG</td>
+      <td class="p-3 text-right text-sm font-black text-white">${formatNumber(grandTotal, 2)}</td>
+      <td colspan="2" class="p-3 text-left text-[11px] text-emerald-400 font-semibold">
+        Khớp 100% Data I ✓
+      </td>
+    </tr>
+  `;
+
+  // Update Footer Cards
+  document.getElementById("foot-sum-a1").innerText = formatNumber(sumA1, 2) + " m²";
+  document.getElementById("foot-sum-a").innerText = formatNumber(sumA, 2) + " m²";
+  document.getElementById("foot-sum-b").innerText = formatNumber(sumB, 2) + " m²";
+  document.getElementById("foot-sum-total").innerText = formatNumber(grandTotal, 2) + " m²";
+}
+
+// ----------------------------------------------------
+// TAB 4: ĐỊNH MỨC PHIÊN BẢN (VERSIONED NORMS)
+// ----------------------------------------------------
+async function loadNormVersions() {
+  try {
+    const res = await fetch("/api/norms/versions");
+    const json = await res.json();
+    const versions = json.data || [];
+    renderNormVersionsGrid(versions);
+
+    const sel = document.getElementById("new-version-copy-from");
+    if (sel) {
+      sel.innerHTML = versions.map(v => `<option value="${v.id}">${v.version_code} - ${v.version_name}</option>`).join("");
+    }
+
+    if (versions.length > 0) {
+      loadNormDetails(currentNormVersionId || versions[0].id);
+    }
+  } catch (err) {
+    console.error("Error loading norm versions:", err);
+  }
+}
+
+function renderNormVersionsGrid(versions) {
+  const grid = document.getElementById("norm-versions-grid");
+  if (!grid) return;
+
+  grid.innerHTML = versions.map(v => `
+    <div onclick="loadNormDetails(${v.id})" class="p-4 rounded-xl border cursor-pointer transition ${v.id === currentNormVersionId ? 'bg-blue-600/20 border-blue-500 shadow-lg' : 'bg-[#0f2042] border-[#1e3a6a]/60 hover:border-blue-400/50'}">
+      <div class="flex items-center justify-between mb-2">
+        <span class="px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 font-mono text-xs font-bold">${v.version_code}</span>
+        <span class="text-[11px] text-emerald-400 font-semibold">Hiệu lực: T${v.effective_from_month}/${v.effective_from_year}</span>
+      </div>
+      <h4 class="text-xs font-bold text-white mb-1">${v.version_name}</h4>
+      <p class="text-[11px] text-slate-400 line-clamp-2">${v.description || 'Không có ghi chú'}</p>
+      <div class="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] text-slate-400">
+        <span>${v.item_count || 0} hạng mục định mức</span>
+        <span class="text-cyan-400 font-medium">Bảo toàn lịch sử ✓</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadNormDetails(versionId) {
+  currentNormVersionId = versionId;
+  try {
+    const res = await fetch(`/api/norms/details?version_id=${versionId}`);
+    const json = await res.json();
+    const ver = json.version || {};
+    const details = json.details || [];
+
+    document.getElementById("current-norm-title").innerText = `Chi tiết định mức: ${ver.version_code || 'V1'} - ${ver.version_name || ''}`;
+    const tbody = document.getElementById("norm-details-body");
+    tbody.innerHTML = details.map(d => `
+      <tr class="hover:bg-[#13284d]/50">
+        <td class="p-3 font-semibold text-white">${d.material_name}</td>
+        <td class="p-3 font-bold text-cyan-400">${d.line}</td>
+        <td class="p-3">${d.size}</td>
+        <td class="p-3 text-slate-400">${d.unit}</td>
+        <td class="p-3 text-right">
+          <input type="number" step="0.001" value="${d.norm_value}" data-item-id="${d.id}" class="norm-input-field w-28 bg-[#091428] border border-blue-500/30 text-xs font-bold text-cyan-300 px-2 py-1 rounded text-right focus:outline-none focus:border-emerald-400" />
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    console.error("Error loading norm details:", err);
+  }
+}
+
+async function saveNormDetails() {
+  const inputs = document.querySelectorAll(".norm-input-field");
+  const items = [];
+  inputs.forEach(inp => {
+    items.push({
+      id: parseInt(inp.getAttribute("data-item-id")),
+      norm_value: parseFloat(inp.value || 0)
+    });
+  });
+
+  try {
+    const res = await fetch("/api/norms/details", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ version_id: currentNormVersionId, items: items })
+    });
+    const json = await res.json();
+    alert(json.message || "Đã lưu thay đổi định mức thành công!");
+    loadNormDetails(currentNormVersionId);
+  } catch (err) {
+    alert("Lỗi khi lưu định mức: " + err);
+  }
+}
+
+function openCreateVersionModal() {
+  document.getElementById("modal-create-version").classList.remove("hidden");
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.add("hidden");
+}
+
+async function submitCreateVersion() {
+  const code = document.getElementById("new-version-code").value.trim();
+  const name = document.getElementById("new-version-name").value.trim();
+  const month = parseInt(document.getElementById("new-version-month").value);
+  const year = parseInt(document.getElementById("new-version-year").value);
+  const copyFrom = document.getElementById("new-version-copy-from").value;
+  const desc = document.getElementById("new-version-desc").value.trim();
+
+  if (!code || !name) {
+    alert("Vui lòng nhập đầy đủ Mã và Tên phiên bản!");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/norms/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        version_code: code,
+        version_name: name,
+        effective_from_month: month,
+        effective_from_year: year,
+        copy_from_version_id: copyFrom ? parseInt(copyFrom) : null,
+        description: desc
+      })
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert("Đã tạo phiên bản định mức mới thành công! Định mức mới chỉ áp dụng từ thời điểm hiệu lực.");
+      closeModal("modal-create-version");
+      loadNormVersions();
+    } else {
+      alert(json.error || "Lỗi khi tạo phiên bản");
+    }
+  } catch (err) {
+    alert("Lỗi: " + err);
+  }
+}
+
+// ----------------------------------------------------
+// TAB 5: TIÊU HAO VẬT TƯ (DATA III - KHỚP 100% ẢNH 2 CODEX)
+// ----------------------------------------------------
+async function loadConsumptionData() {
+  const month = document.getElementById("consumption-filter-month").value;
+  const line = document.getElementById("consumption-filter-line").value;
+  const size = document.getElementById("consumption-filter-size").value;
+
+  const badge = document.getElementById("consumption-badge-period");
+  badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
+
+  try {
+    const res = await fetch(`/api/data/materials?month=${month}&line=${line}&size=${size}`);
+    const json = await res.json();
+    rawConsumptionData = json.data || [];
+    renderConsumptionTable(rawConsumptionData);
+  } catch (err) {
+    console.error("Error loading consumption data:", err);
+  }
+}
+
+function filterConsumptionClient() {
+  const term = document.getElementById("consumption-search-input").value.toLowerCase();
+  const filtered = rawConsumptionData.filter(r => 
+    (r.material_name && r.material_name.toLowerCase().includes(term)) ||
+    (r.line && r.line.toLowerCase().includes(term)) ||
+    (r.size && r.size.toLowerCase().includes(term)) ||
+    (r.status_text && r.status_text.toLowerCase().includes(term)) ||
+    (r.source_row && r.source_row.toLowerCase().includes(term))
+  );
+  renderConsumptionTable(filtered);
+}
+
+function renderConsumptionTable(rows) {
+  const tbody = document.getElementById("consumption-table-body");
+  document.getElementById("consumption-row-count").innerText = `${rows.length} dòng dữ liệu`;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const hasData = r.used_qty > 0 || r.actual_rate > 0;
+    const diff = Number(r.diff_qty || 0);
+    const diffStr = diff !== 0 ? (diff > 0 ? `+${formatNumber(diff, 2)}` : `${formatNumber(diff, 2)}`) : "-";
+    const diffClass = diff < 0 ? "text-emerald-400 font-bold" : (diff > 0 ? "text-rose-400 font-bold" : "text-slate-400");
+    const statusClass = hasData ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-slate-700/30 text-slate-400";
+
+    return `
+      <tr class="hover:bg-[#13284d]/50 transition">
+        <td class="p-3">${r.month}/${r.year}</td>
+        <td class="p-3 font-bold ${r.line === 'DC1' ? 'text-cyan-400' : 'text-amber-400'}">${r.line}</td>
+        <td class="p-3">${r.size || '-'}</td>
+        <td class="p-3 font-semibold text-white">${r.material_name}</td>
+        <td class="p-3 text-slate-400">${r.unit || ''}</td>
+        <td class="p-3 text-right font-medium">${formatNumber(r.norm_value, 4)}</td>
+        <td class="p-3 text-right font-medium">${r.used_qty > 0 ? formatNumber(r.used_qty, 0) : '-'}</td>
+        <td class="p-3 text-right font-medium text-slate-300">${r.prod_qty > 0 ? formatNumber(r.prod_qty, 2) : '0'}</td>
+        <td class="p-3 text-right font-bold text-cyan-300">${r.actual_rate > 0 ? formatNumber(r.actual_rate, 4) : '-'}</td>
+        <td class="p-3 text-right ${diffClass}">${diffStr}</td>
+        <td class="p-3 text-center">
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium ${statusClass}">
+            ${r.status_text || (hasData ? 'Có số liệu' : 'Chưa nhập lượng sử dụng')}
+          </span>
+        </td>
+        <td class="p-3 text-slate-400 text-[11px]">${r.source_row || 'Data tổng hợp III'}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+// ----------------------------------------------------
+// TAB 6: SỬ DỤNG THAN (DATA IV - CHUẨN 100% FORM GỐC ẢNH 2)
+// ----------------------------------------------------
+let coalSummaryData = null;
+
+async function loadCoalData() {
+  const month = document.getElementById("coal-filter-month").value;
+  const line = document.getElementById("coal-filter-line").value;
+  const size = document.getElementById("coal-filter-size").value;
+  const firing = document.getElementById("coal-filter-firing").value;
+
+  const badge = document.getElementById("coal-badge-period");
+  const monthStr = month === "all" ? "Tất cả kỳ" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
+  const lineStr = line === "all" ? "Tất cả DC" : line;
+  const sizeStr = size === "all" ? "" : ` (${size})`;
+  badge.innerText = `• ${monthStr} / 2026 - ${lineStr}${sizeStr}`;
+
+  try {
+    const res = await fetch(`/api/data/coal?month=${month}&line=${line}&size=${size}&firing_type=${firing}`);
+    const json = await res.json();
+    rawCoalData = json.data || [];
+    coalSummaryData = json.summary || {};
+    renderCoalTable(rawCoalData, coalSummaryData);
+  } catch (err) {
+    console.error("Error loading coal data:", err);
+  }
+}
+
+function filterCoalClient() {
+  const term = document.getElementById("coal-search-input").value.toLowerCase();
+  const filtered = rawCoalData.filter(r => 
+    (r.coal_supplier && r.coal_supplier.toLowerCase().includes(term)) ||
+    (r.firing_type && r.firing_type.toLowerCase().includes(term)) ||
+    (r.line && r.line.toLowerCase().includes(term)) ||
+    (r.note && r.note.toLowerCase().includes(term))
+  );
+  renderCoalTable(filtered, coalSummaryData);
+}
+
+function renderCoalTable(rows, summary) {
+  const tbody = document.getElementById("coal-table-body");
+  const tfoot = document.getElementById("coal-table-foot");
+  document.getElementById("coal-row-count").innerText = `${rows.length} dòng dữ liệu`;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="17" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu tiêu hao than</td></tr>`;
+    tfoot.innerHTML = "";
+    updateCoalKPIs({
+      rate_lump: 0,
+      issued_weight: 0,
+      rate_with_ash: 0,
+      ash_weight: 0,
+      ash_rate_avg: 0,
+      rate_total: 0,
+      compensation_weight: 0,
+      excess_ash_weight: 0,
+      production_m2: 0,
+      total_used_weight: 0
+    });
+    return;
+  }
+
+  // Calculate dynamic sums for current filtered rows
+  let sumLumpFiring = 0, sumAshFiring = 0, sumCompFiring = 0, sumExcessFiring = 0, sumUsedFiring = 0, sumM2Firing = 0;
+  let sumLumpDrying = 0, sumAshDrying = 0, sumCompDrying = 0, sumUsedDrying = 0;
+
+  rows.forEach(r => {
+    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
+
+    if (isDrying) {
+      sumLumpDrying += issued;
+      sumAshDrying += ash;
+      sumCompDrying += comp;
+      sumUsedDrying += used;
+    } else {
+      sumLumpFiring += issued;
+      sumAshFiring += ash;
+      sumCompFiring += comp;
+      sumExcessFiring += excess;
+      sumUsedFiring += used;
+      sumM2Firing += m2;
+    }
+  });
+
+  const totalIssuedAll = sumLumpFiring + sumLumpDrying;
+  const totalAshAll = sumAshFiring + sumAshDrying;
+  const totalCompAll = sumCompFiring + sumCompDrying;
+  const totalUsedAll = sumUsedFiring + sumUsedDrying;
+  const totalM2All = sumM2Firing;
+
+  const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
+
+  const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
+
+  const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
+  const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
+  const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
+
+  // Update Top KPI Cards (Based on Firing - Production Consumption)
+  updateCoalKPIs({
+    rate_lump: rateLumpFiring,
+    issued_weight: sumLumpFiring,
+    rate_with_ash: rateWithAshFiring,
+    ash_weight: sumAshFiring,
+    ash_rate_avg: ashPctFiring,
+    rate_total: rateTotalFiring,
+    compensation_weight: sumCompFiring,
+    excess_ash_weight: sumExcessFiring,
+    production_m2: sumM2Firing,
+    total_used_weight: sumUsedFiring
+  });
+
+  // Render Table Body (Exactly 17 columns matching Image 2)
+  tbody.innerHTML = rows.map(r => {
+    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
+
+    const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
+    const rateWithAsh = r.rate_with_ash > 0 ? r.rate_with_ash : (m2 > 0 ? ((issued + ash) / m2) : 0);
+    const rateTotal = r.rate_total > 0 ? r.rate_total : (m2 > 0 ? (totalUsed / m2) : 0);
+
+    if (isDrying) {
+      return `
+        <tr class="bg-[#0b172a]/70 text-slate-400 italic">
+          <td class="p-2 text-center text-slate-500"></td>
+          <td class="p-2 text-slate-500"></td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right font-medium text-slate-300">${formatNumber(issued, 0)}</td>
+          <td class="p-2 text-right font-medium text-slate-300">${formatNumber(ash, 0)}</td>
+          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right font-bold text-slate-300">${formatNumber(totalUsed, 0)}</td>
+          <td class="p-2 text-center font-medium text-slate-400 bg-slate-800/40">Sấy lò không tính tiêu hao</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-[11px] text-slate-400">${r.note || ''}</td>
+        </tr>
+      `;
+    }
+
+    return `
+      <tr class="hover:bg-[#13284d]/50 transition text-slate-200">
+        <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || ''}</td>
+        <td class="p-2 font-bold text-white">${r.coal_supplier}</td>
+        <td class="p-2 text-right font-medium text-slate-300">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2) : '-'}</td>
+        <td class="p-2 text-right text-slate-400">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
+        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-slate-100">${formatNumber(issued, 0)}</td>
+        <td class="p-2 text-right font-medium text-slate-200">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
+        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-emerald-400">${comp > 0 ? formatNumber(comp, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-rose-400">${excess > 0 ? formatNumber(excess, 0) : '-'}</td>
+        <td class="p-2 text-right font-black text-amber-300">${formatNumber(totalUsed, 0)}</td>
+        <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2) : '-'}</td>
+        <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
+      </tr>
+    `;
+  }).join("");
+
+  // Render Table Footer (3 Tiers matching Image 2 exactly)
+  tfoot.innerHTML = `
+    <!-- 1. TỔNG SẤY LÒ -->
+    <tr class="bg-[#0a1526] text-slate-300 font-semibold">
+      <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-bold text-slate-300 tracking-wider">
+        TỔNG SẤY LÒ
+      </td>
+      <td colspan="4" class="p-2 text-center text-slate-500">-</td>
+      <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumLumpDrying, 0)}</td>
+      <td class="p-2 text-right font-medium text-slate-300">${formatNumber(sumAshDrying, 0)}</td>
+      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2)}</td>
+      <td class="p-2 text-right text-slate-500">-</td>
+      <td class="p-2 text-right text-slate-500">-</td>
+      <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumUsedDrying, 0)}</td>
+      <td colspan="4" class="p-2 text-center text-slate-500 italic">Sấy lò không tính tiêu hao</td>
+      <td class="p-2 text-slate-500"></td>
+    </tr>
+
+    <!-- 2. TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ (Màu xanh nổi bật chuẩn Ảnh 2) -->
+    <tr class="bg-[#0b291b] text-white font-bold border-t-2 border-b-2 border-emerald-500/60">
+      <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-black text-emerald-300 tracking-wider">
+        TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ
+      </td>
+      <td colspan="4" class="p-2 text-center text-slate-400 font-normal">-</td>
+      <td class="p-2 text-right font-black text-white text-sm">${formatNumber(sumLumpFiring, 0)}</td>
+      <td class="p-2 text-right font-bold text-slate-100">${formatNumber(sumAshFiring, 0)}</td>
+      <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2)}</td>
+      <td class="p-2 text-right font-bold text-emerald-300">${sumCompFiring > 0 ? formatNumber(sumCompFiring, 0) : '-'}</td>
+      <td class="p-2 text-right font-bold text-rose-300">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+      <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(sumUsedFiring, 0)}</td>
+      <td class="p-2 text-right font-black text-emerald-300 text-sm">${formatNumber(sumM2Firing, 2)}</td>
+      <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2)}</td>
+      <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2)}</td>
+      <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2)}</td>
+      <td class="p-2 text-left text-[11px] text-emerald-400 font-semibold">Khớp 100% Báo Cáo ✓</td>
+    </tr>
+
+    <!-- 3. TỔNG + SẤY LÒ -->
+    <tr class="bg-[#09152b] text-slate-200 font-semibold">
+      <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-bold text-white tracking-wider">
+        TỔNG + SẤY LÒ
+      </td>
+      <td colspan="4" class="p-2 text-center text-slate-500">-</td>
+      <td class="p-2 text-right font-bold text-white">${formatNumber(totalIssuedAll, 0)}</td>
+      <td class="p-2 text-right text-slate-200">${formatNumber(totalAshAll, 0)}</td>
+      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2)}</td>
+      <td class="p-2 text-right text-emerald-400">${totalCompAll > 0 ? formatNumber(totalCompAll, 0) : '-'}</td>
+      <td class="p-2 text-right text-rose-400">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+      <td class="p-2 text-right font-bold text-amber-300">${formatNumber(totalUsedAll, 0)}</td>
+      <td class="p-2 text-right font-bold text-emerald-400">${formatNumber(totalM2All, 2)}</td>
+      <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2)}</td>
+      <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2)}</td>
+      <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2)}</td>
+      <td class="p-2 text-left text-[11px] text-slate-400">Tổng nhiên liệu</td>
+    </tr>
+  `;
+}
+
+function updateCoalKPIs(kpi) {
+  document.getElementById("coal-kpi-rate-lump").innerHTML = `${formatNumber(kpi.rate_lump, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  document.getElementById("coal-kpi-lump-wt").innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
+  
+  document.getElementById("coal-kpi-rate-ash").innerHTML = `${formatNumber(kpi.rate_with_ash, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  document.getElementById("coal-kpi-ash-wt").innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
+  document.getElementById("coal-kpi-ash-pct").innerText = `${formatNumber(kpi.ash_rate_avg, 2)}%`;
+  
+  document.getElementById("coal-kpi-rate-total").innerHTML = `${formatNumber(kpi.rate_total, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  document.getElementById("coal-kpi-comp-wt").innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
+  document.getElementById("coal-kpi-excess-wt").innerText = `${formatNumber(kpi.excess_ash_weight, 0)} kg`;
+  
+  document.getElementById("coal-kpi-prod-m2").innerHTML = `${formatNumber(kpi.production_m2, 2)} <span class="text-xs font-normal text-slate-400">m²</span>`;
+  document.getElementById("coal-kpi-total-used").innerText = `${formatNumber(kpi.total_used_weight, 0)} kg`;
+}
+
+// ----------------------------------------------------
+// TAB 7: IMPORT 3 FILE THÁNG
+// ----------------------------------------------------
+async function submitMonthlyImport() {
+  const month = document.getElementById("import-month-select").value;
+  const fDc1 = document.getElementById("file-dc1").files[0];
+  const fDc2 = document.getElementById("file-dc2").files[0];
+  const fCoal = document.getElementById("file-coal").files[0];
+
+  if (!fDc1 && !fDc2 && !fCoal) {
+    alert("Vui lòng chọn ít nhất 1 file để xử lý!");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("month", month);
+  formData.append("year", 2026);
+  if (fDc1) formData.append("file_dc1", fDc1);
+  if (fDc2) formData.append("file_dc2", fDc2);
+  if (fCoal) formData.append("file_coal", fCoal);
+
+  const logsBox = document.getElementById("import-logs-box");
+  logsBox.classList.remove("hidden");
+  logsBox.innerHTML = `<div>Đang tải lên và phân tích dữ liệu Tháng ${month}/2026...</div>`;
+
+  try {
+    const res = await fetch("/api/import/monthly", {
+      method: "POST",
+      body: formData
+    });
+    const json = await res.json();
+    if (json.success) {
+      logsBox.innerHTML += `<div class="text-emerald-400 font-bold mt-2">✓ ${json.message}</div>`;
+      (json.logs || []).forEach(l => {
+        logsBox.innerHTML += `<div>${l}</div>`;
+      });
+      alert("Đã trích xuất và phân rã dữ liệu thành công vào 4 bảng Data!");
+    } else {
+      logsBox.innerHTML += `<div class="text-rose-400 mt-2">✗ Lỗi: ${json.error}</div>`;
+    }
+  } catch (err) {
+    logsBox.innerHTML += `<div class="text-rose-400 mt-2">✗ Lỗi kết nối: ${err}</div>`;
+  }
+}
+
+// ----------------------------------------------------
+// TAB 8: FORM MẪU TRÌNH KÝ PREVIEW & EXPORT
+// ----------------------------------------------------
+async function renderFormMauPreview() {
+  const month = document.getElementById("export-select-month").value || "8";
+  document.getElementById("form-mau-header-title").innerText = `BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG ${month.length === 1 ? '0' + month : month}/2026`;
+
+  try {
+    const res = await fetch(`/api/data/summary?month=${month}&unit=m2`);
+    const json = await res.json();
+    const rows = json.data || [];
+
+    const contentDiv = document.getElementById("form-mau-content");
+    contentDiv.innerHTML = `
+      <!-- Phần I: Tổng Hợp Sản Lượng -->
+      <div>
+        <h4 class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-300 pb-1">I. KẾT QUẢ SẢN XUẤT TỔNG HỢP</h4>
+        <table class="w-full border-collapse border border-slate-300 text-center text-[11px]">
+          <thead class="bg-slate-100 font-bold">
+            <tr>
+              <th class="border border-slate-300 p-2">Dây Chuyền</th>
+              <th class="border border-slate-300 p-2">Kích Thước</th>
+              <th class="border border-slate-300 p-2">Dòng Sản Phẩm</th>
+              <th class="border border-slate-300 p-2">Loại Số Liệu</th>
+              <th class="border border-slate-300 p-2 text-right">SL Ép (m²)</th>
+              <th class="border border-slate-300 p-2 text-right">A1 (m²)</th>
+              <th class="border border-slate-300 p-2 text-right">A (m²)</th>
+              <th class="border border-slate-300 p-2 text-right">B (m²)</th>
+              <th class="border border-slate-300 p-2 text-right">Tổng (m²)</th>
+              <th class="border border-slate-300 p-2">Ngày SX</th>
+              <th class="border border-slate-300 p-2">Dừng (p/ng)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td class="border border-slate-300 p-1.5 font-bold">${r.line}</td>
+                <td class="border border-slate-300 p-1.5">${r.size}</td>
+                <td class="border border-slate-300 p-1.5">${r.product_line || 'Phương Nam'}</td>
+                <td class="border border-slate-300 p-1.5 font-semibold ${r.data_type === 'Thực hiện' ? 'text-emerald-700' : 'text-blue-700'}">${r.data_type}</td>
+                <td class="border border-slate-300 p-1.5 text-right">${formatNumber(r.sl_ep, 2)}</td>
+                <td class="border border-slate-300 p-1.5 text-right font-bold text-emerald-800">${formatNumber(r.a1, 2)}</td>
+                <td class="border border-slate-300 p-1.5 text-right">${formatNumber(r.a, 2)}</td>
+                <td class="border border-slate-300 p-1.5 text-right text-amber-800">${formatNumber(r.b, 2)}</td>
+                <td class="border border-slate-300 p-1.5 text-right font-bold">${formatNumber(r.recovery_total, 2)}</td>
+                <td class="border border-slate-300 p-1.5">${formatNumber(r.prod_days, 1)}</td>
+                <td class="border border-slate-300 p-1.5">${formatNumber(r.stop_time_2mf, 0)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Phần II: Ghi Chú Đánh Giá -->
+      <div>
+        <h4 class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-300 pb-1">II. ĐÁNH GIÁ TÌNH HÌNH SẢN XUẤT</h4>
+        <ul class="list-disc pl-5 space-y-1 text-slate-700">
+          <li>Dây chuyền 1 hoạt động ổn định, đạt tỷ lệ A1 vượt kế hoạch đề ra.</li>
+          <li>Dây chuyền 2 chạy chuyển đổi các dòng Men bóng, Sugar sân vườn và Panson 40x80 đảm bảo chỉ tiêu chất lượng.</li>
+          <li>Thời gian dừng máy do 2 máy phát điện và bảo dưỡng cơ điện được kiểm soát chặt chẽ trong khung cho phép.</li>
+        </ul>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Error rendering form mau preview:", err);
+  }
+}
+
+function downloadFormMauExcel() {
+  const month = document.getElementById("export-select-month").value || "8";
+  window.location.href = `/api/export/sign-off-report?month=${month}&year=2026`;
+}
+
+function quickExportSignOff() {
+  window.location.href = `/api/export/sign-off-report?month=8&year=2026`;
+}

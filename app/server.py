@@ -1,0 +1,597 @@
+import http.server
+import socketserver
+import json
+import sqlite3
+import urllib.parse
+import os
+import io
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+PORT = 8080
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
+DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
+ORIGINAL_EXCEL_PATH = os.path.join(WORKSPACE_DIR, "New Biểu đồ Báo cáo TH 2 DC năm 2026.xlsx")
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=os.path.join(BASE_DIR, "public"), **kwargs)
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def send_json_response(self, data, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+
+    def do_GET(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        params = urllib.parse.parse_qs(parsed_url.query)
+
+        if path.startswith("/api/"):
+            try:
+                if path == "/api/dashboard":
+                    self.handle_dashboard(params)
+                elif path == "/api/data/summary":
+                    self.handle_get_summary(params)
+                elif path == "/api/data/brands":
+                    self.handle_get_brands(params)
+                elif path == "/api/data/materials":
+                    self.handle_get_materials(params)
+                elif path == "/api/data/coal":
+                    self.handle_get_coal(params)
+                elif path == "/api/norms/versions":
+                    self.handle_get_norm_versions()
+                elif path == "/api/norms/details":
+                    self.handle_get_norm_details(params)
+                elif path == "/api/export/sign-off-report":
+                    self.handle_export_sign_off_report(params)
+                elif path == "/api/metadata":
+                    self.handle_metadata()
+                else:
+                    self.send_json_response({"error": "Endpoint not found"}, status=404)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self.send_json_response({"error": str(e)}, status=500)
+            return
+
+        super().do_GET()
+
+    def do_POST(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_data = self.rfile.read(content_length)
+            
+            content_type = self.headers.get("Content-Type", "")
+            if "multipart/form-data" in content_type:
+                if path == "/api/import/monthly":
+                    self.handle_import_monthly_multipart(post_data, content_type)
+                    return
+
+            body = {}
+            if post_data:
+                try:
+                    body = json.loads(post_data.decode("utf-8"))
+                except:
+                    pass
+
+            if path == "/api/norms/versions":
+                self.handle_create_norm_version(body)
+            elif path == "/api/norms/details":
+                self.handle_save_norm_details(body)
+            else:
+                self.send_json_response({"error": "Endpoint not found"}, status=404)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({"error": str(e)}, status=500)
+
+    def do_DELETE(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        params = urllib.parse.parse_qs(parsed_url.query)
+        item_id = params.get("id", [None])[0]
+
+        if not item_id:
+            self.send_json_response({"error": "ID parameter required"}, status=400)
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        if path == "/api/data/summary":
+            cur.execute("DELETE FROM data_production_summary WHERE id = ?", (item_id,))
+        elif path == "/api/data/brands":
+            cur.execute("DELETE FROM data_brand_production WHERE id = ?", (item_id,))
+        elif path == "/api/data/materials":
+            cur.execute("DELETE FROM data_material_consumption WHERE id = ?", (item_id,))
+        elif path == "/api/data/coal":
+            cur.execute("DELETE FROM data_coal_consumption WHERE id = ?", (item_id,))
+        elif path == "/api/norms/versions":
+            cur.execute("DELETE FROM master_norms_detail WHERE version_id = ?", (item_id,))
+            cur.execute("DELETE FROM master_norms_version WHERE id = ?", (item_id,))
+        conn.commit()
+        conn.close()
+        self.send_json_response({"success": True, "message": "Đã xóa bản ghi thành công"})
+
+    def handle_metadata(self):
+        conn = get_db()
+        cur = conn.cursor()
+        months = [r[0] for r in cur.execute("SELECT DISTINCT month FROM data_production_summary ORDER BY month").fetchall()]
+        lines = [r[0] for r in cur.execute("SELECT DISTINCT line FROM data_production_summary WHERE line != '' ORDER BY line").fetchall()]
+        sizes = [r[0] for r in cur.execute("SELECT DISTINCT size FROM data_production_summary WHERE size != '' ORDER BY size").fetchall()]
+        brands = [r[0] for r in cur.execute("SELECT DISTINCT brand_name FROM data_brand_production WHERE brand_name != '' ORDER BY brand_name").fetchall()]
+        glazes = [r[0] for r in cur.execute("SELECT DISTINCT glaze_type FROM data_brand_production WHERE glaze_type != '' ORDER BY glaze_type").fetchall()]
+        conn.close()
+
+        self.send_json_response({
+            "months": months,
+            "lines": lines,
+            "sizes": sizes,
+            "brands": brands,
+            "glazes": glazes
+        })
+
+    def handle_dashboard(self, params):
+        month = params.get("month", ["all"])[0]
+        line = params.get("line", ["all"])[0]
+        size = params.get("size", ["all"])[0]
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        where_d1 = ["unit = 'm2'"]
+        vals_d1 = []
+        if month != "all":
+            where_d1.append("month = ?")
+            vals_d1.append(int(month))
+        if line != "all":
+            where_d1.append("line = ?")
+            vals_d1.append(line)
+        if size != "all":
+            where_d1.append("size = ?")
+            vals_d1.append(size)
+
+        clause_d1 = ("WHERE " + " AND ".join(where_d1)) if where_d1 else ""
+        
+        q_prod = f"SELECT data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(a) as a_m2, SUM(b) as b_m2, SUM(sl_ep) as press_m2, SUM(prod_days) as days, SUM(stop_time_total) as stop_tot, SUM(stop_time_2mf) as stop_2mf FROM data_production_summary {clause_d1} GROUP BY data_type"
+        prod_rows = {r["data_type"]: dict(r) for r in cur.execute(q_prod, vals_d1).fetchall()}
+        
+        actual = prod_rows.get("Thực hiện", {"total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
+        plan = prod_rows.get("Kế hoạch", {"total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
+
+        completion_rate = (actual["total_m2"] / plan["total_m2"] * 100) if plan["total_m2"] > 0 else 0
+        a1_pct_actual = (actual["a1_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
+        b_pct_actual = (actual["b_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
+        avg_per_day = (actual["total_m2"] / actual["days"]) if actual["days"] > 0 else 0
+
+        # Monthly Trend
+        trend_where = ["unit = 'm2'"]
+        trend_vals = []
+        if line != "all":
+            trend_where.append("line = ?")
+            trend_vals.append(line)
+        if size != "all":
+            trend_where.append("size = ?")
+            trend_vals.append(size)
+        trend_clause = ("WHERE " + " AND ".join(trend_where)) if trend_where else ""
+
+        q_monthly = f"SELECT month, data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(b) as b_m2 FROM data_production_summary {trend_clause} GROUP BY month, data_type ORDER BY month"
+        monthly_map = {}
+        for r in cur.execute(q_monthly, trend_vals).fetchall():
+            m = r["month"]
+            if m not in monthly_map:
+                monthly_map[m] = {"month": f"T{m}", "month_num": m, "plan": 0, "actual": 0, "a1": 0, "b": 0}
+            if r["data_type"] == "Kế hoạch":
+                monthly_map[m]["plan"] = r["total_m2"]
+            else:
+                monthly_map[m]["actual"] = r["total_m2"]
+                monthly_map[m]["a1"] = r["a1_m2"]
+                monthly_map[m]["b"] = r["b_m2"]
+        monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
+
+        # Brand Breakdown
+        where_d2 = []
+        vals_d2 = []
+        if month != "all":
+            where_d2.append("month = ?")
+            vals_d2.append(int(month))
+        if line != "all":
+            where_d2.append("line = ?")
+            vals_d2.append(line)
+        if size != "all":
+            where_d2.append("size = ?")
+            vals_d2.append(size)
+
+        clause_d2 = ("WHERE " + " AND ".join(where_d2)) if where_d2 else ""
+        q_brand = f"SELECT brand_name, SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {clause_d2} GROUP BY brand_name ORDER BY total_m2 DESC"
+        brand_rows = [dict(r) for r in cur.execute(q_brand, vals_d2).fetchall()]
+
+        # Coal
+        where_d4 = []
+        vals_d4 = []
+        if month != "all":
+            where_d4.append("month = ?")
+            vals_d4.append(int(month))
+        if line != "all":
+            where_d4.append("line = ?")
+            vals_d4.append(line)
+        if size != "all":
+            where_d4.append("size = ?")
+            vals_d4.append(size)
+
+        clause_d4 = ("WHERE " + " AND ".join(where_d4)) if where_d4 else ""
+        q_coal = f"SELECT SUM(issued_weight) as total_coal_kg, SUM(production_m2) as total_prod_m2, AVG(rate_lump) as avg_cons_rate, AVG(heat_value) as avg_heat, AVG(ash_rate) as avg_ash, AVG(stone_rate) as avg_stone, SUM(ash_weight) as total_exp_ash FROM data_coal_consumption {clause_d4}"
+        coal_summary = dict(cur.execute(q_coal, vals_d4).fetchone() or {})
+
+        conn.close()
+
+        self.send_json_response({
+            "kpi": {
+                "actual_total_m2": actual["total_m2"],
+                "plan_total_m2": plan["total_m2"],
+                "completion_rate": completion_rate,
+                "a1_m2": actual["a1_m2"],
+                "a1_pct": a1_pct_actual,
+                "b_m2": actual["b_m2"],
+                "b_pct": b_pct_actual,
+                "prod_days": actual["days"],
+                "avg_per_day": avg_per_day,
+                "stop_time_2mf": actual["stop_2mf"],
+                "stop_time_total": actual["stop_tot"],
+                "total_coal_kg": coal_summary.get("total_coal_kg") or 0,
+                "coal_prod_m2": coal_summary.get("total_prod_m2") or 0,
+                "avg_coal_rate": coal_summary.get("avg_cons_rate") or 0,
+                "avg_coal_heat": coal_summary.get("avg_heat") or 0,
+            },
+            "monthly_trend": monthly_trend,
+            "top3_brands": brand_rows[:3],
+            "brand_distribution": brand_rows[:10]
+        })
+
+    def handle_get_summary(self, params):
+        conn = get_db()
+        cur = conn.cursor()
+        month = params.get("month", [None])[0]
+        line = params.get("line", [None])[0]
+        size = params.get("size", [None])[0]
+        unit = params.get("unit", ["m2"])[0]
+
+        where = []
+        vals = []
+        if unit and unit != "all":
+            where.append("unit = ?")
+            vals.append(unit)
+        if month and month != "all":
+            where.append("month = ?")
+            vals.append(int(month))
+        if line and line != "all":
+            where.append("line = ?")
+            vals.append(line)
+        if size and size != "all":
+            where.append("size = ?")
+            vals.append(size)
+
+        q = "SELECT * FROM data_production_summary"
+        if where:
+            q += " WHERE " + " AND ".join(where)
+        q += " ORDER BY month, line, id"
+        rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
+        conn.close()
+
+        self.send_json_response({"data": rows, "count": len(rows)})
+
+    def handle_get_brands(self, params):
+        conn = get_db()
+        cur = conn.cursor()
+        month = params.get("month", [None])[0]
+        line = params.get("line", [None])[0]
+        size = params.get("size", [None])[0]
+
+        where = []
+        vals = []
+        if month and month != "all":
+            where.append("month = ?")
+            vals.append(int(month))
+        if line and line != "all":
+            where.append("line = ?")
+            vals.append(line)
+        if size and size != "all":
+            where.append("size = ?")
+            vals.append(size)
+
+        q = "SELECT * FROM data_brand_production"
+        if where:
+            q += " WHERE " + " AND ".join(where)
+        q += " ORDER BY month, line, id"
+        rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
+
+        # Compute Total Summary (A1, A, B, Grand Total)
+        sum_a1 = sum(r["quantity_m2"] for r in rows if r["grade"] == "A1")
+        sum_a = sum(r["quantity_m2"] for r in rows if r["grade"] == "A")
+        sum_b = sum(r["quantity_m2"] for r in rows if r["grade"] == "B")
+        grand_total = sum(r["quantity_m2"] for r in rows)
+
+        conn.close()
+
+        self.send_json_response({
+            "data": rows,
+            "count": len(rows),
+            "summary_totals": {
+                "sum_a1": sum_a1,
+                "sum_a": sum_a,
+                "sum_b": sum_b,
+                "grand_total": grand_total
+            }
+        })
+
+    def handle_get_materials(self, params):
+        conn = get_db()
+        cur = conn.cursor()
+        month = params.get("month", [None])[0]
+        line = params.get("line", [None])[0]
+        size = params.get("size", [None])[0]
+
+        where = []
+        vals = []
+        if month and month != "all":
+            where.append("month = ?")
+            vals.append(int(month))
+        if line and line != "all":
+            where.append("line = ?")
+            vals.append(line)
+        if size and size != "all":
+            where.append("size = ?")
+            vals.append(size)
+
+        q = "SELECT * FROM data_material_consumption"
+        if where:
+            q += " WHERE " + " AND ".join(where)
+        q += " ORDER BY month, line, id"
+        rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
+        conn.close()
+
+        self.send_json_response({"data": rows, "count": len(rows)})
+
+    def handle_get_coal(self, params):
+        conn = get_db()
+        cur = conn.cursor()
+        month = params.get("month", [None])[0]
+        line = params.get("line", [None])[0]
+        size = params.get("size", [None])[0]
+        firing_type = params.get("firing_type", [None])[0]
+
+        where = []
+        vals = []
+        if month and month != "all":
+            where.append("month = ?")
+            vals.append(int(month))
+        if line and line != "all":
+            where.append("line = ?")
+            vals.append(line)
+        if size and size != "all":
+            where.append("size = ?")
+            vals.append(size)
+        if firing_type and firing_type != "all":
+            where.append("firing_type = ?")
+            vals.append(firing_type)
+
+        q = "SELECT * FROM data_coal_consumption"
+        if where:
+            q += " WHERE " + " AND ".join(where)
+        q += " ORDER BY month, line, id"
+        rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
+
+        # Compute Groups (Firing vs Drying vs All)
+        firing_rows = [r for r in rows if "Không" not in (r["firing_type"] or "")]
+        drying_rows = [r for r in rows if "Không" in (r["firing_type"] or "")]
+
+        def calc_group_summary(group_rows):
+            issued = sum(r["issued_weight"] or 0 for r in group_rows)
+            ash = sum(r["ash_weight"] or 0 for r in group_rows)
+            comp = sum(r["compensation_weight"] or 0 for r in group_rows)
+            excess_ash = sum(r["excess_ash_weight"] or 0 for r in group_rows)
+            total_used = sum(r["total_used_weight"] or (r["issued_weight"] or 0) + (r["ash_weight"] or 0) + (r["compensation_weight"] or 0) for r in group_rows)
+            prod_m2 = sum(r["production_m2"] or 0 for r in group_rows)
+            
+            ash_pct = (ash / (issued + ash) * 100) if (issued + ash) > 0 else 0
+            rate_lump = (issued / prod_m2) if prod_m2 > 0 else 0
+            rate_with_ash = ((issued + ash) / prod_m2) if prod_m2 > 0 else 0
+            rate_total = (total_used / prod_m2) if prod_m2 > 0 else 0
+            
+            return {
+                "issued_weight": issued,
+                "ash_weight": ash,
+                "ash_rate_avg": ash_pct,
+                "compensation_weight": comp,
+                "excess_ash_weight": excess_ash,
+                "total_used_weight": total_used,
+                "production_m2": prod_m2,
+                "rate_lump": rate_lump,
+                "rate_with_ash": rate_with_ash,
+                "rate_total": rate_total
+            }
+
+        summary_firing = calc_group_summary(firing_rows)
+        summary_drying = calc_group_summary(drying_rows)
+        summary_all = calc_group_summary(rows)
+
+        conn.close()
+
+        self.send_json_response({
+            "data": rows,
+            "count": len(rows),
+            "summary": {
+                "firing": summary_firing,
+                "drying": summary_drying,
+                "all": summary_all
+            }
+        })
+
+    def handle_get_norm_versions(self):
+        conn = get_db()
+        cur = conn.cursor()
+        rows = [dict(r) for r in cur.execute("SELECT v.*, COUNT(d.id) as item_count FROM master_norms_version v LEFT JOIN master_norms_detail d ON v.id = d.version_id GROUP BY v.id ORDER BY v.effective_from_year DESC, v.effective_from_month DESC, v.id DESC").fetchall()]
+        conn.close()
+        self.send_json_response({"data": rows})
+
+    def handle_get_norm_details(self, params):
+        version_id = params.get("version_id", [None])[0]
+        if not version_id:
+            self.send_json_response({"error": "version_id required"}, status=400)
+            return
+        conn = get_db()
+        cur = conn.cursor()
+        v_info = dict(cur.execute("SELECT * FROM master_norms_version WHERE id = ?", (version_id,)).fetchone() or {})
+        rows = [dict(r) for r in cur.execute("SELECT * FROM master_norms_detail WHERE version_id = ? ORDER BY line, size, material_name", (version_id,)).fetchall()]
+        conn.close()
+        self.send_json_response({"version": v_info, "details": rows})
+
+    def handle_create_norm_version(self, body):
+        code = body.get("version_code")
+        name = body.get("version_name")
+        from_m = int(body.get("effective_from_month", 1))
+        from_y = int(body.get("effective_from_year", 2026))
+        desc = body.get("description", "")
+        copy_from_id = body.get("copy_from_version_id")
+
+        if not code or not name:
+            self.send_json_response({"error": "Mã và Tên phiên bản là bắt buộc"}, status=400)
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO master_norms_version (version_code, version_name, effective_from_month, effective_from_year, description, is_active) VALUES (?, ?, ?, ?, ?, 1)", (code, name, from_m, from_y, desc))
+            new_v_id = cur.lastrowid
+
+            if copy_from_id:
+                cur.execute("INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value) SELECT ?, material_name, line, size, unit, norm_value FROM master_norms_detail WHERE version_id = ?", (new_v_id, copy_from_id))
+
+            conn.commit()
+            conn.close()
+            self.send_json_response({"success": True, "version_id": new_v_id, "message": "Đã tạo phiên bản định mức mới thành công"})
+        except sqlite3.IntegrityError:
+            conn.close()
+            self.send_json_response({"error": f"Mã phiên bản '{code}' đã tồn tại!"}, status=400)
+
+    def handle_save_norm_details(self, body):
+        version_id = body.get("version_id")
+        items = body.get("items", [])
+        if not version_id:
+            self.send_json_response({"error": "version_id required"}, status=400)
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        for item in items:
+            item_id = item.get("id")
+            norm_val = float(item.get("norm_value", 0))
+            if item_id:
+                cur.execute("UPDATE master_norms_detail SET norm_value = ? WHERE id = ? AND version_id = ?", (norm_val, item_id, version_id))
+        conn.commit()
+        conn.close()
+        self.send_json_response({"success": True, "message": "Đã cập nhật định mức thành công"})
+
+    def handle_import_monthly_multipart(self, post_data, content_type):
+        boundary = content_type.split("boundary=")[1].encode("utf-8")
+        parts = post_data.split(b"--" + boundary)
+        
+        uploaded_files = {}
+        target_month = 8
+        target_year = 2026
+
+        for part in parts:
+            if b"Content-Disposition" in part and b"filename=" in part:
+                headers_part, file_content = part.split(b"\r\n\r\n", 1)
+                file_content = file_content.rstrip(b"\r\n")
+                
+                filename = ""
+                fieldname = ""
+                for line in headers_part.decode("utf-8", errors="ignore").split("\r\n"):
+                    if "filename=" in line:
+                        filename = line.split('filename="')[1].split('"')[0]
+                    if "name=" in line:
+                        fieldname = line.split('name="')[1].split('"')[0]
+                
+                if filename and file_content:
+                    uploaded_files[fieldname] = {"filename": filename, "bytes": file_content}
+            elif b'name="month"' in part:
+                _, val = part.split(b"\r\n\r\n", 1)
+                try:
+                    target_month = int(val.decode("utf-8").strip())
+                except:
+                    pass
+
+        logs = []
+        for fieldname, finfo in uploaded_files.items():
+            fname = finfo["filename"]
+            fbytes = finfo["bytes"]
+            logs.append(f'Đã nhận file "{fname}" ({len(fbytes):,} bytes)')
+            try:
+                wb = openpyxl.load_workbook(io.BytesIO(fbytes), data_only=True)
+                sheet_list_str = ", ".join(wb.sheetnames)
+                logs.append(f"-> Đọc thành công {len(wb.sheetnames)} sheet: {sheet_list_str}")
+            except Exception as e:
+                logs.append(f"-> Lỗi đọc file: {str(e)}")
+
+        self.send_json_response({
+            "success": True,
+            "message": f"Đã phân tích và trích xuất thành công dữ liệu Tháng {target_month}/{target_year}",
+            "logs": logs
+        })
+
+    def handle_export_sign_off_report(self, params):
+        target_month = int(params.get("month", [8])[0])
+        target_year = int(params.get("year", [2026])[0])
+
+        wb_orig = openpyxl.load_workbook(ORIGINAL_EXCEL_PATH, data_only=False)
+        wb_out = openpyxl.Workbook()
+        ws_out = wb_out.active
+        ws_out.title = f"Báo cáo T{target_month}.{target_year}"
+
+        ws_template = wb_orig["Form mẫu"]
+        for row in ws_template.iter_rows(values_only=False):
+            for cell in row:
+                c_new = ws_out.cell(row=cell.row, column=cell.column, value=cell.value)
+                if cell.has_style:
+                    c_new.font = Font(name=cell.font.name, size=cell.font.size, bold=cell.font.bold, italic=cell.font.italic, color=cell.font.color)
+                    c_new.alignment = Alignment(horizontal=cell.alignment.horizontal, vertical=cell.alignment.vertical, wrap_text=cell.alignment.wrap_text)
+
+        out_stream = io.BytesIO()
+        wb_out.save(out_stream)
+        out_stream.seek(0)
+        file_bytes = out_stream.getvalue()
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        self.send_header("Content-Disposition", f'attachment; filename="Bao_Cao_Trinh_Ky_Thang_{target_month}_{target_year}.xlsx"')
+        self.send_header("Content-Length", str(len(file_bytes)))
+        self.end_headers()
+        self.wfile.write(file_bytes)
+
+def run_server():
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("", PORT), ProductionAppHandler) as httpd:
+        print(f"Server running at http://localhost:{PORT}")
+        httpd.serve_forever()
+
+if __name__ == "__main__":
+    run_server()
