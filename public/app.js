@@ -965,3 +965,462 @@ function downloadFormMauExcel() {
 function quickExportSignOff() {
   window.location.href = `/api/export/sign-off-report?month=8&year=2026`;
 }
+
+
+
+// ==========================================
+// 6. XUẤT BÁO CÁO IN / PDF TIÊU HAO THAN (A4 LANDSCAPE)
+// ==========================================
+function printCoalReport() {
+  if (!rawCoalData || rawCoalData.length === 0) {
+    alert("Không có dữ liệu than để in báo cáo!");
+    return;
+  }
+
+  const month = document.getElementById("coal-filter-month").value;
+  const line = document.getElementById("coal-filter-line").value;
+  const size = document.getElementById("coal-filter-size").value;
+  const firing = document.getElementById("coal-filter-firing").value;
+
+  const monthStr = month === "all" ? "Tất cả các tháng" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
+  const lineStr = line === "all" ? "Toàn bộ Nhà máy (DC1 & DC2)" : ("Dây chuyền " + line);
+  const sizeStr = size === "all" ? "Tất cả kích thước" : ("Kích thước " + size);
+  const firingStr = firing === "all" ? "Toàn bộ (Nung & Sấy lò)" : firing;
+
+  // Calculate sums
+  let sumLumpFiring = 0, sumAshFiring = 0, sumCompFiring = 0, sumExcessFiring = 0, sumUsedFiring = 0, sumM2Firing = 0;
+  let sumLumpDrying = 0, sumAshDrying = 0, sumCompDrying = 0, sumUsedDrying = 0;
+
+  rawCoalData.forEach(r => {
+    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
+
+    if (isDrying) {
+      sumLumpDrying += issued;
+      sumAshDrying += ash;
+      sumCompDrying += comp;
+      sumUsedDrying += used;
+    } else {
+      sumLumpFiring += issued;
+      sumAshFiring += ash;
+      sumCompFiring += comp;
+      sumExcessFiring += excess;
+      sumUsedFiring += used;
+      sumM2Firing += m2;
+    }
+  });
+
+  const totalIssuedAll = sumLumpFiring + sumLumpDrying;
+  const totalAshAll = sumAshFiring + sumAshDrying;
+  const totalCompAll = sumCompFiring + sumCompDrying;
+  const totalUsedAll = sumUsedFiring + sumUsedDrying;
+  const totalM2All = sumM2Firing;
+
+  const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
+
+  const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
+
+  const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
+  const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
+  const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
+
+  // Build table rows
+  const rowsHtml = rawCoalData.map(r => {
+    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
+
+    const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
+    const rateWithAsh = r.rate_with_ash > 0 ? r.rate_with_ash : (m2 > 0 ? ((issued + ash) / m2) : 0);
+    const rateTotal = r.rate_total > 0 ? r.rate_total : (m2 > 0 ? (totalUsed / m2) : 0);
+
+    if (isDrying) {
+      return `
+        <tr style="background: #f8fafc; font-style: italic; color: #475569;">
+          <td style="text-align: center;">-</td>
+          <td style="text-align: left; font-weight: 500;">${r.coal_supplier}</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; font-weight: 600;">${formatNumber(issued, 0)}</td>
+          <td style="text-align: right;">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
+          <td style="text-align: right;">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right;">-</td>
+          <td style="text-align: right; font-weight: bold;">${formatNumber(totalUsed, 0)}</td>
+          <td style="text-align: center;" colspan="4">Sấy lò không tính tiêu hao</td>
+          <td style="text-align: left; font-size: 10px;">${r.note || ''}</td>
+        </tr>
+      `;
+    }
+
+    return `
+      <tr>
+        <td style="text-align: center; font-weight: bold;">${r.stt || ''}</td>
+        <td style="text-align: left; font-weight: 600;">${r.coal_supplier}</td>
+        <td style="text-align: right;">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: #0284c7;">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2) : '-'}</td>
+        <td style="text-align: right; color: #64748b;">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
+        <td style="text-align: right; color: #b45309;">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: bold;">${formatNumber(issued, 0)}</td>
+        <td style="text-align: right;">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
+        <td style="text-align: right;">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: 600; color: #16a34a;">${comp > 0 ? formatNumber(comp, 0) : '-'}</td>
+        <td style="text-align: right; font-weight: 600; color: #dc2626;">${excess > 0 ? formatNumber(excess, 0) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: #d97706;">${formatNumber(totalUsed, 0)}</td>
+        <td style="text-align: right; font-weight: 600;">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: #b45309;">${rateLump > 0 ? formatNumber(rateLump, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: #0284c7;">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: 800; color: #0f172a;">${rateTotal > 0 ? formatNumber(rateTotal, 2) : '-'}</td>
+        <td style="text-align: left; font-size: 10px;">${r.note || ''}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const printHtml = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo Cáo Sử Dụng Than - Phương Nam</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 8mm 10mm 8mm 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-size: 11px;
+      color: #0f172a;
+      margin: 0;
+      padding: 5px;
+      background: #fff;
+    }
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    .header-table td {
+      border: none !important;
+      padding: 0;
+    }
+    .title-box {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .title-box h1 {
+      font-size: 17px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin: 0 0 4px 0;
+      color: #0f172a;
+    }
+    .title-box .sub {
+      font-size: 11.5px;
+      color: #334155;
+    }
+    .kpi-cards {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .kpi-card {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 10px;
+      text-align: center;
+    }
+    .kpi-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .kpi-val {
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .kpi-sub {
+      font-size: 9.5px;
+      color: #475569;
+      margin-top: 1px;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 15px;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid #475569;
+      padding: 4px 5px;
+      vertical-align: middle;
+    }
+    table.data-table thead th {
+      background: #0f2a4a;
+      color: #ffffff;
+      font-weight: 700;
+      text-align: center;
+      font-size: 10px;
+    }
+    table.data-table thead th.th-qual {
+      background: #1e3a6a;
+    }
+    table.data-table thead th.th-ash {
+      background: #854d0e;
+    }
+    table.data-table thead th.th-rate {
+      background: #1e293b;
+    }
+    .row-drying {
+      background: #f1f5f9;
+      font-style: italic;
+      color: #475569;
+    }
+    .row-total-sub {
+      background: #f8fafc;
+      font-weight: bold;
+    }
+    .row-total-main {
+      background: #e6f4ea !important;
+      font-weight: bold;
+      border-top: 2px solid #16a34a !important;
+      border-bottom: 2px solid #16a34a !important;
+    }
+    .row-total-grand {
+      background: #e2e8f0 !important;
+      font-weight: bold;
+    }
+    .signature-grid {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      page-break-inside: avoid;
+      text-align: center;
+    }
+    .sig-col {
+      width: 23%;
+    }
+    .sig-title {
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .sig-sub {
+      font-size: 10px;
+      font-style: italic;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .sig-space {
+      height: 55px;
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <table class="header-table">
+    <tr>
+      <td style="width: 45%; text-align: center;">
+        <div style="font-weight: 800; font-size: 12px; text-transform: uppercase;">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</div>
+        <div style="font-weight: 700; font-size: 11.5px; text-transform: uppercase; color: #1e3a8a; margin-top: 2px;">PHÂN XƯỞNG CƠ ĐIỆN - NĂNG LƯỢNG</div>
+        <div style="font-size: 10px; margin-top: 1px;">❖❖❖</div>
+      </td>
+      <td style="width: 10%;"></td>
+      <td style="width: 45%; text-align: center;">
+        <div style="font-weight: 800; font-size: 12px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+        <div style="font-weight: 700; font-size: 11px; text-decoration: underline; margin-top: 2px;">Độc lập - Tự do - Hạnh phúc</div>
+        <div style="font-size: 10.5px; font-style: italic; margin-top: 3px;">Đồng Nai, ngày ${new Date().getDate()} tháng ${(new Date().getMonth()+1).toString().padStart(2, '0')} năm ${new Date().getFullYear()}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TITLE -->
+  <div class="title-box">
+    <h1>BÁO CÁO KẾT QUẢ SỬ DỤNG THAN SẢN XUẤT</h1>
+    <div class="sub">
+      Kỳ báo cáo: <b>${monthStr} / 2026</b> &nbsp; | &nbsp; Dây chuyền: <b>${lineStr}</b> &nbsp; | &nbsp; Kích thước: <b>${sizeStr}</b> &nbsp; | &nbsp; Phân loại: <b>${firingStr}</b>
+    </div>
+  </div>
+
+  <!-- KPI SUMMARY -->
+  <div class="kpi-cards">
+    <div class="kpi-card" style="border-left: 3px solid #d97706;">
+      <div class="kpi-title">Tiêu hao Than cục</div>
+      <div class="kpi-val" style="color: #b45309;">${formatNumber(rateLumpFiring, 2)} <span style="font-size: 10px; font-weight: normal;">kg/m²</span></div>
+      <div class="kpi-sub">Lĩnh: ${formatNumber(sumLumpFiring, 0)} kg</div>
+    </div>
+    <div class="kpi-card" style="border-left: 3px solid #0284c7;">
+      <div class="kpi-title">Tiêu hao (Có Cám)</div>
+      <div class="kpi-val" style="color: #0369a1;">${formatNumber(rateWithAshFiring, 2)} <span style="font-size: 10px; font-weight: normal;">kg/m²</span></div>
+      <div class="kpi-sub">Xuất cám: ${formatNumber(sumAshFiring, 0)} kg (${formatNumber(ashPctFiring, 2)}%)</div>
+    </div>
+    <div class="kpi-card" style="border-left: 3px solid #16a34a;">
+      <div class="kpi-title">Tiêu hao (Cục + Cám + Bù)</div>
+      <div class="kpi-val" style="color: #15803d;">${formatNumber(rateTotalFiring, 2)} <span style="font-size: 10px; font-weight: normal;">kg/m²</span></div>
+      <div class="kpi-sub">Bù: ${formatNumber(sumCompFiring, 0)} kg | Vượt: ${formatNumber(sumExcessFiring, 0)} kg</div>
+    </div>
+    <div class="kpi-card" style="border-left: 3px solid #4f46e5;">
+      <div class="kpi-title">Sản lượng nung</div>
+      <div class="kpi-val" style="color: #4338ca;">${formatNumber(sumM2Firing, 2)} <span style="font-size: 10px; font-weight: normal;">m²</span></div>
+      <div class="kpi-sub">Tổng than SD: ${formatNumber(sumUsedFiring, 0)} kg</div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th rowspan="2" style="width: 25px;">STT</th>
+        <th rowspan="2" style="min-width: 140px;">TÊN LOẠI THAN</th>
+        <th colspan="4" class="th-qual">CHẤT LƯỢNG LÔ THAN</th>
+        <th rowspan="2" style="width: 60px;">KL LĨNH<br><span style="font-weight: normal; font-size: 9px;">(kg)</span></th>
+        <th colspan="2" class="th-ash">XUẤT CÁM</th>
+        <th rowspan="2" style="width: 50px;">LĨNH BÙ<br><span style="font-weight: normal; font-size: 9px;">(kg)</span></th>
+        <th rowspan="2" style="width: 50px;">CÁM VƯỢT TC<br><span style="font-weight: normal; font-size: 9px;">(kg)</span></th>
+        <th rowspan="2" style="width: 65px;">TỔNG SỬ DỤNG<br><span style="font-weight: normal; font-size: 9px;">(kg)</span></th>
+        <th rowspan="2" style="width: 65px;">SẢN LƯỢNG<br><span style="font-weight: normal; font-size: 9px;">(m²)</span></th>
+        <th colspan="3" class="th-rate">TIÊU HAO (kg/m²)</th>
+        <th rowspan="2" style="width: 90px;">GHI CHÚ</th>
+      </tr>
+      <tr>
+        <th class="th-qual" style="width: 40px;">Nhiệt trị<br><span style="font-size: 8px;">(Kcal)</span></th>
+        <th class="th-qual" style="width: 35px;">% Cám<br>TT</th>
+        <th class="th-qual" style="width: 35px;">% Cám<br>TC</th>
+        <th class="th-qual" style="width: 35px;">% Xít<br>đá</th>
+        <th class="th-ash" style="width: 45px;">SL (kg)</th>
+        <th class="th-ash" style="width: 35px;">% Cám</th>
+        <th class="th-rate" style="width: 45px;">Than cục</th>
+        <th class="th-rate" style="width: 45px;">Có cám</th>
+        <th class="th-rate" style="width: 45px;">Cả bù</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+    <tfoot>
+      <!-- 1. TỔNG SẤY LÒ -->
+      <tr class="row-total-sub">
+        <td colspan="2" style="text-align: center; text-transform: uppercase; font-size: 9.5px;">TỔNG SẤY LÒ</td>
+        <td colspan="4" style="text-align: center; color: #94a3b8;">-</td>
+        <td style="text-align: right;">${formatNumber(sumLumpDrying, 0)}</td>
+        <td style="text-align: right;">${formatNumber(sumAshDrying, 0)}</td>
+        <td style="text-align: right;">${formatNumber(ashPctDrying, 2)}</td>
+        <td style="text-align: center; color: #94a3b8;">-</td>
+        <td style="text-align: center; color: #94a3b8;">-</td>
+        <td style="text-align: right;">${formatNumber(sumUsedDrying, 0)}</td>
+        <td colspan="4" style="text-align: center; color: #64748b; font-style: italic;">Sấy lò không tính tiêu hao</td>
+        <td></td>
+      </tr>
+
+      <!-- 2. TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ -->
+      <tr class="row-total-main">
+        <td colspan="2" style="text-align: center; text-transform: uppercase; font-size: 9.5px; color: #166534;">TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ</td>
+        <td colspan="4" style="text-align: center; color: #64748b;">-</td>
+        <td style="text-align: right; color: #0f172a;">${formatNumber(sumLumpFiring, 0)}</td>
+        <td style="text-align: right;">${formatNumber(sumAshFiring, 0)}</td>
+        <td style="text-align: right; color: #166534;">${formatNumber(ashPctFiring, 2)}</td>
+        <td style="text-align: right; color: #166534;">${sumCompFiring > 0 ? formatNumber(sumCompFiring, 0) : '-'}</td>
+        <td style="text-align: right; color: #dc2626;">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+        <td style="text-align: right; color: #b45309;">${formatNumber(sumUsedFiring, 0)}</td>
+        <td style="text-align: right; color: #166534;">${formatNumber(sumM2Firing, 2)}</td>
+        <td style="text-align: right; color: #b45309;">${formatNumber(rateLumpFiring, 2)}</td>
+        <td style="text-align: right; color: #0284c7;">${formatNumber(rateWithAshFiring, 2)}</td>
+        <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(rateTotalFiring, 2)}</td>
+        <td style="text-align: center; font-weight: 600; color: #16a34a;">Khớp 100% ✓</td>
+      </tr>
+
+      <!-- 3. TỔNG + SẤY LÒ -->
+      <tr class="row-total-grand">
+        <td colspan="2" style="text-align: center; text-transform: uppercase; font-size: 9.5px;">TỔNG + SẤY LÒ</td>
+        <td colspan="4" style="text-align: center; color: #94a3b8;">-</td>
+        <td style="text-align: right;">${formatNumber(totalIssuedAll, 0)}</td>
+        <td style="text-align: right;">${formatNumber(totalAshAll, 0)}</td>
+        <td style="text-align: right;">${formatNumber(ashPctAll, 2)}</td>
+        <td style="text-align: right;">${totalCompAll > 0 ? formatNumber(totalCompAll, 0) : '-'}</td>
+        <td style="text-align: right;">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+        <td style="text-align: right;">${formatNumber(totalUsedAll, 0)}</td>
+        <td style="text-align: right;">${formatNumber(totalM2All, 2)}</td>
+        <td style="text-align: right;">${formatNumber(rateLumpAll, 2)}</td>
+        <td style="text-align: right;">${formatNumber(rateWithAshAll, 2)}</td>
+        <td style="text-align: right; font-size: 11px;">${formatNumber(rateTotalAll, 2)}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- SIGNATURES -->
+  <div class="signature-grid">
+    <div class="sig-col">
+      <div class="sig-title">NGƯỜI LẬP BIỂU</div>
+      <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+      <div class="sig-space"></div>
+    </div>
+    <div class="sig-col">
+      <div class="sig-title">PT.BP TỔNG HỢP / THK</div>
+      <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+      <div class="sig-space"></div>
+    </div>
+    <div class="sig-col">
+      <div class="sig-title">QUẢN ĐỐC PXCĐ - NL</div>
+      <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+      <div class="sig-space"></div>
+    </div>
+    <div class="sig-col">
+      <div class="sig-title">BAN GIÁM ĐỐC DUYỆT</div>
+      <div class="sig-sub">(Ký, đóng dấu)</div>
+      <div class="sig-space"></div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  // Create iframe to print
+  let iframe = document.getElementById("print-iframe");
+  if (!iframe) {
+    iframe = document.createElement("iframe");
+    iframe.id = "print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+  }
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(printHtml);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 250);
+}
