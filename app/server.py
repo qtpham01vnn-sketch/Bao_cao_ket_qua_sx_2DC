@@ -428,7 +428,65 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             }
             brand_dist_rows = all_brand_rows[:10]
 
-        # Coal query for completeness
+        # 5. Materials Section Data (Phần III: Tiêu hao vật tư)
+        where_d3 = []
+        vals_d3 = []
+        if month != "all":
+            where_d3.append("month = ?")
+            vals_d3.append(int(month))
+        if line != "all":
+            where_d3.append("line = ?")
+            vals_d3.append(line)
+        if size != "all":
+            where_d3.append("size = ?")
+            vals_d3.append(size)
+        clause_d3 = ("WHERE " + " AND ".join(where_d3)) if where_d3 else ""
+
+        q_mat_list = f"""
+            SELECT id, stt, month, line, size, material_name, unit, norm_value, 
+                   used_qty, prod_qty, actual_rate, reduced_qty, over_qty, diff_qty, status_text
+            FROM data_material_consumption 
+            {clause_d3}
+            ORDER BY id ASC
+        """
+        raw_mat_rows = [dict(r) for r in cur.execute(q_mat_list, vals_d3).fetchall()]
+
+        total_mat_used_kg = sum(r["used_qty"] for r in raw_mat_rows if r["unit"] == "Kg")
+        total_mat_reduced_kg = sum(r["reduced_qty"] for r in raw_mat_rows)
+        total_mat_over_kg = sum(r["over_qty"] for r in raw_mat_rows)
+        
+        total_xuong_kg = sum(r["used_qty"] for r in raw_mat_rows if "xương" in r["material_name"].lower())
+        total_men_kg = sum(r["used_qty"] for r in raw_mat_rows if "men" in r["material_name"].lower())
+        total_vo_dieu_kg = sum(r["used_qty"] for r in raw_mat_rows if "điều" in r["material_name"].lower())
+
+        q_mat_chart = f"""
+            SELECT material_name, unit,
+                   AVG(norm_value) as norm_val,
+                   SUM(used_qty) as total_used,
+                   SUM(prod_qty) as total_prod,
+                   SUM(reduced_qty) as total_reduced,
+                   SUM(over_qty) as total_over
+            FROM data_material_consumption
+            {clause_d3}
+            GROUP BY material_name
+            ORDER BY total_used DESC
+        """
+        chart_mat_rows = []
+        for r in cur.execute(q_mat_chart, vals_d3).fetchall():
+            d = dict(r)
+            p_m2 = d["total_prod"]
+            act_r = (d["total_used"] / p_m2) if p_m2 > 0 else 0
+            chart_mat_rows.append({
+                "material_name": d["material_name"],
+                "unit": d["unit"],
+                "norm_value": round(d["norm_val"] or 0, 4),
+                "actual_rate": round(act_r, 4),
+                "total_used": round(d["total_used"] or 0, 2),
+                "total_reduced": round(d["total_reduced"] or 0, 2),
+                "total_over": round(d["total_over"] or 0, 2)
+            })
+
+        # 6. Coal Section Data (Phần IV: Tình hình sử dụng than)
         where_d4 = []
         vals_d4 = []
         if month != "all":
@@ -441,8 +499,56 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             where_d4.append("size = ?")
             vals_d4.append(size)
         clause_d4 = ("WHERE " + " AND ".join(where_d4)) if where_d4 else ""
-        q_coal = f"SELECT SUM(issued_weight) as total_coal_kg, SUM(production_m2) as total_prod_m2, AVG(rate_lump) as avg_cons_rate, AVG(heat_value) as avg_heat, AVG(ash_rate) as avg_ash, AVG(stone_rate) as avg_stone, SUM(ash_weight) as total_exp_ash FROM data_coal_consumption {clause_d4}"
-        coal_summary = dict(cur.execute(q_coal, vals_d4).fetchone() or {})
+
+        q_coal_list = f"""
+            SELECT id, stt, month, line, size, coal_supplier, warehouse, import_date, 
+                   firing_type, heat_value, ash_rate, std_ash_rate, stone_rate,
+                   issued_weight, ash_weight, ash_export_rate, compensation_weight, excess_ash_weight,
+                   total_used_weight, production_m2, rate_lump, rate_with_ash, rate_total, note
+            FROM data_coal_consumption
+            {clause_d4}
+            ORDER BY id ASC
+        """
+        raw_coal_rows = [dict(r) for r in cur.execute(q_coal_list, vals_d4).fetchall()]
+
+        total_coal_issued = sum(r["issued_weight"] or 0 for r in raw_coal_rows)
+        total_coal_used = sum(r["total_used_weight"] or 0 for r in raw_coal_rows)
+        total_coal_prod_m2 = sum(r["production_m2"] or 0 for r in raw_coal_rows)
+        total_coal_ash = sum(r["ash_weight"] or 0 for r in raw_coal_rows)
+        
+        avg_coal_rate = (total_coal_used / total_coal_prod_m2) if total_coal_prod_m2 > 0 else 0
+        
+        valid_heats = [r["heat_value"] for r in raw_coal_rows if r["heat_value"] and r["heat_value"] > 0]
+        avg_coal_heat = (sum(valid_heats) / len(valid_heats)) if valid_heats else 0
+
+        valid_ashes = [r["ash_rate"] for r in raw_coal_rows if r["ash_rate"] is not None and r["ash_rate"] > 0]
+        avg_coal_ash = (sum(valid_ashes) / len(valid_ashes)) if valid_ashes else 0
+
+        q_coal_trend = f"""
+            SELECT month, 
+                   SUM(total_used_weight) as used_kg, 
+                   SUM(production_m2) as prod_m2,
+                   AVG(heat_value) as heat_val,
+                   AVG(ash_rate) as ash_pct
+            FROM data_coal_consumption
+            {clause_d4}
+            GROUP BY month
+            ORDER BY month
+        """
+        coal_monthly_trend = []
+        for r in cur.execute(q_coal_trend, vals_d4).fetchall():
+            m_used = r["used_kg"] or 0
+            m_prod = r["prod_m2"] or 0
+            m_rate = (m_used / m_prod) if m_prod > 0 else 0
+            coal_monthly_trend.append({
+                "month": f"{r['month']}",
+                "month_num": r["month"],
+                "used_ton": round(m_used / 1000, 1),
+                "prod_m2": round(m_prod, 0),
+                "rate_kg_m2": round(m_rate, 2),
+                "heat_val": round(r["heat_val"] or 0, 0),
+                "ash_pct": round(r["ash_pct"] or 0, 1)
+            })
 
         conn.close()
 
@@ -452,15 +558,31 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             "completion_rate": completion_rate,
             "actual": actual_data,
             "plan": plan_data,
-            "coal": {
-                "total_coal_kg": coal_summary.get("total_coal_kg") or 0,
-                "avg_coal_rate": coal_summary.get("avg_cons_rate") or 0,
-                "avg_coal_heat": coal_summary.get("avg_heat") or 0
-            },
             "monthly_trend": monthly_trend,
             "brand_distribution": brand_dist_rows,
             "available_brands": available_brands,
-            "brand_table": brand_table
+            "brand_table": brand_table,
+            "materials_section": {
+                "total_used_kg": total_mat_used_kg,
+                "total_reduced_kg": total_mat_reduced_kg,
+                "total_over_kg": total_mat_over_kg,
+                "total_xuong_kg": total_xuong_kg,
+                "total_men_kg": total_men_kg,
+                "total_vo_dieu_kg": total_vo_dieu_kg,
+                "materials_list": raw_mat_rows,
+                "materials_chart": chart_mat_rows
+            },
+            "coal_section": {
+                "total_coal_issued_kg": total_coal_issued,
+                "total_coal_used_kg": total_coal_used,
+                "total_coal_prod_m2": total_coal_prod_m2,
+                "total_coal_ash_kg": total_coal_ash,
+                "avg_coal_rate": avg_coal_rate,
+                "avg_coal_heat": avg_coal_heat,
+                "avg_coal_ash": avg_coal_ash,
+                "coal_list": raw_coal_rows,
+                "coal_monthly_trend": coal_monthly_trend
+            }
         })
 
     def handle_get_summary(self, params):

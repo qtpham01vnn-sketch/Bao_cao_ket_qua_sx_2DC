@@ -4,6 +4,8 @@ let monthlyTrendChart = null;
 let donutActualChart = null;
 let donutPlanChart = null;
 let brandDistChart = null;
+let matCompareChart = null;
+let coalTrendChart = null;
 let currentNormVersionId = 1;
 let rawSummaryData = [];
 let rawBrandsData = [];
@@ -258,6 +260,38 @@ async function loadDashboardData() {
     // 6. Render Brand Distribution Doughnut & Table
     renderBrandDistChart(data.brand_distribution || [], data.is_brand_selected);
     renderDashboardBrandTable(data.brand_table || [], currentDashBrand);
+
+    // 7. Render Part III: Materials
+    const matSec = data.materials_section || {};
+    const elMatRed = document.getElementById("dash-mat-kpi-reduced");
+    if (elMatRed) elMatRed.innerText = formatNumber(matSec.total_reduced_kg || 0, 1) + " kg";
+    const elMatOver = document.getElementById("dash-mat-kpi-over");
+    if (elMatOver) elMatOver.innerText = formatNumber(matSec.total_over_kg || 0, 1) + " kg";
+    const elMatXuong = document.getElementById("dash-mat-kpi-xuong");
+    if (elMatXuong) elMatXuong.innerText = formatNumber((matSec.total_xuong_kg || 0) / 1000, 1) + " tấn";
+    const elMatMen = document.getElementById("dash-mat-kpi-men");
+    if (elMatMen) elMatMen.innerText = formatNumber((matSec.total_men_kg || 0) / 1000, 1) + " tấn";
+    const elMatBadge = document.getElementById("dash-mat-badge-count");
+    if (elMatBadge) elMatBadge.innerText = `${(matSec.materials_list || []).length} loại vật tư`;
+
+    renderDashboardMaterialTable(matSec.materials_list || []);
+    renderMaterialCompareChart(matSec.materials_chart || []);
+
+    // 8. Render Part IV: Coal
+    const coalSec = data.coal_section || {};
+    const elCoalTot = document.getElementById("dash-coal-kpi-total");
+    if (elCoalTot) elCoalTot.innerText = formatNumber((coalSec.total_coal_used_kg || 0) / 1000, 1) + " tấn";
+    const elCoalRate = document.getElementById("dash-coal-kpi-rate");
+    if (elCoalRate) elCoalRate.innerText = formatNumber(coalSec.avg_coal_rate || 0, 2) + " kg/m²";
+    const elCoalAsh = document.getElementById("dash-coal-kpi-ash");
+    if (elCoalAsh) elCoalAsh.innerText = formatNumber(coalSec.avg_coal_ash || 0, 1) + " %";
+    const elCoalHeat = document.getElementById("dash-coal-kpi-heat");
+    if (elCoalHeat) elCoalHeat.innerText = formatNumber(coalSec.avg_coal_heat || 0, 0) + " kcal/kg";
+    const elCoalBadge = document.getElementById("dash-coal-badge-count");
+    if (elCoalBadge) elCoalBadge.innerText = `${(coalSec.coal_list || []).length} lô đốt lò`;
+
+    renderDashboardCoalTable(coalSec.coal_list || []);
+    renderCoalTrendChart(coalSec.coal_monthly_trend || []);
 
     if (window.lucide && lucide.createIcons) {
       lucide.createIcons();
@@ -552,6 +586,267 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
         </td>
       </tr>
     `;
+  }
+}
+
+function renderDashboardMaterialTable(materials) {
+  const tbody = document.getElementById("dash-mat-table-body");
+  const tfoot = document.getElementById("dash-mat-table-foot");
+  const badge = document.getElementById("dash-mat-badge-count");
+
+  if (badge) badge.innerText = `${materials ? materials.length : 0} loại vật tư`;
+  if (!tbody) return;
+
+  if (!materials || materials.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500">Không có dữ liệu tiêu hao vật tư phù hợp</td></tr>`;
+    if (tfoot) tfoot.innerHTML = "";
+    return;
+  }
+
+  let sumUsed = 0, sumReduced = 0, sumOver = 0;
+  tbody.innerHTML = materials.map((m, idx) => {
+    sumUsed += m.used_qty || 0;
+    sumReduced += m.reduced_qty || 0;
+    sumOver += m.over_qty || 0;
+
+    const isOver = (m.over_qty || 0) > 0;
+    const isReduced = (m.reduced_qty || 0) > 0;
+
+    let statusBadge = `<span class="px-1.5 py-0.5 rounded text-[9.5px] bg-slate-800 text-slate-400">Chuẩn</span>`;
+    if (isOver) {
+      statusBadge = `<span class="px-1.5 py-0.5 rounded text-[9.5px] bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Vượt ĐM</span>`;
+    } else if (isReduced) {
+      statusBadge = `<span class="px-1.5 py-0.5 rounded text-[9.5px] bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Tiết kiệm</span>`;
+    }
+
+    return `
+      <tr class="hover:bg-[#13284d]/50 text-slate-200 transition">
+        <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
+        <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
+          <div>${m.material_name}</div>
+          <div class="text-[10px] text-slate-400 font-normal">DC: ${m.line || '-'} • KT: ${m.size || '-'}</div>
+        </td>
+        <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${m.unit || 'Kg'}</td>
+        <td class="p-2 text-right text-slate-300 border border-[#1e3a6a]/40 font-mono">${formatNumber(m.norm_value, 4)}</td>
+        <td class="p-2 text-right font-bold ${isOver ? 'text-amber-400' : 'text-cyan-300'} border border-[#1e3a6a]/40 font-mono">${formatNumber(m.actual_rate, 4)}</td>
+        <td class="p-2 text-right font-black text-white border border-[#1e3a6a]/40 font-mono">${formatNumber(m.used_qty, 2)}</td>
+        <td class="p-2 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40 font-mono">${isReduced ? formatNumber(m.reduced_qty, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-400 border border-[#1e3a6a]/40 font-mono">${isOver ? formatNumber(m.over_qty, 2) : '-'}</td>
+        <td class="p-2 text-center border border-[#1e3a6a]/40">${statusBadge}</td>
+      </tr>
+    `;
+  }).join("");
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
+        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TIÊU HAO VẬT TƯ</td>
+        <td class="p-2 text-right text-white font-mono text-xs">${formatNumber(sumUsed, 2)}</td>
+        <td class="p-2 text-right text-emerald-400 font-mono text-xs">${formatNumber(sumReduced, 2)}</td>
+        <td class="p-2 text-right text-amber-400 font-mono text-xs">${formatNumber(sumOver, 2)}</td>
+        <td class="p-2 text-center text-slate-400 text-[10px]">TỔNG HỢP</td>
+      </tr>
+    `;
+  }
+}
+
+function renderMaterialCompareChart(chartItems) {
+  if (typeof Chart === "undefined") return;
+  try {
+    const el = document.getElementById("chart-mat-compare");
+    if (!el) return;
+    const ctx = el.getContext("2d");
+    if (matCompareChart) matCompareChart.destroy();
+
+    const topItems = (chartItems || []).slice(0, 6);
+    const labels = topItems.map(i => i.material_name);
+    const normData = topItems.map(i => i.norm_value);
+    const actData = topItems.map(i => i.actual_rate);
+
+    matCompareChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Định mức",
+            data: normData,
+            backgroundColor: "#3b82f6",
+            borderRadius: 4
+          },
+          {
+            label: "Thực tế",
+            data: actData,
+            backgroundColor: "#10b981",
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "top", labels: { color: "#94a3b8", font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                return `${c.dataset.label}: ${formatNumber(c.raw, 4)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#cbd5e1", font: { size: 9.5 } },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: "#94a3b8" },
+            grid: { color: "rgba(255,255,255,0.06)" }
+          }
+        }
+      }
+    });
+  } catch (errMat) {
+    console.error("Error rendering Material Compare Chart:", errMat);
+  }
+}
+
+function renderDashboardCoalTable(coalList) {
+  const tbody = document.getElementById("dash-coal-table-body");
+  const tfoot = document.getElementById("dash-coal-table-foot");
+  const badge = document.getElementById("dash-coal-badge-count");
+
+  if (badge) badge.innerText = `${coalList ? coalList.length : 0} lô đốt lò`;
+  if (!tbody) return;
+
+  if (!coalList || coalList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500">Không có dữ liệu than phù hợp</td></tr>`;
+    if (tfoot) tfoot.innerHTML = "";
+    return;
+  }
+
+  let sumIssued = 0, sumProd = 0, sumUsed = 0;
+  tbody.innerHTML = coalList.map((c, idx) => {
+    sumIssued += c.issued_weight || 0;
+    sumUsed += c.total_used_weight || 0;
+    sumProd += c.production_m2 || 0;
+
+    return `
+      <tr class="hover:bg-[#13284d]/50 text-slate-200 transition">
+        <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
+        <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
+          <div>${c.coal_supplier || 'Than nung'}</div>
+          <div class="text-[10px] text-slate-400 font-normal">DC: ${c.line || '-'} • KT: ${c.size || '-'}</div>
+        </td>
+        <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-mono">
+          <div>${c.warehouse || '-'}</div>
+          <div class="text-[9.5px] text-slate-400">${c.import_date || ''}</div>
+        </td>
+        <td class="p-2 text-right text-blue-300 border border-[#1e3a6a]/40 font-mono font-bold">${formatNumber(c.heat_value, 0)}</td>
+        <td class="p-2 text-right text-emerald-300 border border-[#1e3a6a]/40 font-mono font-semibold">${formatNumber(c.ash_rate, 1)}%</td>
+        <td class="p-2 text-right font-black text-amber-300 border border-[#1e3a6a]/40 font-mono">${formatNumber(c.issued_weight, 0)}</td>
+        <td class="p-2 text-right font-bold text-white border border-[#1e3a6a]/40 font-mono">${formatNumber(c.production_m2, 0)}</td>
+        <td class="p-2 text-right font-black text-cyan-300 border border-[#1e3a6a]/40 font-mono bg-cyan-950/20">${formatNumber(c.rate_total, 2)}</td>
+        <td class="p-2 text-slate-300 border border-[#1e3a6a]/40 text-[10px]">${c.note || '-'}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const overallRate = sumProd > 0 ? (sumUsed / sumProd) : 0;
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr class="bg-[#09152b] text-white border-t-2 border-amber-500/60 font-black">
+        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-amber-300 text-[11px]">TỔNG CỘNG & BÌNH QUÂN THAN</td>
+        <td class="p-2 text-right text-amber-300 font-mono text-xs">${formatNumber(sumIssued, 0)} kg</td>
+        <td class="p-2 text-right text-white font-mono text-xs">${formatNumber(sumProd, 0)} m²</td>
+        <td class="p-2 text-right text-cyan-300 font-mono text-xs">${formatNumber(overallRate, 2)} kg/m²</td>
+        <td class="p-2 text-slate-400 text-[10px]">TỔNG THỰC HIỆN</td>
+      </tr>
+    `;
+  }
+}
+
+function renderCoalTrendChart(monthlyTrend) {
+  if (typeof Chart === "undefined") return;
+  try {
+    const el = document.getElementById("chart-coal-trend");
+    if (!el) return;
+    const ctx = el.getContext("2d");
+    if (coalTrendChart) coalTrendChart.destroy();
+
+    const labels = (monthlyTrend || []).map(t => "Tháng " + t.month_num);
+    const rates = (monthlyTrend || []).map(t => t.rate_kg_m2);
+    const weights = (monthlyTrend || []).map(t => t.used_ton);
+
+    coalTrendChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: "bar",
+            label: "Khối lượng than (Tấn)",
+            data: weights,
+            backgroundColor: "rgba(245, 158, 11, 0.45)",
+            borderColor: "#f59e0b",
+            borderWidth: 1,
+            yAxisID: "y1",
+            borderRadius: 4
+          },
+          {
+            type: "line",
+            label: "Suất tiêu hao (kg/m²)",
+            data: rates,
+            borderColor: "#06b6d4",
+            backgroundColor: "#06b6d4",
+            pointBackgroundColor: "#ffffff",
+            pointBorderColor: "#06b6d4",
+            pointRadius: 4,
+            borderWidth: 2.5,
+            tension: 0.3,
+            yAxisID: "y"
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "top", labels: { color: "#94a3b8", font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              label: function(c) {
+                if (c.dataset.type === "line") {
+                  return `Suất tiêu hao: ${formatNumber(c.raw, 2)} kg/m²`;
+                }
+                return `Lượng than: ${formatNumber(c.raw, 1)} tấn`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#cbd5e1", font: { weight: "bold", size: 10 } },
+            grid: { display: false }
+          },
+          y: {
+            position: "left",
+            title: { display: true, text: "kg/m²", color: "#06b6d4", font: { size: 9.5 } },
+            ticks: { color: "#06b6d4" },
+            grid: { color: "rgba(255,255,255,0.06)" }
+          },
+          y1: {
+            position: "right",
+            title: { display: true, text: "Tấn than", color: "#f59e0b", font: { size: 9.5 } },
+            ticks: { color: "#f59e0b" },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  } catch (errCoal) {
+    console.error("Error rendering Coal Trend Chart:", errCoal);
   }
 }
 

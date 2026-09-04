@@ -466,6 +466,162 @@
             </div>
           </div>
 
+          <!-- ================= PHẦN III: TIÊU HAO NGUYÊN LIỆU & VẬT TƯ ================= -->
+          <div class="space-y-4 pt-4 border-t border-[#1e3a6a]/60">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="boxes" class="w-4 h-4"></i>
+                PHẦN III: TIÊU HAO NGUYÊN LIỆU & VẬT TƯ (BÁO CÁO ĐỊNH MỨC)
+              </h3>
+              <span id="dash-mat-badge-count" class="text-xs bg-[#0b172a] text-cyan-300 font-bold px-3 py-1 rounded-full border border-cyan-500/30">
+                0 loại vật tư
+              </span>
+            </div>
+
+            <!-- 4 KPI Cards for Materials -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-emerald-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tiết Kiệm (Giảm ĐM)</div>
+                <div class="text-lg font-black text-emerald-400 mt-1" id="dash-mat-kpi-reduced">0 kg</div>
+                <div class="text-[10px] text-emerald-300/80">Tổng lượng dưới định mức</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-amber-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Vượt Định Mức</div>
+                <div class="text-lg font-black text-amber-400 mt-1" id="dash-mat-kpi-over">0 kg</div>
+                <div class="text-[10px] text-amber-300/80">Tổng lượng vượt định mức</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-cyan-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Nguyên Liệu Xương</div>
+                <div class="text-lg font-black text-cyan-400 mt-1" id="dash-mat-kpi-xuong">0 tấn</div>
+                <div class="text-[10px] text-cyan-300/80">Khối lượng phối liệu xương</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-purple-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Men Các Loại</div>
+                <div class="text-lg font-black text-purple-400 mt-1" id="dash-mat-kpi-men">0 tấn</div>
+                <div class="text-[10px] text-purple-300/80">Men lót, men phủ, men in</div>
+              </div>
+            </div>
+
+            <!-- Material Charts & Table Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <!-- Material Comparison Chart (4 cols) -->
+              <div class="lg:col-span-4 bg-[#0f2042] p-5 rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  So Sánh Tiêu Hao (Định Mức vs Thực Tế)
+                </h4>
+                <div class="h-64 relative flex items-center justify-center">
+                  <canvas id="chart-mat-compare"></canvas>
+                </div>
+              </div>
+
+              <!-- Material Table (8 cols) -->
+              <div class="lg:col-span-8 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+                <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 max-h-80 overflow-y-auto">
+                  <table class="w-full border-collapse text-xs text-left">
+                    <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px] sticky top-0 z-10">
+                      <tr>
+                        <th class="p-2.5 text-center w-10 border border-[#1e3a6a]/40">STT</th>
+                        <th class="p-2.5 border border-[#1e3a6a]/40">Tên Nguyên Vật Tư</th>
+                        <th class="p-2.5 text-center border border-[#1e3a6a]/40">ĐVT</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Định Mức</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Thực Tế</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Lượng Sử Dụng</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Giảm ĐM</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Vượt ĐM</th>
+                        <th class="p-2.5 text-center border border-[#1e3a6a]/40">Đánh Giá</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dash-mat-table-body" class="divide-y divide-[#1e3a6a]/40">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                    <tfoot id="dash-mat-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0">
+                      <!-- Dynamic footer -->
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN ================= -->
+          <div class="space-y-4 pt-4 border-t border-[#1e3a6a]/60">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+                PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN TRONG KỲ
+              </h3>
+              <span id="dash-coal-badge-count" class="text-xs bg-[#0b172a] text-amber-300 font-bold px-3 py-1 rounded-full border border-amber-500/30">
+                0 lô đốt lò
+              </span>
+            </div>
+
+            <!-- 4 KPI Cards for Coal -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-amber-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tổng Than Sử Dụng</div>
+                <div class="text-lg font-black text-amber-400 mt-1" id="dash-coal-kpi-total">0 tấn</div>
+                <div class="text-[10px] text-amber-300/80">Khối lượng than nung</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-cyan-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Suất Tiêu Hao Than</div>
+                <div class="text-lg font-black text-cyan-400 mt-1" id="dash-coal-kpi-rate">0 kg/m²</div>
+                <div class="text-[10px] text-cyan-300/80">Bình quân theo sản lượng</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-emerald-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tỷ Lệ Cám Bình Quân</div>
+                <div class="text-lg font-black text-emerald-400 mt-1" id="dash-coal-kpi-ash">0 %</div>
+                <div class="text-[10px] text-emerald-300/80">Tỷ lệ hạt cám trong than</div>
+              </div>
+              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-blue-500/30 shadow-md">
+                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Nhiệt Trị Bình Quân</div>
+                <div class="text-lg font-black text-blue-400 mt-1" id="dash-coal-kpi-heat">0 kcal/kg</div>
+                <div class="text-[10px] text-blue-300/80">Chất lượng nhiệt năng than</div>
+              </div>
+            </div>
+
+            <!-- Coal Charts & Table Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <!-- Coal Monthly Trend Chart (4 cols) -->
+              <div class="lg:col-span-4 bg-[#0f2042] p-5 rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <i data-lucide="trending-up" class="w-3.5 h-3.5 text-amber-400"></i>
+                  Suất Tiêu Hao Than Theo Tháng (kg/m²)
+                </h4>
+                <div class="h-64 relative flex items-center justify-center">
+                  <canvas id="chart-coal-trend"></canvas>
+                </div>
+              </div>
+
+              <!-- Coal Table (8 cols) -->
+              <div class="lg:col-span-8 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+                <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 max-h-80 overflow-y-auto">
+                  <table class="w-full border-collapse text-xs text-left">
+                    <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px] sticky top-0 z-10">
+                      <tr>
+                        <th class="p-2.5 text-center w-10 border border-[#1e3a6a]/40">STT</th>
+                        <th class="p-2.5 border border-[#1e3a6a]/40">Nhà Cung Cấp / Lô Than</th>
+                        <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kho / Ngày Nhập</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Nhiệt Trị</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ Cám</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Khối Lượng Lĩnh</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng (m²)</th>
+                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tiêu Hao (kg/m²)</th>
+                        <th class="p-2.5 border border-[#1e3a6a]/40">Ghi Chú Đốt Lò</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dash-coal-table-body" class="divide-y divide-[#1e3a6a]/40">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                    <tfoot id="dash-coal-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0">
+                      <!-- Dynamic footer -->
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ================= TAB 2: DATA I (SẢN LƯỢNG · CHẤT LƯỢNG) ================= -->
@@ -1209,6 +1365,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260904_stable_prod_v1"></script>
+  <script src="app.js?v=20260904_full_part1_4_v1"></script>
 </body>
 </html>
