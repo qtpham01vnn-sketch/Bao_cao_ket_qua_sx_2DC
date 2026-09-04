@@ -765,12 +765,21 @@
               <!-- Row 2: Specialized Coal Filters -->
               <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700/40">
                 <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-cyan-300 uppercase font-bold">Phân loại đốt:</span>
+                  <select id="dash-coal-filter-firing" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-cyan-500/50 text-xs text-cyan-200 font-bold rounded px-2 py-1 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả (Nung + Sấy lò)</option>
+                    <option value="firing">Chỉ mẻ nung (K.tính sấy)</option>
+                    <option value="drying">Chỉ mẻ sấy (Sấy lò)</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center gap-1">
                   <span class="text-[10px] text-amber-300/80 uppercase font-semibold">Chế độ tiêu hao:</span>
                   <select id="dash-coal-filter-metric" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-amber-500/50 text-xs text-amber-200 font-bold rounded px-2 py-1 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả loại tiêu hao</option>
-                    <option value="rate_lump">1. Tiêu hao than cục (kg/m²)</option>
-                    <option value="rate_with_ash">2. Tiêu hao than cục + cám (kg/m²)</option>
-                    <option value="rate_total">3. Tiêu hao than cục + cám + lĩnh bù (kg/m²)</option>
+                    <option value="all">Tất cả chỉ số</option>
+                    <option value="rate_lump">1. Tiêu hao than cục</option>
+                    <option value="rate_with_ash">2. Tiêu hao có cám</option>
+                    <option value="rate_total">3. Tiêu hao cục+cám+bù</option>
                     <option value="excess_ash">4. Lô than cám vượt định mức</option>
                     <option value="compensation">5. Lô có lĩnh bù cám</option>
                   </select>

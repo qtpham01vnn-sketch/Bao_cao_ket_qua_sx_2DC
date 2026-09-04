@@ -988,6 +988,7 @@ function renderMaterialCompareChart(chartItems) {
 }
 
 function filterDashboardCoal() {
+  const firing = document.getElementById("dash-coal-filter-firing") ? document.getElementById("dash-coal-filter-firing").value : "all";
   const metric = document.getElementById("dash-coal-filter-metric") ? document.getElementById("dash-coal-filter-metric").value : "all";
   const supplier = document.getElementById("dash-coal-filter-supplier") ? document.getElementById("dash-coal-filter-supplier").value : "all";
   const warehouse = document.getElementById("dash-coal-filter-warehouse") ? document.getElementById("dash-coal-filter-warehouse").value : "all";
@@ -995,7 +996,14 @@ function filterDashboardCoal() {
 
   let filtered = [...(currentDashRawCoal || [])];
 
-  // 1. Metric filter (Rate Type / Ash / Compensation)
+  // 1. Firing type filter
+  if (firing === "firing") {
+    filtered = filtered.filter(c => !((c.firing_type && c.firing_type.includes("Không")) || (!c.production_m2 || c.production_m2 === 0)));
+  } else if (firing === "drying") {
+    filtered = filtered.filter(c => (c.firing_type && c.firing_type.includes("Không")) || (!c.production_m2 || c.production_m2 === 0));
+  }
+
+  // 2. Metric filter (Rate Type / Ash / Compensation)
   if (metric === "rate_lump") {
     filtered = filtered.filter(c => (c.rate_lump || 0) > 0);
   } else if (metric === "rate_with_ash") {
@@ -1008,17 +1016,17 @@ function filterDashboardCoal() {
     filtered = filtered.filter(c => (c.compensation_weight || 0) > 0);
   }
 
-  // 2. Supplier filter
+  // 3. Supplier filter
   if (supplier !== "all") {
     filtered = filtered.filter(c => (c.coal_supplier || "").toLowerCase().includes(supplier.toLowerCase()));
   }
 
-  // 3. Warehouse filter
+  // 4. Warehouse filter
   if (warehouse !== "all") {
     filtered = filtered.filter(c => (c.warehouse || "").toLowerCase().includes(warehouse.toLowerCase()));
   }
 
-  // 4. Search
+  // 5. Search
   if (search) {
     filtered = filtered.filter(c => 
       (c.coal_supplier || "").toLowerCase().includes(search) || 
@@ -1032,11 +1040,11 @@ function filterDashboardCoal() {
   const elCoalBadge = document.getElementById("dash-coal-badge-count");
   if (elCoalBadge) elCoalBadge.innerText = `${filtered.length} lô đốt lò`;
 
-  renderDashboardCoalTable(filtered, metric);
+  renderDashboardCoalTable(filtered, metric, firing);
   renderCoalTrendChart(currentDashRawCoalTrend);
 }
 
-function renderDashboardCoalTable(rows, currentMetric = "all") {
+function renderDashboardCoalTable(rows, currentMetric = "all", firingMode = "all") {
   const tbody = document.getElementById("dash-coal-table-body");
   const tfoot = document.getElementById("dash-coal-table-foot");
 
@@ -1128,7 +1136,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
     production_m2: sumM2Firing,
     total_used_weight: sumUsedFiring,
     total_used_all: totalUsedAll
-  });
+  }, firingMode);
 
   // Render Table Body (Exactly 17 columns matching Tab 6 and Image 2)
   tbody.innerHTML = rows.map((r, idx) => {
@@ -1264,12 +1272,23 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
   }
 }
 
-function updateDashboardCoalKPIs(kpi) {
+function updateDashboardCoalKPIs(kpi, firingMode = "all") {
+  const isOnlyFiring = firingMode === "firing";
+  const isOnlyDrying = firingMode === "drying";
+
+  // Card 1: Lump Rate
   const elRateLump = document.getElementById("dash-coal-kpi-rate-lump");
-  if (elRateLump) elRateLump.innerHTML = `${formatNumber(kpi.rate_lump, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  const displayLump = isOnlyFiring ? kpi.rate_lump : (kpi.rate_lump_all > 0 ? kpi.rate_lump_all : kpi.rate_lump);
+  if (elRateLump) elRateLump.innerHTML = `${formatNumber(displayLump, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
   const elRateLumpAll = document.getElementById("dash-coal-kpi-rate-lump-all");
-  if (elRateLumpAll) elRateLumpAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_lump_all, 2, true)} kg/m²</b>`;
+  if (elRateLumpAll) {
+    if (isOnlyFiring) {
+      elRateLumpAll.innerHTML = `<span class="text-emerald-400">Không tính sấy lò</span>`;
+    } else {
+      elRateLumpAll.innerHTML = `K.tính sấy: <b class="text-emerald-300">${formatNumber(kpi.rate_lump, 2, true)} kg/m²</b>`;
+    }
+  }
 
   const elLumpWt = document.getElementById("dash-coal-kpi-lump-wt");
   if (elLumpWt) elLumpWt.innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
@@ -1277,11 +1296,19 @@ function updateDashboardCoalKPIs(kpi) {
   const elLumpAllWt = document.getElementById("dash-coal-kpi-lump-all-wt");
   if (elLumpAllWt) elLumpAllWt.innerText = `${formatNumber(kpi.issued_weight_all, 0)} kg`;
 
+  // Card 2: Rate with Ash
   const elRateAsh = document.getElementById("dash-coal-kpi-rate-ash");
-  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(kpi.rate_with_ash, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  const displayAshRate = isOnlyFiring ? kpi.rate_with_ash : (kpi.rate_with_ash_all > 0 ? kpi.rate_with_ash_all : kpi.rate_with_ash);
+  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(displayAshRate, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
   const elRateAshAll = document.getElementById("dash-coal-kpi-rate-ash-all");
-  if (elRateAshAll) elRateAshAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_with_ash_all, 2, true)} kg/m²</b>`;
+  if (elRateAshAll) {
+    if (isOnlyFiring) {
+      elRateAshAll.innerHTML = `<span class="text-emerald-400">Không tính sấy lò</span>`;
+    } else {
+      elRateAshAll.innerHTML = `K.tính sấy: <b class="text-emerald-300">${formatNumber(kpi.rate_with_ash, 2, true)} kg/m²</b>`;
+    }
+  }
 
   const elAshWt = document.getElementById("dash-coal-kpi-ash-wt");
   if (elAshWt) elAshWt.innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
@@ -1289,11 +1316,19 @@ function updateDashboardCoalKPIs(kpi) {
   const elAshPct = document.getElementById("dash-coal-kpi-ash-pct");
   if (elAshPct) elAshPct.innerText = `${formatNumber(kpi.ash_rate_avg, 2, true)}%`;
 
+  // Card 3: Total Rate (Cuc + Cam + Bu)
   const elRateTotal = document.getElementById("dash-coal-kpi-rate-total");
-  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(kpi.rate_total, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  const displayTotalRate = isOnlyFiring ? kpi.rate_total : (kpi.rate_total_all > 0 ? kpi.rate_total_all : kpi.rate_total);
+  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(displayTotalRate, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
   const elRateTotalAll = document.getElementById("dash-coal-kpi-rate-total-all");
-  if (elRateTotalAll) elRateTotalAll.innerHTML = `+ Sấy lò (Tổng): <b>${formatNumber(kpi.rate_total_all, 2, true)} kg/m²</b>`;
+  if (elRateTotalAll) {
+    if (isOnlyFiring) {
+      elRateTotalAll.innerHTML = `<span class="text-emerald-400 font-bold">Chuẩn BC (Không tính sấy)</span>`;
+    } else {
+      elRateTotalAll.innerHTML = `K.tính sấy: <b class="text-emerald-300">${formatNumber(kpi.rate_total, 2, true)} kg/m²</b> (Khớp BC)`;
+    }
+  }
 
   const elCompWt = document.getElementById("dash-coal-kpi-comp-wt");
   if (elCompWt) elCompWt.innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
@@ -1301,6 +1336,7 @@ function updateDashboardCoalKPIs(kpi) {
   const elExcessWt = document.getElementById("dash-coal-kpi-excess-wt");
   if (elExcessWt) elExcessWt.innerText = `${formatNumber(kpi.excess_ash_weight, 0)} kg`;
 
+  // Card 4: Production m2
   const elProdM2 = document.getElementById("dash-coal-kpi-prod-m2");
   if (elProdM2) elProdM2.innerHTML = `${formatNumber(kpi.production_m2, 0)} <span class="text-xs font-normal text-slate-400">m²</span>`;
   
@@ -1907,7 +1943,7 @@ function renderCoalTable(rows, summary) {
     production_m2: sumM2Firing,
     total_used_weight: sumUsedFiring,
     total_used_all: totalUsedAll
-  });
+  }, firingMode);
 
   // Render Table Body (Exactly 17 columns matching Image 2)
   tbody.innerHTML = rows.map(r => {
