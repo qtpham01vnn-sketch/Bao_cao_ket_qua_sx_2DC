@@ -985,17 +985,34 @@ function renderMaterialCompareChart(chartItems) {
 }
 
 function filterDashboardCoal() {
-  const metricEl = document.getElementById("dash-coal-filter-metric");
-  const supplierEl = document.getElementById("dash-coal-filter-supplier");
-  const warehouseEl = document.getElementById("dash-coal-filter-warehouse");
-  const searchEl = document.getElementById("dash-coal-search");
+  const metric = document.getElementById("dash-coal-filter-metric") ? document.getElementById("dash-coal-filter-metric").value : "all";
+  const supplier = document.getElementById("dash-coal-filter-supplier") ? document.getElementById("dash-coal-filter-supplier").value : "all";
+  const warehouse = document.getElementById("dash-coal-filter-warehouse") ? document.getElementById("dash-coal-filter-warehouse").value : "all";
+  const search = document.getElementById("dash-coal-search") ? document.getElementById("dash-coal-search").value.trim().toLowerCase() : "";
 
-  const metric = metricEl ? metricEl.value : "all";
-  const supplier = supplierEl ? supplierEl.value : "all";
-  const warehouse = warehouseEl ? warehouseEl.value : "all";
-  const search = searchEl ? searchEl.value.trim().toLowerCase() : "";
+  let filtered = [...(currentDashRawCoal || [])];
 
-  let filtered = [...currentDashRawCoal];
+  // Slicer Filter 1: Month
+  if (dashFilterState.p4_month !== 'all') {
+    filtered = filtered.filter(c => {
+      if (c.month_num) return String(c.month_num) === String(dashFilterState.p4_month);
+      if (c.import_date) {
+        const parts = c.import_date.split('/');
+        if (parts.length >= 2) return String(parseInt(parts[1], 10)) === String(dashFilterState.p4_month);
+      }
+      return true;
+    });
+  }
+
+  // Slicer Filter 2: Line
+  if (dashFilterState.p4_line !== 'all') {
+    filtered = filtered.filter(c => (c.line || '').toUpperCase().includes(dashFilterState.p4_line.toUpperCase()));
+  }
+
+  // Slicer Filter 3: Size
+  if (dashFilterState.p4_size !== 'all') {
+    filtered = filtered.filter(c => (c.size || '').includes(dashFilterState.p4_size));
+  }
 
   // 1. Metric filter (Rate Type / Ash / Compensation)
   if (metric === "rate_lump") {
@@ -1025,45 +1042,12 @@ function filterDashboardCoal() {
     filtered = filtered.filter(c => 
       (c.coal_supplier || "").toLowerCase().includes(search) || 
       (c.warehouse || "").toLowerCase().includes(search) || 
-      (c.note || "").toLowerCase().includes(search)
+      (c.note || "").toLowerCase().includes(search) ||
+      (c.line || "").toLowerCase().includes(search) ||
+      (c.size || "").toLowerCase().includes(search)
     );
   }
 
-  // Update KPI cards based on filtered set
-  const totalUsed = filtered.reduce((s, c) => s + (c.total_used_weight || 0), 0);
-  const totalProd = filtered.reduce((s, c) => s + (c.production_m2 || 0), 0);
-  
-  let avgRate = 0;
-  let rateDesc = "Bình quân theo sản lượng";
-  if (metric === "rate_lump") {
-    const totalLump = filtered.reduce((s, c) => s + (c.issued_weight || 0), 0);
-    avgRate = totalProd > 0 ? (totalLump / totalProd) : 0;
-    rateDesc = "Suất tiêu hao than cục";
-  } else if (metric === "rate_with_ash") {
-    const totalWithAsh = filtered.reduce((s, c) => s + (c.issued_weight || 0) + (c.ash_weight || 0), 0);
-    avgRate = totalProd > 0 ? (totalWithAsh / totalProd) : 0;
-    rateDesc = "Suất TH than cục + cám";
-  } else {
-    avgRate = totalProd > 0 ? (totalUsed / totalProd) : 0;
-    rateDesc = "Suất TH tổng hợp (cục+cám+bù)";
-  }
-
-  const validHeats = filtered.map(c => c.heat_value).filter(h => h && h > 0);
-  const avgHeat = validHeats.length > 0 ? (validHeats.reduce((a, b) => a + b, 0) / validHeats.length) : 0;
-
-  const validAsh = filtered.map(c => c.ash_rate).filter(a => a !== null && a !== undefined && a > 0);
-  const avgAsh = validAsh.length > 0 ? (validAsh.reduce((a, b) => a + b, 0) / validAsh.length) : 0;
-
-  const elCoalTot = document.getElementById("dash-coal-kpi-total");
-  if (elCoalTot) elCoalTot.innerText = formatNumber(totalUsed / 1000, 1) + " tấn";
-  const elCoalRate = document.getElementById("dash-coal-kpi-rate");
-  if (elCoalRate) elCoalRate.innerText = formatNumber(avgRate, 2) + " kg/m²";
-  const elCoalRateDesc = document.getElementById("dash-coal-kpi-rate-desc");
-  if (elCoalRateDesc) elCoalRateDesc.innerText = rateDesc;
-  const elCoalAsh = document.getElementById("dash-coal-kpi-ash");
-  if (elCoalAsh) elCoalAsh.innerText = formatNumber(avgAsh, 1) + " %";
-  const elCoalHeat = document.getElementById("dash-coal-kpi-heat");
-  if (elCoalHeat) elCoalHeat.innerText = formatNumber(avgHeat, 0) + " kcal/kg";
   const elCoalBadge = document.getElementById("dash-coal-badge-count");
   if (elCoalBadge) elCoalBadge.innerText = `${filtered.length} lô đốt lò`;
 
@@ -1071,81 +1055,254 @@ function filterDashboardCoal() {
   renderCoalTrendChart(currentDashRawCoalTrend);
 }
 
-function renderDashboardCoalTable(coalList, currentMetric = "all") {
+function renderDashboardCoalTable(rows, currentMetric = "all") {
   const tbody = document.getElementById("dash-coal-table-body");
   const tfoot = document.getElementById("dash-coal-table-foot");
 
   if (!tbody) return;
 
-  if (!coalList || coalList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-500">Không có dữ liệu than phù hợp</td></tr>`;
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="17" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu tiêu hao than</td></tr>`;
     if (tfoot) tfoot.innerHTML = "";
+    updateDashboardCoalKPIs({
+      rate_lump: 0,
+      issued_weight: 0,
+      rate_with_ash: 0,
+      ash_weight: 0,
+      ash_rate_avg: 0,
+      rate_total: 0,
+      compensation_weight: 0,
+      excess_ash_weight: 0,
+      production_m2: 0,
+      total_used_weight: 0
+    });
     return;
   }
 
-  let sumIssued = 0, sumComp = 0, sumProd = 0, sumUsed = 0, sumAsh = 0;
-  tbody.innerHTML = coalList.map((c, idx) => {
-    sumIssued += c.issued_weight || 0;
-    sumComp += c.compensation_weight || 0;
-    sumUsed += c.total_used_weight || 0;
-    sumAsh += c.ash_weight || 0;
-    sumProd += c.production_m2 || 0;
+  // Calculate dynamic sums for current filtered rows
+  let sumLumpFiring = 0, sumAshFiring = 0, sumCompFiring = 0, sumExcessFiring = 0, sumUsedFiring = 0, sumM2Firing = 0;
+  let sumLumpDrying = 0, sumAshDrying = 0, sumCompDrying = 0, sumUsedDrying = 0;
 
-    const isExcessAsh = (c.excess_ash_weight || 0) > 0 || ((c.ash_rate || 0) > (c.std_ash_rate || 16));
-    const isComp = (c.compensation_weight || 0) > 0;
-    const isNoProd = !c.production_m2 || c.production_m2 === 0;
+  rows.forEach(r => {
+    const isDrying = (r.firing_type && r.firing_type.includes("Không")) || (!r.production_m2 || r.production_m2 === 0);
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
 
-    const rateLumpStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_lump, 2);
-    const rateWithAshStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_with_ash, 2);
-    const rateTotalStr = isNoProd ? '<span class="text-slate-500 italic text-[10px]" title="Mẻ sấy/chuyển tiếp không tính ra m² sản phẩm">KTH (Sấy)</span>' : formatNumber(c.rate_total, 2);
+    if (isDrying) {
+      sumLumpDrying += issued;
+      sumAshDrying += ash;
+      sumCompDrying += comp;
+      sumUsedDrying += used;
+    } else {
+      sumLumpFiring += issued;
+      sumAshFiring += ash;
+      sumCompFiring += comp;
+      sumExcessFiring += excess;
+      sumUsedFiring += used;
+      sumM2Firing += m2;
+    }
+  });
+
+  const totalIssuedAll = sumLumpFiring + sumLumpDrying;
+  const totalAshAll = sumAshFiring + sumAshDrying;
+  const totalCompAll = sumCompFiring + sumCompDrying;
+  const totalUsedAll = sumUsedFiring + sumUsedDrying;
+  const totalM2All = sumM2Firing;
+
+  const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
+
+  const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
+
+  const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
+  const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
+  const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
+
+  // Update Top KPI Cards (Based on Firing - Production Consumption)
+  updateDashboardCoalKPIs({
+    rate_lump: rateLumpFiring,
+    issued_weight: sumLumpFiring,
+    rate_with_ash: rateWithAshFiring,
+    ash_weight: sumAshFiring,
+    ash_rate_avg: ashPctFiring,
+    rate_total: rateTotalFiring,
+    compensation_weight: sumCompFiring,
+    excess_ash_weight: sumExcessFiring,
+    production_m2: sumM2Firing,
+    total_used_weight: sumUsedFiring
+  });
+
+  // Render Table Body (Exactly 17 columns matching Tab 6 and Image 2)
+  tbody.innerHTML = rows.map((r, idx) => {
+    const isDrying = (r.firing_type && r.firing_type.includes("Không")) || (!r.production_m2 || r.production_m2 === 0);
+    const issued = Number(r.issued_weight || 0);
+    const ash = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const excess = Number(r.excess_ash_weight || 0);
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const m2 = Number(r.production_m2 || 0);
+
+    const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
+    const rateWithAsh = r.rate_with_ash > 0 ? r.rate_with_ash : (m2 > 0 ? ((issued + ash) / m2) : 0);
+    const rateTotal = r.rate_total > 0 ? r.rate_total : (m2 > 0 ? (totalUsed / m2) : 0);
+
+    if (isDrying) {
+      return `
+        <tr class="bg-[#0b172a]/70 text-slate-400 italic">
+          <td class="p-2 text-center text-slate-500 font-mono">${r.stt || idx + 1}</td>
+          <td class="p-2 text-slate-400 font-medium">
+            <span>${r.coal_supplier || 'Than sấy lò'}</span>
+            <span class="ml-1 px-1 py-0.2 rounded text-[8px] bg-slate-800 text-slate-400 border border-slate-700">Đốt sấy</span>
+          </td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right font-medium text-slate-300">${formatNumber(issued, 0)}</td>
+          <td class="p-2 text-right font-medium text-slate-300">${formatNumber(ash, 0)}</td>
+          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right font-bold text-slate-300">${formatNumber(totalUsed, 0)}</td>
+          <td class="p-2 text-center font-medium text-slate-400 bg-slate-800/40">Sấy lò không tính tiêu hao</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-right text-slate-500">-</td>
+          <td class="p-2 text-[11px] text-slate-400">${r.note || ''}</td>
+        </tr>
+      `;
+    }
+
+    const isExcessAsh = excess > 0 || ((r.ash_rate || 0) > (r.std_ash_rate || 16));
+    const isComp = comp > 0;
 
     return `
-      <tr class="hover:bg-[#13284d]/50 text-slate-200 transition ${isNoProd ? 'opacity-80 bg-[#09152b]/40' : ''}">
-        <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
-        <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <span>${c.coal_supplier || 'Than nung'}</span>
+      <tr class="hover:bg-[#13284d]/50 transition text-slate-200">
+        <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || idx + 1}</td>
+        <td class="p-2 font-bold text-white">
+          <div class="flex items-center gap-1 flex-wrap">
+            <span>${r.coal_supplier || 'Than nung'}</span>
             ${isExcessAsh ? '<span class="px-1 py-0.2 rounded text-[8px] bg-red-500/20 text-red-300 border border-red-500/30">Cám vượt</span>' : ''}
             ${isComp ? '<span class="px-1 py-0.2 rounded text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30">Lĩnh bù</span>' : ''}
-            ${isNoProd ? '<span class="px-1 py-0.2 rounded text-[8px] bg-slate-800 text-slate-400 border border-slate-700">Đốt sấy</span>' : ''}
           </div>
-          <div class="text-[9.5px] text-slate-400 font-normal">DC: ${c.line || '-'} • KT: ${c.size || '-'}</div>
+          <div class="text-[9px] text-slate-400 font-normal">DC: ${r.line || '-'} • KT: ${r.size || '-'}</div>
         </td>
-        <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-mono">
-          <div>${c.warehouse || '-'}</div>
-          <div class="text-[9px] text-slate-400">${c.import_date || ''}</div>
-        </td>
-        <td class="p-2 text-right text-blue-300 border border-[#1e3a6a]/40 font-mono font-bold">${formatNumber(c.heat_value, 0)}</td>
-        <td class="p-2 text-right ${isExcessAsh ? 'text-amber-400 font-bold' : 'text-emerald-300'} border border-[#1e3a6a]/40 font-mono font-semibold">${formatNumber(c.ash_rate, 1)}%</td>
-        <td class="p-2 text-right font-black text-slate-200 border border-[#1e3a6a]/40 font-mono">${formatNumber(c.issued_weight, 0)}</td>
-        <td class="p-2 text-right font-bold text-amber-300 border border-[#1e3a6a]/40 font-mono">${isComp ? formatNumber(c.compensation_weight, 0) : '-'}</td>
-        <td class="p-2 text-right font-bold text-white border border-[#1e3a6a]/40 font-mono">${formatNumber(c.production_m2, 0)}</td>
-        <td class="p-2 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_lump' ? 'bg-cyan-950/40 border-cyan-500' : ''}">${rateLumpStr}</td>
-        <td class="p-2 text-right font-bold text-amber-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_with_ash' ? 'bg-amber-950/40 border-amber-500' : ''}">${rateWithAshStr}</td>
-        <td class="p-2 text-right font-black text-emerald-300 border border-[#1e3a6a]/40 font-mono ${currentMetric === 'rate_total' || currentMetric === 'all' ? 'bg-emerald-950/30' : ''}">${rateTotalStr}</td>
-        <td class="p-2 text-slate-300 border border-[#1e3a6a]/40 text-[9.5px]">${c.note || (isNoProd ? 'Không tính tiêu hao (sấy/chuyển tiếp)' : '-')}</td>
+        <td class="p-2 text-right font-medium text-slate-300">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2) : '-'}</td>
+        <td class="p-2 text-right text-slate-400">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
+        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-slate-100">${formatNumber(issued, 0)}</td>
+        <td class="p-2 text-right font-medium text-slate-200">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
+        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-emerald-400">${comp > 0 ? formatNumber(comp, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-rose-400">${excess > 0 ? formatNumber(excess, 0) : '-'}</td>
+        <td class="p-2 text-right font-black text-amber-300">${formatNumber(totalUsed, 0)}</td>
+        <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2) : '-'}</td>
+        <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
       </tr>
     `;
   }).join("");
 
-  const overallLumpRate = sumProd > 0 ? (sumIssued / sumProd) : 0;
-  const overallWithAshRate = sumProd > 0 ? ((sumIssued + sumAsh) / sumProd) : 0;
-  const overallRate = sumProd > 0 ? (sumUsed / sumProd) : 0;
-
+  // Render Table Footer (3 Tiers matching Tab 6 & Image 2 exactly)
   if (tfoot) {
     tfoot.innerHTML = `
-      <tr class="bg-[#09152b] text-white border-t-2 border-amber-500/60 font-black">
-        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-amber-300 text-[10.5px]">TỔNG CỘNG & BÌNH QUÂN</td>
-        <td class="p-2 text-right text-slate-200 font-mono text-[11px]">${formatNumber(sumIssued, 0)}</td>
-        <td class="p-2 text-right text-amber-300 font-mono text-[11px]">${formatNumber(sumComp, 0)}</td>
-        <td class="p-2 text-right text-white font-mono text-[11px]">${formatNumber(sumProd, 0)}</td>
-        <td class="p-2 text-right text-cyan-300 font-mono text-[11px]">${formatNumber(overallLumpRate, 2)}</td>
-        <td class="p-2 text-right text-amber-300 font-mono text-[11px]">${formatNumber(overallWithAshRate, 2)}</td>
-        <td class="p-2 text-right text-emerald-300 font-mono text-[11px]">${formatNumber(overallRate, 2)}</td>
-        <td class="p-2 text-slate-400 text-[9.5px]">TỔNG THỰC HIỆN</td>
+      <!-- 1. TỔNG SẤY LÒ -->
+      <tr class="bg-[#0a1526] text-slate-300 font-semibold">
+        <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-bold text-slate-300 tracking-wider">
+          TỔNG SẤY LÒ
+        </td>
+        <td colspan="4" class="p-2 text-center text-slate-500">-</td>
+        <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumLumpDrying, 0)}</td>
+        <td class="p-2 text-right font-medium text-slate-300">${formatNumber(sumAshDrying, 0)}</td>
+        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2)}</td>
+        <td class="p-2 text-right text-slate-500">-</td>
+        <td class="p-2 text-right text-slate-500">-</td>
+        <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumUsedDrying, 0)}</td>
+        <td colspan="4" class="p-2 text-center text-slate-500 italic">Sấy lò không tính tiêu hao</td>
+        <td class="p-2 text-slate-500"></td>
+      </tr>
+
+      <!-- 2. TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ (Màu xanh nổi bật chuẩn Ảnh 2) -->
+      <tr class="bg-[#0b291b] text-white font-bold border-t-2 border-b-2 border-emerald-500/60">
+        <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-black text-emerald-300 tracking-wider">
+          TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ
+        </td>
+        <td colspan="4" class="p-2 text-center text-slate-400 font-normal">-</td>
+        <td class="p-2 text-right font-black text-white text-sm">${formatNumber(sumLumpFiring, 0)}</td>
+        <td class="p-2 text-right font-bold text-slate-100">${formatNumber(sumAshFiring, 0)}</td>
+        <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2)}</td>
+        <td class="p-2 text-right font-bold text-emerald-300">${sumCompFiring > 0 ? formatNumber(sumCompFiring, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-rose-300">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+        <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(sumUsedFiring, 0)}</td>
+        <td class="p-2 text-right font-black text-emerald-300 text-sm">${formatNumber(sumM2Firing, 2)}</td>
+        <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2)}</td>
+        <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2)}</td>
+        <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2)}</td>
+        <td class="p-2 text-left text-[11px] text-emerald-400 font-semibold">Khớp 100% Báo Cáo ✓</td>
+      </tr>
+
+      <!-- 3. TỔNG + SẤY LÒ -->
+      <tr class="bg-[#09152b] text-slate-200 font-semibold">
+        <td colspan="2" class="p-2.5 text-center uppercase text-[11px] font-bold text-white tracking-wider">
+          TỔNG + SẤY LÒ
+        </td>
+        <td colspan="4" class="p-2 text-center text-slate-500">-</td>
+        <td class="p-2 text-right font-bold text-white">${formatNumber(totalIssuedAll, 0)}</td>
+        <td class="p-2 text-right text-slate-200">${formatNumber(totalAshAll, 0)}</td>
+        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2)}</td>
+        <td class="p-2 text-right text-emerald-400">${totalCompAll > 0 ? formatNumber(totalCompAll, 0) : '-'}</td>
+        <td class="p-2 text-right text-rose-400">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${formatNumber(totalUsedAll, 0)}</td>
+        <td class="p-2 text-right font-bold text-emerald-400">${formatNumber(totalM2All, 2)}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2)}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2)}</td>
+        <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2)}</td>
+        <td class="p-2 text-left text-[11px] text-slate-400">Tổng nhiên liệu</td>
       </tr>
     `;
   }
+}
+
+function updateDashboardCoalKPIs(kpi) {
+  const elRateLump = document.getElementById("dash-coal-kpi-rate-lump");
+  if (elRateLump) elRateLump.innerHTML = `${formatNumber(kpi.rate_lump, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  
+  const elLumpWt = document.getElementById("dash-coal-kpi-lump-wt");
+  if (elLumpWt) elLumpWt.innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
+
+  const elRateAsh = document.getElementById("dash-coal-kpi-rate-ash");
+  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(kpi.rate_with_ash, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  
+  const elAshWt = document.getElementById("dash-coal-kpi-ash-wt");
+  if (elAshWt) elAshWt.innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
+  
+  const elAshPct = document.getElementById("dash-coal-kpi-ash-pct");
+  if (elAshPct) elAshPct.innerText = `${formatNumber(kpi.ash_rate_avg, 2)}%`;
+
+  const elRateTotal = document.getElementById("dash-coal-kpi-rate-total");
+  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(kpi.rate_total, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  
+  const elCompWt = document.getElementById("dash-coal-kpi-comp-wt");
+  if (elCompWt) elCompWt.innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
+  
+  const elExcessWt = document.getElementById("dash-coal-kpi-excess-wt");
+  if (elExcessWt) elExcessWt.innerText = `${formatNumber(kpi.excess_ash_weight, 0)} kg`;
+
+  const elProdM2 = document.getElementById("dash-coal-kpi-prod-m2");
+  if (elProdM2) elProdM2.innerHTML = `${formatNumber(kpi.production_m2, 0)} <span class="text-xs font-normal text-slate-400">m²</span>`;
+  
+  const elTotalUsed = document.getElementById("dash-coal-kpi-total-used");
+  if (elTotalUsed) elTotalUsed.innerText = `${formatNumber(kpi.total_used_weight, 0)} kg`;
 }
 
 function renderCoalTrendChart(monthlyTrend) {

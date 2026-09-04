@@ -805,71 +805,115 @@
               </div>
             </div>
 
-            <!-- 4 KPI Cards for Coal -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-amber-500/30 shadow-md">
-                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tổng Than Sử Dụng</div>
-                <div class="text-lg font-black text-amber-400 mt-1" id="dash-coal-kpi-total">0 tấn</div>
-                <div class="text-[10px] text-amber-300/80">Khối lượng than nung</div>
+            <!-- Coal Summary KPI Cards Grid (4 Cards 2 tầng chuyên sâu chuẩn Ảnh 2 Tab Sử Dụng Than) -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5">
+              <!-- Rate Lump -->
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao Than Cục</span>
+                  <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="text-xl font-black text-amber-300" id="dash-coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                  <span>KL Lĩnh: <b id="dash-coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+                </div>
               </div>
-              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-cyan-500/30 shadow-md">
-                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Suất Tiêu Hao Than</div>
-                <div class="text-lg font-black text-cyan-400 mt-1" id="dash-coal-kpi-rate">0 kg/m²</div>
-                <div class="text-[10px] text-cyan-300/80" id="dash-coal-kpi-rate-desc">Bình quân theo sản lượng</div>
+
+              <!-- Rate With Ash -->
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao (Có Cám)</span>
+                  <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+                </div>
+                <div class="text-xl font-black text-cyan-300" id="dash-coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                  <span>Xuất cám: <b id="dash-coal-kpi-ash-wt" class="text-slate-200">0 kg</b> (<span id="dash-coal-kpi-ash-pct" class="text-cyan-400">0%</span>)</span>
+                </div>
               </div>
-              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-emerald-500/30 shadow-md">
-                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tỷ Lệ Cám Bình Quân</div>
-                <div class="text-lg font-black text-emerald-400 mt-1" id="dash-coal-kpi-ash">0 %</div>
-                <div class="text-[10px] text-emerald-300/80">Tỷ lệ hạt cám trong than</div>
+
+              <!-- Rate Total (Cuc + Cam + Bu) -->
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#0f2042] to-amber-950/20 shadow-md">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-amber-300 font-bold">Tiêu Hao (Cục+Cám+Bù)</span>
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="text-xl font-black text-white" id="dash-coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                <div class="text-[10px] text-slate-300 mt-1 flex items-center justify-between">
+                  <span>Lĩnh bù: <b id="dash-coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
+                  <span>Vượt TC: <b id="dash-coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
+                </div>
               </div>
-              <div class="bg-[#0f2042] p-3.5 rounded-xl border border-blue-500/30 shadow-md">
-                <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Nhiệt Trị Bình Quân</div>
-                <div class="text-lg font-black text-blue-400 mt-1" id="dash-coal-kpi-heat">0 kcal/kg</div>
-                <div class="text-[10px] text-blue-300/80">Chất lượng nhiệt năng than</div>
+
+              <!-- Total Production m2 -->
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium">Sản Lượng Nung (m²)</span>
+                  <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+                </div>
+                <div class="text-xl font-black text-emerald-400" id="dash-coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
+                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                  <span>Tổng than SD: <b id="dash-coal-kpi-total-used" class="text-slate-200">0 kg</b></span>
+                </div>
               </div>
             </div>
 
-            <!-- Coal Charts & Table Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              <!-- Coal Monthly Trend Chart (4 cols) -->
-              <div class="lg:col-span-4 bg-[#0f2042] p-5 rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
-                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <i data-lucide="trending-up" class="w-3.5 h-3.5 text-amber-400"></i>
-                  Suất Tiêu Hao Than Theo Tháng (kg/m²)
-                </h4>
-                <div class="h-64 relative flex items-center justify-center">
+            <!-- Coal Trend & Table Container (Bảng chi tiết 17 cột Grouped Headers + 3 Footer Tiers) -->
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+              <!-- Biểu đồ xu hướng rút gọn trên Dashboard -->
+              <div class="bg-[#09152b] p-3 rounded-lg border border-[#1e3a6a]/50">
+                <div class="flex items-center justify-between mb-1.5">
+                  <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5 text-amber-400"></i>
+                    Biểu Đồ Xu Hướng Suất Tiêu Hao Than Theo Tháng (kg/m²)
+                  </h4>
+                  <span class="text-[10.5px] text-slate-400">Đơn vị: kg/m²</span>
+                </div>
+                <div class="h-44 relative flex items-center justify-center">
                   <canvas id="chart-coal-trend"></canvas>
                 </div>
               </div>
 
-              <!-- Coal Table (8 cols) -->
-              <div class="lg:col-span-8 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-                <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 max-h-80 overflow-y-auto">
-                  <table class="w-full border-collapse text-xs text-left">
-                    <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10px] sticky top-0 z-10">
-                      <tr>
-                        <th class="p-2 text-center w-8 border border-[#1e3a6a]/40">STT</th>
-                        <th class="p-2 border border-[#1e3a6a]/40">Nhà Cung Cấp / Tên Than</th>
-                        <th class="p-2 text-center border border-[#1e3a6a]/40">Kho / Ngày Nhập</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40">Nhiệt Trị</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40">Tỷ Lệ Cám</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40">Lĩnh Than (kg)</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40">Lĩnh Bù (kg)</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40">Sản Lượng (m²)</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-cyan-300 font-bold">TH Cục</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-amber-300 font-bold">TH Cục+Cám</th>
-                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-emerald-300 font-bold">TH Tổng</th>
-                        <th class="p-2 border border-[#1e3a6a]/40">Ghi Chú Đốt Lò</th>
-                      </tr>
-                    </thead>
-                    <tbody id="dash-coal-table-body" class="divide-y divide-[#1e3a6a]/40">
-                      <!-- Dynamic rows -->
-                    </tbody>
-                    <tfoot id="dash-coal-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0 text-[11px]">
-                      <!-- Dynamic footer -->
-                    </tfoot>
-                  </table>
-                </div>
+              <!-- Table Container with Excel Grid Styling (17 columns matching Tab Sử Dụng Than exactly) -->
+              <div class="overflow-x-auto rounded-lg border border-[#1e3a6a] max-h-96 overflow-y-auto">
+                <table class="table-excel-grid text-xs text-left w-full">
+                  <thead class="sticky top-0 z-10">
+                    <!-- Tier 1 Headers (11 Main Groups) -->
+                    <tr class="text-[11px] bg-[#071020] text-slate-300 font-bold">
+                      <th rowspan="2" class="p-2 text-center w-10">STT</th>
+                      <th rowspan="2" class="p-2 text-left min-w-[220px]">TÊN LOẠI THAN / NHÀ CC</th>
+                      <th colspan="4" class="p-1.5 text-center text-cyan-300 bg-cyan-950/30">Chất lượng lô than</th>
+                      <th rowspan="2" class="p-2 text-right min-w-[85px] font-bold text-slate-100">KL. Lĩnh<br><span class="text-[9px] font-normal text-slate-400">(kg)</span></th>
+                      <th colspan="2" class="p-1.5 text-center text-amber-300 bg-amber-950/30">Xuất cám (kg)</th>
+                      <th rowspan="2" class="p-2 text-right min-w-[75px] text-emerald-400">Lĩnh bù<br><span class="text-[9px] font-normal text-slate-400">(kg)</span></th>
+                      <th rowspan="2" class="p-2 text-right min-w-[85px] text-rose-400">Cám vượt<br>tiêu chuẩn (kg)</th>
+                      <th rowspan="2" class="p-2 text-right min-w-[100px] font-bold text-amber-300">Tổng sử dụng<br><span class="text-[9px] font-normal text-slate-400">(cục+cám+bù)</span></th>
+                      <th rowspan="2" class="p-2 text-right min-w-[90px] font-bold text-emerald-300">Sản lượng<br><span class="text-[9px] font-normal text-slate-400">(m²)</span></th>
+                      <th colspan="3" class="p-1.5 text-center text-purple-300 bg-purple-950/30">Tiêu hao</th>
+                      <th rowspan="2" class="p-2 text-left min-w-[150px]">Ghi chú</th>
+                    </tr>
+                    <!-- Tier 2 Sub-headers (9 Sub-columns) -->
+                    <tr class="text-[10px] bg-[#091428] text-slate-400 font-semibold">
+                      <!-- Quality (4) -->
+                      <th class="p-1.5 text-right">Nhiệt trị<br><span class="text-[8px] text-slate-500">(Kcal)</span></th>
+                      <th class="p-1.5 text-right">Tỷ lệ %<br>cám TT</th>
+                      <th class="p-1.5 text-right">Tỷ lệ %<br>cám TC</th>
+                      <th class="p-1.5 text-right">Tỷ lệ %<br>xít đá</th>
+                      <!-- Ash (2) -->
+                      <th class="p-1.5 text-right">SL (kg)</th>
+                      <th class="p-1.5 text-right">% cám</th>
+                      <!-- Rates (3) -->
+                      <th class="p-1.5 text-right font-bold text-amber-300">kg/m²</th>
+                      <th class="p-1.5 text-right font-bold text-cyan-300">Tiêu hao<br>(có cám) kg/m²</th>
+                      <th class="p-1.5 text-right font-black text-white">Tiêu hao<br>(cục+cám+bù) kg/m²</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-coal-table-body" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                    <!-- Dynamic rows -->
+                  </tbody>
+                  <tfoot id="dash-coal-table-foot" class="text-xs font-semibold sticky bottom-0 z-10 shadow-lg">
+                    <!-- Dynamic footer -->
+                  </tfoot>
+                </table>
               </div>
             </div>
           </div>
