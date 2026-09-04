@@ -29,16 +29,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Vietnamese Number Formatter
-function formatNumber(num, decimals = 2) {
-  if (num === null || num === undefined || isNaN(num)) return "0";
-  if (num === 0) return "0";
+function formatNumber(num, decimals = 2, fixedDecimals = false) {
+  if (num === null || num === undefined || isNaN(num)) return fixedDecimals ? "0," + "0".repeat(decimals) : "0";
+  if (num === 0) return fixedDecimals ? "0," + "0".repeat(decimals) : "0";
   const fixed = Number(num).toFixed(decimals);
   let [intPart, decPart] = fixed.split(".");
   intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  if (decimals === 0 || !decPart || Number(decPart) === 0) {
+  if (decimals === 0 || !decPart) {
     return intPart;
   }
-  decPart = decPart.replace(/0+$/, "");
+  if (!fixedDecimals) {
+    if (Number(decPart) === 0) return intPart;
+    decPart = decPart.replace(/0+$/, "");
+  }
   return decPart ? `${intPart},${decPart}` : intPart;
 }
 
@@ -1044,15 +1047,20 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
     if (tfoot) tfoot.innerHTML = "";
     updateDashboardCoalKPIs({
       rate_lump: 0,
+      rate_lump_all: 0,
       issued_weight: 0,
+      issued_weight_all: 0,
       rate_with_ash: 0,
+      rate_with_ash_all: 0,
       ash_weight: 0,
       ash_rate_avg: 0,
       rate_total: 0,
+      rate_total_all: 0,
       compensation_weight: 0,
       excess_ash_weight: 0,
       production_m2: 0,
-      total_used_weight: 0
+      total_used_weight: 0,
+      total_used_all: 0
     });
     return;
   }
@@ -1103,18 +1111,23 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
   const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
   const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
 
-  // Update Top KPI Cards (Based on Firing - Production Consumption)
+  // Update Top KPI Cards with both K.Tính Sấy vs + Sấy Lò
   updateDashboardCoalKPIs({
     rate_lump: rateLumpFiring,
+    rate_lump_all: rateLumpAll,
     issued_weight: sumLumpFiring,
+    issued_weight_all: totalIssuedAll,
     rate_with_ash: rateWithAshFiring,
+    rate_with_ash_all: rateWithAshAll,
     ash_weight: sumAshFiring,
     ash_rate_avg: ashPctFiring,
     rate_total: rateTotalFiring,
+    rate_total_all: rateTotalAll,
     compensation_weight: sumCompFiring,
     excess_ash_weight: sumExcessFiring,
     production_m2: sumM2Firing,
-    total_used_weight: sumUsedFiring
+    total_used_weight: sumUsedFiring,
+    total_used_all: totalUsedAll
   });
 
   // Render Table Body (Exactly 17 columns matching Tab 6 and Image 2)
@@ -1134,7 +1147,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
     if (isDrying) {
       return `
         <tr class="bg-[#0b172a]/70 text-slate-400 italic">
-          <td class="p-2 text-center text-slate-500 font-mono">${r.stt || idx + 1}</td>
+          <td class="p-2 text-center text-slate-500 font-mono">${r.stt || ''}</td>
           <td class="p-2 text-slate-400 font-medium">
             <span>${r.coal_supplier || 'Than sấy lò'}</span>
             <span class="ml-1 px-1 py-0.2 rounded text-[8px] bg-slate-800 text-slate-400 border border-slate-700">Đốt sấy</span>
@@ -1145,7 +1158,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right font-medium text-slate-300">${formatNumber(issued, 0)}</td>
           <td class="p-2 text-right font-medium text-slate-300">${formatNumber(ash, 0)}</td>
-          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2, true) : '-'}</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right font-bold text-slate-300">${formatNumber(totalUsed, 0)}</td>
@@ -1163,7 +1176,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
 
     return `
       <tr class="hover:bg-[#13284d]/50 transition text-slate-200">
-        <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || idx + 1}</td>
+        <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || ''}</td>
         <td class="p-2 font-bold text-white">
           <div class="flex items-center gap-1 flex-wrap">
             <span>${r.coal_supplier || 'Than nung'}</span>
@@ -1173,19 +1186,19 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
           <div class="text-[9px] text-slate-400 font-normal">DC: ${r.line || '-'} • KT: ${r.size || '-'}</div>
         </td>
         <td class="p-2 text-right font-medium text-slate-300">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
-        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right text-slate-400">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
-        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-slate-100">${formatNumber(issued, 0)}</td>
         <td class="p-2 text-right font-medium text-slate-200">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
-        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-emerald-400">${comp > 0 ? formatNumber(comp, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-rose-400">${excess > 0 ? formatNumber(excess, 0) : '-'}</td>
         <td class="p-2 text-right font-black text-amber-300">${formatNumber(totalUsed, 0)}</td>
         <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
-        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2) : '-'}</td>
-        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2) : '-'}</td>
-        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2, true) : '-'}</td>
         <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
       </tr>
     `;
@@ -1202,7 +1215,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
         <td colspan="4" class="p-2 text-center text-slate-500">-</td>
         <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumLumpDrying, 0)}</td>
         <td class="p-2 text-right font-medium text-slate-300">${formatNumber(sumAshDrying, 0)}</td>
-        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2)}</td>
+        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2, true)}</td>
         <td class="p-2 text-right text-slate-500">-</td>
         <td class="p-2 text-right text-slate-500">-</td>
         <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumUsedDrying, 0)}</td>
@@ -1218,14 +1231,14 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
         <td colspan="4" class="p-2 text-center text-slate-400 font-normal">-</td>
         <td class="p-2 text-right font-black text-white text-sm">${formatNumber(sumLumpFiring, 0)}</td>
         <td class="p-2 text-right font-bold text-slate-100">${formatNumber(sumAshFiring, 0)}</td>
-        <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2)}</td>
+        <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2, true)}</td>
         <td class="p-2 text-right font-bold text-emerald-300">${sumCompFiring > 0 ? formatNumber(sumCompFiring, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-rose-300">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
         <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(sumUsedFiring, 0)}</td>
         <td class="p-2 text-right font-black text-emerald-300 text-sm">${formatNumber(sumM2Firing, 2)}</td>
-        <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2)}</td>
-        <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2)}</td>
-        <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2)}</td>
+        <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2, true)}</td>
+        <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2, true)}</td>
+        <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2, true)}</td>
         <td class="p-2 text-left text-[11px] text-emerald-400 font-semibold">Khớp 100% Báo Cáo ✓</td>
       </tr>
 
@@ -1237,14 +1250,14 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
         <td colspan="4" class="p-2 text-center text-slate-500">-</td>
         <td class="p-2 text-right font-bold text-white">${formatNumber(totalIssuedAll, 0)}</td>
         <td class="p-2 text-right text-slate-200">${formatNumber(totalAshAll, 0)}</td>
-        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2)}</td>
+        <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2, true)}</td>
         <td class="p-2 text-right text-emerald-400">${totalCompAll > 0 ? formatNumber(totalCompAll, 0) : '-'}</td>
         <td class="p-2 text-right text-rose-400">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-amber-300">${formatNumber(totalUsedAll, 0)}</td>
         <td class="p-2 text-right font-bold text-emerald-400">${formatNumber(totalM2All, 2)}</td>
-        <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2)}</td>
-        <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2)}</td>
-        <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2)}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2, true)}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2, true)}</td>
+        <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2, true)}</td>
         <td class="p-2 text-left text-[11px] text-slate-400">Tổng nhiên liệu</td>
       </tr>
     `;
@@ -1253,23 +1266,35 @@ function renderDashboardCoalTable(rows, currentMetric = "all") {
 
 function updateDashboardCoalKPIs(kpi) {
   const elRateLump = document.getElementById("dash-coal-kpi-rate-lump");
-  if (elRateLump) elRateLump.innerHTML = `${formatNumber(kpi.rate_lump, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  if (elRateLump) elRateLump.innerHTML = `${formatNumber(kpi.rate_lump, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
+  const elRateLumpAll = document.getElementById("dash-coal-kpi-rate-lump-all");
+  if (elRateLumpAll) elRateLumpAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_lump_all, 2, true)} kg/m²</b>`;
+
   const elLumpWt = document.getElementById("dash-coal-kpi-lump-wt");
   if (elLumpWt) elLumpWt.innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
 
+  const elLumpAllWt = document.getElementById("dash-coal-kpi-lump-all-wt");
+  if (elLumpAllWt) elLumpAllWt.innerText = `${formatNumber(kpi.issued_weight_all, 0)} kg`;
+
   const elRateAsh = document.getElementById("dash-coal-kpi-rate-ash");
-  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(kpi.rate_with_ash, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(kpi.rate_with_ash, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
+  const elRateAshAll = document.getElementById("dash-coal-kpi-rate-ash-all");
+  if (elRateAshAll) elRateAshAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_with_ash_all, 2, true)} kg/m²</b>`;
+
   const elAshWt = document.getElementById("dash-coal-kpi-ash-wt");
   if (elAshWt) elAshWt.innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
   
   const elAshPct = document.getElementById("dash-coal-kpi-ash-pct");
-  if (elAshPct) elAshPct.innerText = `${formatNumber(kpi.ash_rate_avg, 2)}%`;
+  if (elAshPct) elAshPct.innerText = `${formatNumber(kpi.ash_rate_avg, 2, true)}%`;
 
   const elRateTotal = document.getElementById("dash-coal-kpi-rate-total");
-  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(kpi.rate_total, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(kpi.rate_total, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
+  const elRateTotalAll = document.getElementById("dash-coal-kpi-rate-total-all");
+  if (elRateTotalAll) elRateTotalAll.innerHTML = `+ Sấy lò (Tổng): <b>${formatNumber(kpi.rate_total_all, 2, true)} kg/m²</b>`;
+
   const elCompWt = document.getElementById("dash-coal-kpi-comp-wt");
   if (elCompWt) elCompWt.innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
   
@@ -1281,6 +1306,9 @@ function updateDashboardCoalKPIs(kpi) {
   
   const elTotalUsed = document.getElementById("dash-coal-kpi-total-used");
   if (elTotalUsed) elTotalUsed.innerText = `${formatNumber(kpi.total_used_weight, 0)} kg`;
+
+  const elTotalUsedAll = document.getElementById("dash-coal-kpi-total-used-all");
+  if (elTotalUsedAll) elTotalUsedAll.innerText = `${formatNumber(kpi.total_used_all, 0)} kg`;
 }
 
 function renderCoalTrendChart(monthlyTrend) {
@@ -1798,15 +1826,20 @@ function renderCoalTable(rows, summary) {
     tfoot.innerHTML = "";
     updateCoalKPIs({
       rate_lump: 0,
+      rate_lump_all: 0,
       issued_weight: 0,
+      issued_weight_all: 0,
       rate_with_ash: 0,
+      rate_with_ash_all: 0,
       ash_weight: 0,
       ash_rate_avg: 0,
       rate_total: 0,
+      rate_total_all: 0,
       compensation_weight: 0,
       excess_ash_weight: 0,
       production_m2: 0,
-      total_used_weight: 0
+      total_used_weight: 0,
+      total_used_all: 0
     });
     return;
   }
@@ -1816,7 +1849,7 @@ function renderCoalTable(rows, summary) {
   let sumLumpDrying = 0, sumAshDrying = 0, sumCompDrying = 0, sumUsedDrying = 0;
 
   rows.forEach(r => {
-    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const isDrying = (r.firing_type && r.firing_type.includes("Không")) || (!r.production_m2 || r.production_m2 === 0);
     const issued = Number(r.issued_weight || 0);
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
@@ -1857,23 +1890,28 @@ function renderCoalTable(rows, summary) {
   const ashPctDrying = (sumLumpDrying + sumAshDrying) > 0 ? (sumAshDrying / (sumLumpDrying + sumAshDrying) * 100) : 0;
   const ashPctAll = (totalIssuedAll + totalAshAll) > 0 ? (totalAshAll / (totalIssuedAll + totalAshAll) * 100) : 0;
 
-  // Update Top KPI Cards (Based on Firing - Production Consumption)
+  // Update Top KPI Cards (Both K.Tính Sấy vs + Sấy Lò)
   updateCoalKPIs({
     rate_lump: rateLumpFiring,
+    rate_lump_all: rateLumpAll,
     issued_weight: sumLumpFiring,
+    issued_weight_all: totalIssuedAll,
     rate_with_ash: rateWithAshFiring,
+    rate_with_ash_all: rateWithAshAll,
     ash_weight: sumAshFiring,
     ash_rate_avg: ashPctFiring,
     rate_total: rateTotalFiring,
+    rate_total_all: rateTotalAll,
     compensation_weight: sumCompFiring,
     excess_ash_weight: sumExcessFiring,
     production_m2: sumM2Firing,
-    total_used_weight: sumUsedFiring
+    total_used_weight: sumUsedFiring,
+    total_used_all: totalUsedAll
   });
 
   // Render Table Body (Exactly 17 columns matching Image 2)
   tbody.innerHTML = rows.map(r => {
-    const isDrying = r.firing_type && r.firing_type.includes("Không");
+    const isDrying = (r.firing_type && r.firing_type.includes("Không")) || (!r.production_m2 || r.production_m2 === 0);
     const issued = Number(r.issued_weight || 0);
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
@@ -1888,7 +1926,7 @@ function renderCoalTable(rows, summary) {
     if (isDrying) {
       return `
         <tr class="bg-[#0b172a]/70 text-slate-400 italic">
-          <td class="p-2 text-center text-slate-500"></td>
+          <td class="p-2 text-center text-slate-500 font-mono">${r.stt || ''}</td>
           <td class="p-2 text-slate-500"></td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right text-slate-500">-</td>
@@ -1896,7 +1934,7 @@ function renderCoalTable(rows, summary) {
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right font-medium text-slate-300">${formatNumber(issued, 0)}</td>
           <td class="p-2 text-right font-medium text-slate-300">${formatNumber(ash, 0)}</td>
-          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+          <td class="p-2 text-right text-slate-400">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2, true) : '-'}</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right font-bold text-slate-300">${formatNumber(totalUsed, 0)}</td>
@@ -1914,19 +1952,19 @@ function renderCoalTable(rows, summary) {
         <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || ''}</td>
         <td class="p-2 font-bold text-white">${r.coal_supplier}</td>
         <td class="p-2 text-right font-medium text-slate-300">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
-        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right text-slate-400">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
-        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2) : '-'}</td>
+        <td class="p-2 text-right font-medium text-amber-300">${r.stone_rate > 0 ? formatNumber(r.stone_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-slate-100">${formatNumber(issued, 0)}</td>
         <td class="p-2 text-right font-medium text-slate-200">${ash > 0 ? formatNumber(ash, 0) : '-'}</td>
-        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2) : '-'}</td>
+        <td class="p-2 text-right text-slate-300">${r.ash_export_rate > 0 ? formatNumber(r.ash_export_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-emerald-400">${comp > 0 ? formatNumber(comp, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-rose-400">${excess > 0 ? formatNumber(excess, 0) : '-'}</td>
         <td class="p-2 text-right font-black text-amber-300">${formatNumber(totalUsed, 0)}</td>
         <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
-        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2) : '-'}</td>
-        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2) : '-'}</td>
-        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2) : '-'}</td>
+        <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2, true) : '-'}</td>
         <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
       </tr>
     `;
@@ -1942,7 +1980,7 @@ function renderCoalTable(rows, summary) {
       <td colspan="4" class="p-2 text-center text-slate-500">-</td>
       <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumLumpDrying, 0)}</td>
       <td class="p-2 text-right font-medium text-slate-300">${formatNumber(sumAshDrying, 0)}</td>
-      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2)}</td>
+      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctDrying, 2, true)}</td>
       <td class="p-2 text-right text-slate-500">-</td>
       <td class="p-2 text-right text-slate-500">-</td>
       <td class="p-2 text-right font-bold text-slate-200">${formatNumber(sumUsedDrying, 0)}</td>
@@ -1958,14 +1996,14 @@ function renderCoalTable(rows, summary) {
       <td colspan="4" class="p-2 text-center text-slate-400 font-normal">-</td>
       <td class="p-2 text-right font-black text-white text-sm">${formatNumber(sumLumpFiring, 0)}</td>
       <td class="p-2 text-right font-bold text-slate-100">${formatNumber(sumAshFiring, 0)}</td>
-      <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2)}</td>
+      <td class="p-2 text-right font-bold text-emerald-300">${formatNumber(ashPctFiring, 2, true)}</td>
       <td class="p-2 text-right font-bold text-emerald-300">${sumCompFiring > 0 ? formatNumber(sumCompFiring, 0) : '-'}</td>
       <td class="p-2 text-right font-bold text-rose-300">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
       <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(sumUsedFiring, 0)}</td>
       <td class="p-2 text-right font-black text-emerald-300 text-sm">${formatNumber(sumM2Firing, 2)}</td>
-      <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2)}</td>
-      <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2)}</td>
-      <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2)}</td>
+      <td class="p-2 text-right font-black text-amber-300 text-sm">${formatNumber(rateLumpFiring, 2, true)}</td>
+      <td class="p-2 text-right font-black text-cyan-300 text-sm">${formatNumber(rateWithAshFiring, 2, true)}</td>
+      <td class="p-2 text-right font-black text-white text-sm">${formatNumber(rateTotalFiring, 2, true)}</td>
       <td class="p-2 text-left text-[11px] text-emerald-400 font-semibold">Khớp 100% Báo Cáo ✓</td>
     </tr>
 
@@ -1977,38 +2015,66 @@ function renderCoalTable(rows, summary) {
       <td colspan="4" class="p-2 text-center text-slate-500">-</td>
       <td class="p-2 text-right font-bold text-white">${formatNumber(totalIssuedAll, 0)}</td>
       <td class="p-2 text-right text-slate-200">${formatNumber(totalAshAll, 0)}</td>
-      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2)}</td>
+      <td class="p-2 text-right text-slate-300">${formatNumber(ashPctAll, 2, true)}</td>
       <td class="p-2 text-right text-emerald-400">${totalCompAll > 0 ? formatNumber(totalCompAll, 0) : '-'}</td>
       <td class="p-2 text-right text-rose-400">${sumExcessFiring > 0 ? formatNumber(sumExcessFiring, 0) : '-'}</td>
       <td class="p-2 text-right font-bold text-amber-300">${formatNumber(totalUsedAll, 0)}</td>
       <td class="p-2 text-right font-bold text-emerald-400">${formatNumber(totalM2All, 2)}</td>
-      <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2)}</td>
-      <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2)}</td>
-      <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2)}</td>
+      <td class="p-2 text-right font-bold text-amber-300">${formatNumber(rateLumpAll, 2, true)}</td>
+      <td class="p-2 text-right font-bold text-cyan-300">${formatNumber(rateWithAshAll, 2, true)}</td>
+      <td class="p-2 text-right font-black text-white">${formatNumber(rateTotalAll, 2, true)}</td>
       <td class="p-2 text-left text-[11px] text-slate-400">Tổng nhiên liệu</td>
     </tr>
   `;
 }
 
 function updateCoalKPIs(kpi) {
-  document.getElementById("coal-kpi-rate-lump").innerHTML = `${formatNumber(kpi.rate_lump, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
-  document.getElementById("coal-kpi-lump-wt").innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
+  const elRateLump = document.getElementById("coal-kpi-rate-lump");
+  if (elRateLump) elRateLump.innerHTML = `${formatNumber(kpi.rate_lump, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
-  document.getElementById("coal-kpi-rate-ash").innerHTML = `${formatNumber(kpi.rate_with_ash, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
-  document.getElementById("coal-kpi-ash-wt").innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
-  document.getElementById("coal-kpi-ash-pct").innerText = `${formatNumber(kpi.ash_rate_avg, 2)}%`;
+  const elRateLumpAll = document.getElementById("coal-kpi-rate-lump-all");
+  if (elRateLumpAll) elRateLumpAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_lump_all, 2, true)} kg/m²</b>`;
+
+  const elLumpWt = document.getElementById("coal-kpi-lump-wt");
+  if (elLumpWt) elLumpWt.innerText = `${formatNumber(kpi.issued_weight, 0)} kg`;
+
+  const elLumpAllWt = document.getElementById("coal-kpi-lump-all-wt");
+  if (elLumpAllWt) elLumpAllWt.innerText = `${formatNumber(kpi.issued_weight_all, 0)} kg`;
+
+  const elRateAsh = document.getElementById("coal-kpi-rate-ash");
+  if (elRateAsh) elRateAsh.innerHTML = `${formatNumber(kpi.rate_with_ash, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
   
-  document.getElementById("coal-kpi-rate-total").innerHTML = `${formatNumber(kpi.rate_total, 2)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
-  document.getElementById("coal-kpi-comp-wt").innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
-  document.getElementById("coal-kpi-excess-wt").innerText = `${formatNumber(kpi.excess_ash_weight, 0)} kg`;
+  const elRateAshAll = document.getElementById("coal-kpi-rate-ash-all");
+  if (elRateAshAll) elRateAshAll.innerHTML = `+ Sấy lò: <b>${formatNumber(kpi.rate_with_ash_all, 2, true)} kg/m²</b>`;
+
+  const elAshWt = document.getElementById("coal-kpi-ash-wt");
+  if (elAshWt) elAshWt.innerText = `${formatNumber(kpi.ash_weight, 0)} kg`;
   
-  document.getElementById("coal-kpi-prod-m2").innerHTML = `${formatNumber(kpi.production_m2, 2)} <span class="text-xs font-normal text-slate-400">m²</span>`;
-  document.getElementById("coal-kpi-total-used").innerText = `${formatNumber(kpi.total_used_weight, 0)} kg`;
+  const elAshPct = document.getElementById("coal-kpi-ash-pct");
+  if (elAshPct) elAshPct.innerText = `${formatNumber(kpi.ash_rate_avg, 2, true)}%`;
+
+  const elRateTotal = document.getElementById("coal-kpi-rate-total");
+  if (elRateTotal) elRateTotal.innerHTML = `${formatNumber(kpi.rate_total, 2, true)} <span class="text-xs font-normal text-slate-400">kg/m²</span>`;
+  
+  const elRateTotalAll = document.getElementById("coal-kpi-rate-total-all");
+  if (elRateTotalAll) elRateTotalAll.innerHTML = `+ Sấy lò (Tổng): <b>${formatNumber(kpi.rate_total_all, 2, true)} kg/m²</b>`;
+
+  const elCompWt = document.getElementById("coal-kpi-comp-wt");
+  if (elCompWt) elCompWt.innerText = `${formatNumber(kpi.compensation_weight, 0)} kg`;
+  
+  const elExcessWt = document.getElementById("coal-kpi-excess-wt");
+  if (elExcessWt) elExcessWt.innerText = `${formatNumber(kpi.excess_ash_weight, 0)} kg`;
+
+  const elProdM2 = document.getElementById("coal-kpi-prod-m2");
+  if (elProdM2) elProdM2.innerHTML = `${formatNumber(kpi.production_m2, 2)} <span class="text-xs font-normal text-slate-400">m²</span>`;
+  
+  const elTotalUsed = document.getElementById("coal-kpi-total-used");
+  if (elTotalUsed) elTotalUsed.innerText = `${formatNumber(kpi.total_used_weight, 0)} kg`;
+
+  const elTotalUsedAll = document.getElementById("coal-kpi-total-used-all");
+  if (elTotalUsedAll) elTotalUsedAll.innerText = `${formatNumber(kpi.total_used_all, 0)} kg`;
 }
 
-// ----------------------------------------------------
-// TAB 7: IMPORT 3 FILE THÁNG
-// ----------------------------------------------------
 async function submitMonthlyImport() {
   const month = document.getElementById("import-month-select").value;
   const fDc1 = document.getElementById("file-dc1").files[0];

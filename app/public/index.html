@@ -805,54 +805,86 @@
               </div>
             </div>
 
-            <!-- Coal Summary KPI Cards Grid (4 Cards 2 tầng chuyên sâu chuẩn Ảnh 2 Tab Sử Dụng Than) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5">
+            <!-- Coal Summary KPI Cards Grid (Hiển thị rõ ràng TIÊU HAO KHÔNG TÍNH SẤY LÒ vs CÓ SẤY LÒ) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               <!-- Rate Lump -->
-              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao Than Cục</span>
-                  <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] text-slate-400 font-medium uppercase">1. Tiêu Hao Than Cục</span>
+                    <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+                  </div>
+                  <div class="flex items-baseline gap-2">
+                    <div class="text-xl font-black text-amber-300" id="dash-coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                    <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">K.sấy</span>
+                  </div>
+                  <div class="text-[10px] text-amber-200/80 font-semibold mt-0.5" id="dash-coal-kpi-rate-lump-all">
+                    + Sấy lò: <b>0,00 kg/m²</b>
+                  </div>
                 </div>
-                <div class="text-xl font-black text-amber-300" id="dash-coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                  <span>KL Lĩnh: <b id="dash-coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+                <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                  <span>Lĩnh: <b id="dash-coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+                  <span>+Sấy: <b id="dash-coal-kpi-lump-all-wt" class="text-slate-300">0 kg</b></span>
                 </div>
               </div>
 
               <!-- Rate With Ash -->
-              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao (Có Cám)</span>
-                  <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] text-slate-400 font-medium uppercase">2. Tiêu Hao (Có Cám)</span>
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+                  </div>
+                  <div class="flex items-baseline gap-2">
+                    <div class="text-xl font-black text-cyan-300" id="dash-coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                    <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">K.sấy</span>
+                  </div>
+                  <div class="text-[10px] text-cyan-200/80 font-semibold mt-0.5" id="dash-coal-kpi-rate-ash-all">
+                    + Sấy lò: <b>0,00 kg/m²</b>
+                  </div>
                 </div>
-                <div class="text-xl font-black text-cyan-300" id="dash-coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                  <span>Xuất cám: <b id="dash-coal-kpi-ash-wt" class="text-slate-200">0 kg</b> (<span id="dash-coal-kpi-ash-pct" class="text-cyan-400">0%</span>)</span>
+                <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                  <span>Xuất cám: <b id="dash-coal-kpi-ash-wt" class="text-slate-200">0 kg</b></span>
+                  <span id="dash-coal-kpi-ash-pct" class="text-cyan-400 font-bold">0%</span>
                 </div>
               </div>
 
               <!-- Rate Total (Cuc + Cam + Bu) -->
-              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#0f2042] to-amber-950/20 shadow-md">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-[11px] text-amber-300 font-bold">Tiêu Hao (Cục+Cám+Bù)</span>
-                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-amber-500/50 bg-gradient-to-br from-[#0f2042] to-amber-950/30 shadow-md flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] text-amber-300 font-bold uppercase">3. TH (Cục+Cám+Bù)</span>
+                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                  </div>
+                  <div class="flex items-baseline gap-2">
+                    <div class="text-xl font-black text-white" id="dash-coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 font-bold">Chuẩn BC</span>
+                  </div>
+                  <div class="text-[10px] text-amber-300 font-bold mt-0.5" id="dash-coal-kpi-rate-total-all">
+                    + Sấy lò (Tổng): <b>0,00 kg/m²</b>
+                  </div>
                 </div>
-                <div class="text-xl font-black text-white" id="dash-coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-                <div class="text-[10px] text-slate-300 mt-1 flex items-center justify-between">
-                  <span>Lĩnh bù: <b id="dash-coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
-                  <span>Vượt TC: <b id="dash-coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
+                <div class="text-[9.5px] text-slate-300 mt-2 pt-1.5 border-t border-amber-500/30 flex items-center justify-between">
+                  <span>Bù: <b id="dash-coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
+                  <span>Vượt: <b id="dash-coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
                 </div>
               </div>
 
               <!-- Total Production m2 -->
-              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="text-[11px] text-slate-400 font-medium">Sản Lượng Nung (m²)</span>
-                  <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <div class="p-3.5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-md flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] text-slate-400 font-medium uppercase">4. Sản Lượng Nung</span>
+                    <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  </div>
+                  <div class="text-xl font-black text-emerald-400" id="dash-coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
+                  <div class="text-[10px] text-slate-300 mt-0.5">
+                    Than K.sấy: <b id="dash-coal-kpi-total-used" class="text-slate-100">0 kg</b>
+                  </div>
                 </div>
-                <div class="text-xl font-black text-emerald-400" id="dash-coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
-                <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                  <span>Tổng than SD: <b id="dash-coal-kpi-total-used" class="text-slate-200">0 kg</b></span>
+                <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                  <span>Tổng + Sấy lò:</span>
+                  <b id="dash-coal-kpi-total-used-all" class="text-amber-300">0 kg</b>
                 </div>
               </div>
             </div>
@@ -1347,54 +1379,86 @@
             </div>
           </div>
 
-          <!-- Coal Summary KPI Cards Grid (8 Cards) -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3.5">
+          <!-- Coal Summary KPI Cards Grid (Hiển thị rõ ràng TIÊU HAO KHÔNG TÍNH SẤY LÒ vs CÓ SẤY LÒ) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <!-- Rate Lump -->
-            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao Than Cục</span>
-                <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium uppercase">1. Tiêu Hao Than Cục</span>
+                  <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <div class="text-xl font-black text-amber-300" id="coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                  <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">K.sấy</span>
+                </div>
+                <div class="text-[10px] text-amber-200/80 font-semibold mt-0.5" id="coal-kpi-rate-lump-all">
+                  + Sấy lò: <b>0,00 kg/m²</b>
+                </div>
               </div>
-              <div class="text-xl font-black text-amber-300" id="coal-kpi-rate-lump">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                <span>KL Lĩnh: <b id="coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+              <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                <span>Lĩnh: <b id="coal-kpi-lump-wt" class="text-slate-200">0 kg</b></span>
+                <span>+Sấy: <b id="coal-kpi-lump-all-wt" class="text-slate-300">0 kg</b></span>
               </div>
             </div>
 
             <!-- Rate With Ash -->
-            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] text-slate-400 font-medium">Tiêu Hao (Có Cám)</span>
-                <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium uppercase">2. Tiêu Hao (Có Cám)</span>
+                  <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <div class="text-xl font-black text-cyan-300" id="coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                  <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">K.sấy</span>
+                </div>
+                <div class="text-[10px] text-cyan-200/80 font-semibold mt-0.5" id="coal-kpi-rate-ash-all">
+                  + Sấy lò: <b>0,00 kg/m²</b>
+                </div>
               </div>
-              <div class="text-xl font-black text-cyan-300" id="coal-kpi-rate-ash">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                <span>Xuất cám: <b id="coal-kpi-ash-wt" class="text-slate-200">0 kg</b> (<span id="coal-kpi-ash-pct" class="text-cyan-400">0%</span>)</span>
+              <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                <span>Xuất cám: <b id="coal-kpi-ash-wt" class="text-slate-200">0 kg</b></span>
+                <span id="coal-kpi-ash-pct" class="text-cyan-400 font-bold">0%</span>
               </div>
             </div>
 
             <!-- Rate Total (Cuc + Cam + Bu) -->
-            <div class="p-4 bg-[#0f2042] rounded-xl border border-amber-500/40 bg-gradient-to-br from-[#0f2042] to-amber-950/20 shadow-lg">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] text-amber-300 font-bold">Tiêu Hao (Cục+Cám+Bù)</span>
-                <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-amber-500/50 bg-gradient-to-br from-[#0f2042] to-amber-950/30 shadow-lg flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-amber-300 font-bold uppercase">3. TH (Cục+Cám+Bù)</span>
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <div class="text-xl font-black text-white" id="coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 font-bold">Chuẩn BC</span>
+                </div>
+                <div class="text-[10px] text-amber-300 font-bold mt-0.5" id="coal-kpi-rate-total-all">
+                  + Sấy lò (Tổng): <b>0,00 kg/m²</b>
+                </div>
               </div>
-              <div class="text-xl font-black text-white" id="coal-kpi-rate-total">0,00 <span class="text-xs font-normal text-slate-400">kg/m²</span></div>
-              <div class="text-[10px] text-slate-300 mt-1 flex items-center justify-between">
-                <span>Lĩnh bù: <b id="coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
-                <span>Vượt TC: <b id="coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
+              <div class="text-[9.5px] text-slate-300 mt-2 pt-1.5 border-t border-amber-500/30 flex items-center justify-between">
+                <span>Bù: <b id="coal-kpi-comp-wt" class="text-emerald-400">0 kg</b></span>
+                <span>Vượt: <b id="coal-kpi-excess-wt" class="text-rose-400">0 kg</b></span>
               </div>
             </div>
 
             <!-- Total Production m2 -->
-            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] text-slate-400 font-medium">Sản Lượng Nung (m²)</span>
-                <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <div class="p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[11px] text-slate-400 font-medium uppercase">4. Sản Lượng Nung</span>
+                  <i data-lucide="box" class="w-3.5 h-3.5 text-emerald-400"></i>
+                </div>
+                <div class="text-xl font-black text-emerald-400" id="coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
+                <div class="text-[10px] text-slate-300 mt-0.5">
+                  Than K.sấy: <b id="coal-kpi-total-used" class="text-slate-100">0 kg</b>
+                </div>
               </div>
-              <div class="text-xl font-black text-emerald-400" id="coal-kpi-prod-m2">0 <span class="text-xs font-normal text-slate-400">m²</span></div>
-              <div class="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-                <span>Tổng than SD: <b id="coal-kpi-total-used" class="text-slate-200">0 kg</b></span>
+              <div class="text-[9.5px] text-slate-400 mt-2 pt-1.5 border-t border-slate-700/50 flex items-center justify-between">
+                <span>Tổng + Sấy lò:</span>
+                <b id="coal-kpi-total-used-all" class="text-amber-300">0 kg</b>
               </div>
             </div>
           </div>
