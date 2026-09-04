@@ -96,55 +96,129 @@ function toggleTheme() {
 }
 
 // ----------------------------------------------------
-// TAB 1: DASHBOARD (SMART FILTER & BRAND ANALYTICS)
+// TAB 1: DASHBOARD (EXCEL REPLICA 2026 WITH VISUAL SLICERS)
 // ----------------------------------------------------
-let lastSelectedBrand = "all";
+let currentDashMonth = "all";
+let currentDashLine = "all";
+let currentDashSize = "all";
+let currentDashBrand = "all";
 
-function onDashFilterChange(source) {
+let monthlyTrendChart = null;
+let donutActualChart = null;
+let donutPlanChart = null;
+let brandDistChart = null;
+
+function setDashMonth(m) {
+  currentDashMonth = m;
+  updateSlicerButtonStyles();
+  loadDashboardData();
+}
+
+function setDashLine(l) {
+  currentDashLine = l;
+  updateSlicerButtonStyles();
+  loadDashboardData();
+}
+
+function setDashSize(s) {
+  currentDashSize = s;
+  updateSlicerButtonStyles();
+  loadDashboardData();
+}
+
+function setDashBrand(b) {
+  currentDashBrand = b;
+  const brandSelect = document.getElementById("dash-filter-brand");
+  if (brandSelect) brandSelect.value = b;
   loadDashboardData();
 }
 
 function resetDashFilters() {
-  document.getElementById("dash-filter-month").value = "8";
-  document.getElementById("dash-filter-line").value = "all";
-  document.getElementById("dash-filter-size").value = "all";
-  document.getElementById("dash-filter-brand").value = "all";
-  lastSelectedBrand = "all";
+  currentDashMonth = "all";
+  currentDashLine = "all";
+  currentDashSize = "all";
+  currentDashBrand = "all";
+  updateSlicerButtonStyles();
+  const brandSelect = document.getElementById("dash-filter-brand");
+  if (brandSelect) brandSelect.value = "all";
   loadDashboardData();
 }
 
-function selectDashBrand(brandName) {
-  const brandSelect = document.getElementById("dash-filter-brand");
-  if (brandSelect) brandSelect.value = brandName;
-  lastSelectedBrand = brandName;
-  loadDashboardData();
-  const dashEl = document.getElementById("tab-dashboard");
-  if (dashEl) dashEl.scrollIntoView({ behavior: "smooth" });
+function updateSlicerButtonStyles() {
+  // 1. Month buttons
+  const months = ["all", "1", "3", "4", "5", "6", "7", "8"];
+  months.forEach(m => {
+    const btn = document.getElementById("btn-month-" + m);
+    if (btn) {
+      if (currentDashMonth === m) {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 transition text-center";
+      } else {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center";
+      }
+    }
+  });
+
+  // 2. Line buttons
+  const lines = ["all", "DC1", "DC2"];
+  lines.forEach(l => {
+    const btn = document.getElementById("btn-line-" + l);
+    if (btn) {
+      if (currentDashLine === l) {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 text-center transition";
+      } else {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition";
+      }
+    }
+  });
+
+  // 3. Size buttons
+  const sizes = ["all", "30x60", "50x50", "40x80"];
+  sizes.forEach(s => {
+    const btn = document.getElementById("btn-size-" + s);
+    if (btn) {
+      if (currentDashSize === s) {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 text-center transition";
+      } else {
+        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition";
+      }
+    }
+  });
 }
 
 async function loadDashboardData() {
-  const month = document.getElementById("dash-filter-month").value;
-  const line = document.getElementById("dash-filter-line").value;
-  const size = document.getElementById("dash-filter-size").value;
+  updateSlicerButtonStyles();
+
   const brandSelect = document.getElementById("dash-filter-brand");
-  let brand = brandSelect ? brandSelect.value : "all";
+  const brand = brandSelect ? brandSelect.value : currentDashBrand;
+  currentDashBrand = brand;
 
   // Build badge
   const badge = document.getElementById("dash-badge-period");
-  const monthStr = month === "all" ? "Tất cả kỳ" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
-  const lineStr = line === "all" ? "Tất cả DC" : line;
-  const sizeStr = size === "all" ? "Tất cả kích thước" : size;
-  const brandStr = brand === "all" ? "Tất cả TH" : brand;
-  badge.innerText = `• ${monthStr} / 2026 • ${lineStr} • ${sizeStr} • ${brandStr}`;
+  const monthStr = currentDashMonth === "all" ? "Tất cả các kỳ (T1 - T8)" : ("Tháng " + (currentDashMonth.length === 1 ? "0" + currentDashMonth : currentDashMonth));
+  const lineStr = currentDashLine === "all" ? "Tất cả DC" : currentDashLine;
+  const sizeStr = currentDashSize === "all" ? "Tất cả KT" : currentDashSize;
+  const brandStr = currentDashBrand === "all" ? "" : ` • TH: ${currentDashBrand}`;
+  if (badge) badge.innerText = `• ${monthStr} • ${lineStr} • ${sizeStr}${brandStr}`;
+
+  // Date range label
+  const dateRangeEl = document.getElementById("dash-date-range");
+  if (dateRangeEl) {
+    if (currentDashMonth === "all") dateRangeEl.innerText = "01/01/2026 - 31/08/2026";
+    else {
+      const m = parseInt(currentDashMonth);
+      dateRangeEl.innerText = `01/${m.toString().padStart(2, '0')}/2026 - 31/${m.toString().padStart(2, '0')}/2026`;
+    }
+  }
 
   try {
-    const res = await fetch(`/api/dashboard?month=${month}&line=${line}&size=${size}&brand=${encodeURIComponent(brand)}`);
+    const res = await fetch(`/api/dashboard?month=${currentDashMonth}&line=${currentDashLine}&size=${currentDashSize}&brand=${encodeURIComponent(currentDashBrand)}`);
     const data = await res.json();
-    const kpi = data.kpi || {};
+    const act = data.actual || {};
+    const pln = data.plan || {};
 
-    // Update Brand Dropdown Options Dynamically
+    // 1. Update Brand Dropdown Options Dynamically
     if (data.available_brands && brandSelect) {
-      const currentVal = brand;
+      const currentVal = currentDashBrand;
       brandSelect.innerHTML = `<option value="all">Tất cả thương hiệu (${data.available_brands.length})</option>` +
         data.available_brands.map(b => `<option value="${b}" ${b === currentVal ? 'selected' : ''}>${b}</option>`).join("");
       if (currentVal !== "all" && data.available_brands.includes(currentVal)) {
@@ -152,58 +226,41 @@ async function loadDashboardData() {
       }
     }
 
-    // Update Top KPI Cards
-    const titleTotal = document.getElementById("kpi-title-total");
-    if (kpi.is_brand_selected) {
-      if (titleTotal) titleTotal.innerText = `Sản Lượng: ${kpi.selected_brand_name}`;
-      document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
-      document.getElementById("kpi-plan-total").innerText = "Tỷ trọng: " + formatNumber(kpi.completion_rate, 1) + "%";
-      document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "% NM";
+    // 2. Update Panel 1: Thực hiện
+    document.getElementById("donut-act-center").innerText = formatNumber(act.total_m2 || 0, 0);
+    document.getElementById("donut-act-a1-pct").innerText = formatNumber(act.a1_pct || 0, 1) + "%";
+    document.getElementById("donut-act-a-pct").innerText = formatNumber(act.a_pct || 0, 1) + "%";
+    document.getElementById("donut-act-b-pct").innerText = formatNumber(act.b_pct || 0, 1) + "%";
 
-      document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
-      document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
-      document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
+    document.getElementById("tile-act-a1").innerText = formatNumber(act.a1_m2 || 0, 0);
+    document.getElementById("tile-act-days").innerText = formatNumber(act.days || 0, 2);
+    document.getElementById("tile-act-a").innerText = formatNumber(act.a_m2 || 0, 0);
+    document.getElementById("tile-act-avgday").innerText = formatNumber(act.avg_per_day || 0, 0);
+    document.getElementById("tile-act-b").innerText = formatNumber(act.b_m2 || 0, 0);
+    document.getElementById("tile-act-stop2mf").innerText = formatNumber(act.stop_time_2mf || 0, 0);
 
-      document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
-      document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
-      document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
+    // 3. Update Panel 2: Kế hoạch
+    document.getElementById("donut-pln-center").innerText = formatNumber(pln.total_m2 || 0, 0);
+    document.getElementById("donut-pln-a1-pct").innerText = formatNumber(pln.a1_pct || 0, 1) + "%";
+    document.getElementById("donut-pln-a-pct").innerText = formatNumber(pln.a_pct || 0, 1) + "%";
+    document.getElementById("donut-pln-b-pct").innerText = formatNumber(pln.b_pct || 0, 1) + "%";
 
-      document.getElementById("kpi-coal-rate").innerText = "2,38 kg/m²";
-      document.getElementById("kpi-coal-total").innerText = "Đốt lò nung";
-      document.getElementById("kpi-coal-heat").innerText = "7.477 Kcal";
-    } else {
-      if (titleTotal) titleTotal.innerText = "Sản Lượng Thu Hồi (m²)";
-      document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
-      document.getElementById("kpi-plan-total").innerText = formatNumber(kpi.plan_total_m2, 0) + " m²";
-      document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "%";
+    document.getElementById("tile-pln-a1").innerText = formatNumber(pln.a1_m2 || 0, 0);
+    document.getElementById("tile-pln-days").innerText = formatNumber(pln.days || 0, 2);
+    document.getElementById("tile-pln-a").innerText = formatNumber(pln.a_m2 || 0, 0);
+    document.getElementById("tile-pln-avgday").innerText = formatNumber(pln.avg_per_day || 0, 0);
+    document.getElementById("tile-pln-b").innerText = formatNumber(pln.b_m2 || 0, 0);
+    document.getElementById("tile-pln-stop2mf").innerText = formatNumber(pln.stop_time_2mf || 0, 0);
 
-      document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
-      document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
-      document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
+    // 4. Render Donut Charts
+    renderDualDonutCharts(act, pln);
 
-      document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
-      document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
-      document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
+    // 5. Render Monthly Grouped Bar Chart
+    renderMonthlyTrendChart(data.monthly_trend || [], data.is_brand_selected);
 
-      document.getElementById("kpi-coal-rate").innerText = formatNumber(kpi.avg_coal_rate, 3) + " kg/m²";
-      document.getElementById("kpi-coal-total").innerText = formatNumber(kpi.total_coal_kg, 0) + " kg";
-      document.getElementById("kpi-coal-heat").innerText = formatNumber(kpi.avg_coal_heat, 0) + " Kcal";
-    }
-
-    // Dynamic Chart Titles
-    const chart1Title = document.getElementById("dash-chart1-title");
-    const chart2Title = document.getElementById("dash-chart2-title");
-    if (kpi.is_brand_selected) {
-      if (chart1Title) chart1Title.innerText = `Diễn biến Sản Lượng ${kpi.selected_brand_name} Qua Các Tháng (T1 - T8)`;
-      if (chart2Title) chart2Title.innerText = `Cơ Cấu ${kpi.selected_brand_name} Theo Loại Men / Kích Thước`;
-    } else {
-      if (chart1Title) chart1Title.innerText = "Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)";
-      if (chart2Title) chart2Title.innerText = "Cơ Cấu Sản Lượng Theo Thương Hiệu";
-    }
-
-    renderMonthlyTrendChart(data.monthly_trend || [], kpi.is_brand_selected);
-    renderBrandDistChart(data.brand_distribution || [], kpi.is_brand_selected);
-    renderDashboardBrandTable(data.brand_table || [], brand);
+    // 6. Render Brand Distribution Doughnut & Table
+    renderBrandDistChart(data.brand_distribution || [], data.is_brand_selected);
+    renderDashboardBrandTable(data.brand_table || [], currentDashBrand);
 
     if (window.lucide && lucide.createIcons) {
       lucide.createIcons();
@@ -213,6 +270,78 @@ async function loadDashboardData() {
   }
 }
 
+function renderDualDonutCharts(act, pln) {
+  // 1. Actual Donut
+  const ctxAct = document.getElementById("chart-donut-actual").getContext("2d");
+  if (donutActualChart) donutActualChart.destroy();
+
+  donutActualChart = new Chart(ctxAct, {
+    type: "doughnut",
+    data: {
+      labels: ["Sum of A1", "Sum of A", "Sum of B"],
+      datasets: [{
+        data: [act.a1_m2 || 0, act.a_m2 || 0, act.b_m2 || 0],
+        backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
+        borderWidth: 2,
+        borderColor: "#0f2042"
+      }]
+    },
+    options: {
+      cutout: "68%",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              const total = (act.total_m2 || 0);
+              const val = c.raw;
+              const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
+              return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 2. Plan Donut
+  const ctxPln = document.getElementById("chart-donut-plan").getContext("2d");
+  if (donutPlanChart) donutPlanChart.destroy();
+
+  donutPlanChart = new Chart(ctxPln, {
+    type: "doughnut",
+    data: {
+      labels: ["Sum of A1", "Sum of A", "Sum of B"],
+      datasets: [{
+        data: [pln.a1_m2 || 0, pln.a_m2 || 0, pln.b_m2 || 0],
+        backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
+        borderWidth: 2,
+        borderColor: "#0f2042"
+      }]
+    },
+    options: {
+      cutout: "68%",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              const total = (pln.total_m2 || 0);
+              const val = c.raw;
+              const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
+              return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
 function renderMonthlyTrendChart(trends, isBrandSelected) {
   const ctx = document.getElementById("chart-monthly-trend").getContext("2d");
   if (monthlyTrendChart) monthlyTrendChart.destroy();
@@ -220,58 +349,60 @@ function renderMonthlyTrendChart(trends, isBrandSelected) {
   const labels = trends.map(t => t.month);
   const actuals = trends.map(t => t.actual);
   const plans = trends.map(t => t.plan);
-  const a1s = trends.map(t => t.a1);
-
-  const datasets = isBrandSelected ? [
-    {
-      label: "Tổng Sản Lượng (m²)",
-      data: actuals,
-      backgroundColor: "#06b6d4",
-      borderRadius: 6
-    },
-    {
-      label: "Sản Lượng A1 (m²)",
-      data: a1s,
-      backgroundColor: "#10b981",
-      borderRadius: 6
-    }
-  ] : [
-    {
-      label: "Thực hiện (m²)",
-      data: actuals,
-      backgroundColor: "#06b6d4",
-      borderRadius: 6
-    },
-    {
-      label: "Kế hoạch (m²)",
-      data: plans,
-      backgroundColor: "#3b82f6",
-      borderRadius: 6
-    }
-  ];
 
   monthlyTrendChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
-      datasets: datasets
+      datasets: [
+        {
+          label: "Kế hoạch",
+          data: plans,
+          backgroundColor: "#94b89f",
+          borderRadius: 4,
+          barPercentage: 0.8,
+          categoryPercentage: 0.7
+        },
+        {
+          label: "Thực hiện",
+          data: actuals,
+          backgroundColor: "#2d6a4f",
+          borderRadius: 4,
+          barPercentage: 0.8,
+          categoryPercentage: 0.7
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#94a3b8", font: { size: 11 } } },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(context) {
-              return `${context.dataset.label}: ${formatNumber(context.raw, 2)} m²`;
+              const val = context.raw;
+              return `${context.dataset.label}: ${formatNumber(val, 0)} m² (${(val / 1000).toFixed(0)}K)`;
             }
           }
         }
       },
       scales: {
-        x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
-        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(255,255,255,0.05)" } }
+        x: {
+          ticks: { color: "#cbd5e1", font: { weight: "bold", size: 11 } },
+          grid: { display: false }
+        },
+        y: {
+          ticks: {
+            color: "#94a3b8",
+            callback: function(v) {
+              if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
+              if (v >= 1000) return (v / 1000).toFixed(0) + "K";
+              return v;
+            }
+          },
+          grid: { color: "rgba(255,255,255,0.06)" }
+        }
       }
     }
   });
@@ -294,14 +425,16 @@ function renderBrandDistChart(brands, isBrandSelected) {
           "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899",
           "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e",
           "#eab308", "#84cc16", "#06b6d4", "#a855f7", "#f97316"
-        ]
+        ],
+        borderWidth: 2,
+        borderColor: "#0f2042"
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 10 } } },
+        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 9.5 } } },
         tooltip: {
           callbacks: {
             label: function(context) {
@@ -346,30 +479,30 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
     const isSelected = currentBrandFilter === b.brand_name;
     return `
       <tr class="transition ${isSelected ? 'bg-amber-500/15 text-amber-200 font-semibold' : 'hover:bg-[#13284d]/50 text-slate-200'}">
-        <td class="p-2.5 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
-        <td class="p-2.5 font-bold text-white border border-[#1e3a6a]/40">
-          <div class="flex items-center gap-2">
+        <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
+        <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
+          <div class="flex items-center gap-1.5">
             <span>${b.brand_name}</span>
-            ${isSelected ? '<span class="px-1.5 py-0.5 rounded text-[9px] bg-amber-500 text-black font-bold">Đang lọc</span>' : ''}
+            ${isSelected ? '<span class="px-1 py-0.5 rounded text-[8.5px] bg-amber-500 text-black font-bold">Đang lọc</span>' : ''}
           </div>
         </td>
-        <td class="p-2.5 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
-        <td class="p-2.5 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
-        <td class="p-2.5 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
-        <td class="p-2.5 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
-        <td class="p-2.5 text-right font-black text-white border border-[#1e3a6a]/40">${formatNumber(b.total_m2, 2)}</td>
-        <td class="p-2.5 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40">${formatNumber(b.a1_pct, 1)}%</td>
-        <td class="p-2.5 text-right font-medium text-slate-300 border border-[#1e3a6a]/40">
-          <div class="flex items-center justify-end gap-2">
-            <div class="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div class="bg-cyan-400 h-full" style="width: ${Math.min(100, b.share_pct)}%"></div>
+        <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
+        <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
+        <td class="p-2 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
+        <td class="p-2 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
+        <td class="p-2 text-right font-black text-white border border-[#1e3a6a]/40">${formatNumber(b.total_m2, 2)}</td>
+        <td class="p-2 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40">${formatNumber(b.a1_pct, 1)}%</td>
+        <td class="p-2 text-right font-medium text-slate-300 border border-[#1e3a6a]/40">
+          <div class="flex items-center justify-end gap-1.5">
+            <div class="w-10 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-emerald-400 h-full" style="width: ${Math.min(100, b.share_pct)}%"></div>
             </div>
             <span>${formatNumber(b.share_pct, 1)}%</span>
           </div>
         </td>
-        <td class="p-2.5 text-center border border-[#1e3a6a]/40">
-          <button onclick="selectDashBrand('${b.brand_name}')" class="px-2 py-1 rounded text-[10px] font-bold ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white'} transition">
-            ${isSelected ? 'Đã chọn' : 'Xem chi tiết'}
+        <td class="p-2 text-center border border-[#1e3a6a]/40">
+          <button onclick="setDashBrand('${b.brand_name}')" class="px-2 py-1 rounded text-[10px] font-bold ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white'} transition">
+            ${isSelected ? 'Đã chọn' : 'Lọc'}
           </button>
         </td>
       </tr>
@@ -378,16 +511,16 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
 
   if (tfoot) {
     tfoot.innerHTML = `
-      <tr class="bg-[#09152b] text-white border-t-2 border-cyan-500/60 font-black">
-        <td colspan="4" class="p-2.5 text-center uppercase tracking-wider text-cyan-300">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
-        <td class="p-2.5 text-right text-emerald-400 text-sm">${formatNumber(sumA1, 2)}</td>
-        <td class="p-2.5 text-right text-amber-400 text-sm">${formatNumber(sumB, 2)}</td>
-        <td class="p-2.5 text-right text-white text-sm">${formatNumber(sumTotal, 2)}</td>
-        <td class="p-2.5 text-right text-cyan-300 text-sm">${formatNumber(avgA1Pct, 1)}%</td>
-        <td class="p-2.5 text-right text-slate-300">100.0%</td>
-        <td class="p-2.5 text-center">
-          <button onclick="selectDashBrand('all')" class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
-            Xem tất cả
+      <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
+        <td colspan="4" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
+        <td class="p-2 text-right text-emerald-400 text-xs">${formatNumber(sumA1, 2)}</td>
+        <td class="p-2 text-right text-amber-400 text-xs">${formatNumber(sumB, 2)}</td>
+        <td class="p-2 text-right text-white text-xs">${formatNumber(sumTotal, 2)}</td>
+        <td class="p-2 text-right text-cyan-300 text-xs">${formatNumber(avgA1Pct, 1)}%</td>
+        <td class="p-2 text-right text-slate-300">100.0%</td>
+        <td class="p-2 text-center">
+          <button onclick="setDashBrand('all')" class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+            Tất cả
           </button>
         </td>
       </tr>

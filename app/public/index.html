@@ -152,183 +152,317 @@
       <!-- MAIN BODY (Scrollable) -->
       <main class="flex-1 overflow-y-auto p-6 space-y-6" id="main-content">
         
-                <!-- ================= TAB 1: DASHBOARD ================= -->
+                        <!-- ================= TAB 1: DASHBOARD (EXCEL REPLICA 2026) ================= -->
         <div id="tab-dashboard" class="tab-pane space-y-6">
           
-          <!-- Unified Smart Slicers Card -->
-          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex flex-wrap items-center gap-3">
-                <div>
-                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
-                  <select id="dash-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
-                    <option value="2026">2026</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
-                  <select id="dash-filter-month" onchange="onDashFilterChange('month')" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả các kỳ (T1-T8)</option>
-                    <option value="1">Tháng 01</option>
-                    <option value="3">Tháng 03</option>
-                    <option value="4">Tháng 04</option>
-                    <option value="5">Tháng 05</option>
-                    <option value="6">Tháng 06</option>
-                    <option value="7">Tháng 07</option>
-                    <option value="8" selected>Tháng 08</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
-                  <select id="dash-filter-line" onchange="onDashFilterChange('line')" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả dây chuyền</option>
-                    <option value="DC1">DC1</option>
-                    <option value="DC2">DC2</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
-                  <select id="dash-filter-size" onchange="onDashFilterChange('size')" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả kích thước</option>
-                    <option value="30x60">30x60</option>
-                    <option value="50x50">50x50</option>
-                    <option value="40x80">40x80</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[10px] text-amber-400 uppercase font-semibold mb-1">Thương hiệu</label>
-                  <select id="dash-filter-brand" onchange="onDashFilterChange('brand')" class="bg-[#091428] border border-amber-500/40 text-xs text-amber-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả thương hiệu</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-[10px] text-transparent select-none mb-1">Reset</label>
-                  <button onclick="resetDashFilters()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700" title="Đặt lại toàn bộ bộ lọc">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                    <span>Đặt lại</span>
+          <!-- Banner Header matching Excel -->
+          <div class="p-4 bg-gradient-to-r from-[#0c241b] via-[#0f3426] to-[#0a1f3a] rounded-xl border border-emerald-500/30 shadow-lg flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-black text-emerald-300 uppercase tracking-wide">
+                BIỂU ĐỒ KẾT QUẢ SẢN XUẤT 2026 CÔNG TY GẠCH MEN PHƯƠNG NAM
+              </h2>
+              <div class="text-xs text-slate-300 mt-0.5 flex items-center gap-2">
+                <span>Báo cáo tổng hợp sản xuất 2 dây chuyền:</span>
+                <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 31/08/2026</b>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
+                • Tất cả các kỳ (T1 - T8) • Tất cả DC
+              </span>
+              <button onclick="resetDashFilters()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b1b36] hover:bg-[#132d59] border border-blue-500/30 text-xs font-bold text-cyan-300 transition" title="Đặt lại bộ lọc về mặc định">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                <span>Đặt lại</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section Title I -->
+          <div class="border-b border-emerald-600/40 pb-1.5 flex items-center justify-between">
+            <h3 class="text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+              <span>PHẦN I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI TỔNG</span>
+            </h3>
+          </div>
+
+          <!-- Top Grid: Interactive Button Slicers (Left) & Bar Chart (Right) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Left: Interactive Excel-Style Slicers Panel (col-span-4) -->
+            <div class="lg:col-span-4 space-y-3.5 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              
+              <!-- Slicer 1: Tháng -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3 h-3 text-cyan-400"></i>
+                    Tháng
+                  </span>
+                  <button onclick="setDashMonth('all')" id="btn-month-all" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white transition">
+                    Tất cả (T1-T8)
                   </button>
                 </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <button onclick="setDashMonth('1')" id="btn-month-1" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">1</button>
+                  <button onclick="setDashMonth('3')" id="btn-month-3" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">3</button>
+                  <button onclick="setDashMonth('4')" id="btn-month-4" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">4</button>
+                  <button onclick="setDashMonth('5')" id="btn-month-5" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">5</button>
+                  <button onclick="setDashMonth('6')" id="btn-month-6" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">6</button>
+                  <button onclick="setDashMonth('7')" id="btn-month-7" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">7</button>
+                  <button onclick="setDashMonth('8')" id="btn-month-8" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">8</button>
+                  <button onclick="setDashMonth('2')" id="btn-month-2" class="dash-slicer-btn opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center" title="Tháng 2 nghỉ Tết / bảo dưỡng">2</button>
+                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">9</button>
+                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">10</button>
+                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">11</button>
+                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">12</button>
+                </div>
               </div>
 
-              <div class="flex items-center gap-2">
-                <span id="dash-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-                  • Tháng 08 / 2026
+              <!-- Slicer 2: Dây chuyền -->
+              <div>
+                <span class="block text-[11px] font-bold text-slate-300 uppercase mb-1.5 flex items-center gap-1">
+                  <i data-lucide="cpu" class="w-3 h-3 text-cyan-400"></i>
+                  Dây chuyền
                 </span>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button onclick="setDashLine('all')" id="btn-line-all" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white text-center transition">Tất cả</button>
+                  <button onclick="setDashLine('DC1')" id="btn-line-DC1" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition">DC1</button>
+                  <button onclick="setDashLine('DC2')" id="btn-line-DC2" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition">DC2</button>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <!-- KPI Cards Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <!-- Slicer 3: Kích thước -->
+              <div>
+                <span class="block text-[11px] font-bold text-slate-300 uppercase mb-1.5 flex items-center gap-1">
+                  <i data-lucide="maximize" class="w-3 h-3 text-cyan-400"></i>
+                  Kích thước
+                </span>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button onclick="setDashSize('all')" id="btn-size-all" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white text-center transition">Tất cả kích thước</button>
+                  <button onclick="setDashSize('30x60')" id="btn-size-30x60" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition">30x60</button>
+                  <button onclick="setDashSize('50x50')" id="btn-size-50x50" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition">50x50</button>
+                  <button onclick="setDashSize('40x80')" id="btn-size-40x80" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition">40x80</button>
+                </div>
+              </div>
+
+              <!-- Slicer 4: Thương hiệu Dropdown -->
+              <div>
+                <span class="block text-[11px] font-bold text-amber-300 uppercase mb-1.5 flex items-center gap-1">
+                  <i data-lucide="tag" class="w-3 h-3 text-amber-400"></i>
+                  Lọc theo Thương hiệu
+                </span>
+                <select id="dash-filter-brand" onchange="setDashBrand(this.value)" class="w-full bg-[#091428] border border-amber-500/50 text-xs text-amber-300 font-bold rounded-lg px-3 py-2 focus:outline-none cursor-pointer">
+                  <option value="all">Tất cả thương hiệu (19)</option>
+                </select>
+              </div>
+
+            </div>
+
+            <!-- Right: Monthly Trend Column Chart (col-span-8) matching Excel -->
+            <div class="lg:col-span-8 bg-[#0f2042] p-5 rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400 font-medium" id="kpi-title-total">Sản Lượng Thu Hồi (m²)</span>
-                <i data-lucide="package" class="w-4 h-4 text-cyan-400"></i>
+                <h3 class="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <i data-lucide="bar-chart-2" class="w-4 h-4 text-emerald-400"></i>
+                  <span id="dash-chart1-title">Tổng sản lượng: Kế hoạch/ Thực hiện (m²)</span>
+                </h3>
+                <div class="flex items-center gap-4 text-xs font-bold">
+                  <span class="flex items-center gap-1.5 text-slate-300">
+                    <span class="w-3 h-3 rounded-sm bg-[#94b89f]"></span> Kế hoạch
+                  </span>
+                  <span class="flex items-center gap-1.5 text-slate-300">
+                    <span class="w-3 h-3 rounded-sm bg-[#2d6a4f]"></span> Thực hiện
+                  </span>
+                </div>
               </div>
-              <div class="text-2xl font-black text-white" id="kpi-actual-total">0</div>
-              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                <span>Kế hoạch: <b id="kpi-plan-total" class="text-slate-200">0</b></span>
-                <span id="kpi-completion-rate" class="font-bold text-emerald-400">0%</span>
-              </div>
-            </div>
 
-            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400 font-medium">Tỷ Lệ Chất Lượng A1 (%)</span>
-                <i data-lucide="award" class="w-4 h-4 text-emerald-400"></i>
-              </div>
-              <div class="text-2xl font-black text-emerald-400" id="kpi-a1-pct">0%</div>
-              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                <span>Sản lượng A1: <b id="kpi-a1-m2" class="text-slate-200">0 m²</b></span>
-                <span>Tỷ lệ B: <b id="kpi-b-pct" class="text-amber-400">0%</b></span>
-              </div>
-            </div>
-
-            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400 font-medium">TB Sản Lượng / Ngày (m²)</span>
-                <i data-lucide="trending-up" class="w-4 h-4 text-blue-400"></i>
-              </div>
-              <div class="text-2xl font-black text-cyan-300" id="kpi-avg-day">0</div>
-              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                <span>Số ngày chạy: <b id="kpi-prod-days" class="text-slate-200">0 ngày</b></span>
-                <span>Dừng 2MF: <b id="kpi-stop-2mf" class="text-rose-400">0 p/ng</b></span>
-              </div>
-            </div>
-
-            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400 font-medium">Tiêu Hao Than Khí Hóa</span>
-                <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
-              </div>
-              <div class="text-2xl font-black text-amber-400" id="kpi-coal-rate">0 kg/m²</div>
-              <div class="text-xs text-slate-400 mt-1 flex items-center justify-between">
-                <span>Tổng cấp: <b id="kpi-coal-total" class="text-slate-200">0 kg</b></span>
-                <span>Nhiệt trị TB: <b id="kpi-coal-heat" class="text-slate-200">0 Kcal</b></span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Charts Row -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i data-lucide="bar-chart-3" class="w-4 h-4 text-cyan-400"></i>
-                <span id="dash-chart1-title">Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)</span>
-              </h3>
-              <div class="h-64">
+              <div class="h-64 sm:h-72 relative">
                 <canvas id="chart-monthly-trend"></canvas>
               </div>
             </div>
 
+          </div>
+
+          <!-- Bottom: Dual Donut Panels (Song Song Kép Chuẩn 100% Ảnh 1) -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            
+            <!-- PANEL 1: THỰC HIỆN (%) TỔNG A1-A-B -->
             <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-              <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
-                <span id="dash-chart2-title">Cơ Cấu Sản Lượng Theo Thương Hiệu</span>
-              </h3>
-              <div class="h-64">
+              <div class="flex items-center justify-between mb-4 border-b border-[#1e3a6a]/40 pb-2">
+                <h3 class="text-xs sm:text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                  <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Chất lượng sản lượng: Thực hiện (%) Tổng A1-A-B</span>
+                </h3>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                <!-- Donut Chart Left (col-span-5) -->
+                <div class="sm:col-span-5 relative flex flex-col items-center justify-center">
+                  <div class="w-44 h-44 relative">
+                    <canvas id="chart-donut-actual"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span class="text-xs text-slate-400 font-medium">Tổng thực hiện</span>
+                      <span class="text-base sm:text-lg font-black text-white" id="donut-act-center">5.738.211</span>
+                      <span class="text-[10px] text-slate-400">m²</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-center gap-3 text-[10px] font-bold text-slate-300 mt-2">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#2d6a4f]"></span> A1 (<b id="donut-act-a1-pct">94,9%</b>)</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#b5d6b2]"></span> A (<b id="donut-act-a-pct">1,3%</b>)</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#e76f51]"></span> B (<b id="donut-act-b-pct">3,9%</b>)</span>
+                  </div>
+                </div>
+
+                <!-- 6 Metric Cards Right (col-span-7) matching Image 1 -->
+                <div class="sm:col-span-7 grid grid-cols-2 gap-2.5">
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng A1</span>
+                    <span class="text-sm font-black text-emerald-400" id="tile-act-a1">5.443.817</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Số ngày SX</span>
+                    <span class="text-sm font-black text-cyan-300" id="tile-act-days">375,00</span>
+                    <span class="text-[10px] text-slate-400 block">ngày</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng A</span>
+                    <span class="text-sm font-black text-amber-300" id="tile-act-a">71.653</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">TB/ ngày</span>
+                    <span class="text-sm font-black text-white" id="tile-act-avgday">15.302</span>
+                    <span class="text-[10px] text-slate-400 block">m²/ngày</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng B</span>
+                    <span class="text-sm font-black text-rose-400" id="tile-act-b">222.742</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">T/g dừng 2MF</span>
+                    <span class="text-sm font-black text-amber-400" id="tile-act-stop2mf">40</span>
+                    <span class="text-[10px] text-slate-400 block">p/ng</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PANEL 2: KẾ HOẠCH (%) TỔNG A1-A-B -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="flex items-center justify-between mb-4 border-b border-[#1e3a6a]/40 pb-2">
+                <h3 class="text-xs sm:text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                  <i data-lucide="target" class="w-4 h-4 text-cyan-400"></i>
+                  <span>Chất lượng sản lượng: Kế hoạch (%) Tổng A1-A-B</span>
+                </h3>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                <!-- Donut Chart Left (col-span-5) -->
+                <div class="sm:col-span-5 relative flex flex-col items-center justify-center">
+                  <div class="w-44 h-44 relative">
+                    <canvas id="chart-donut-plan"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span class="text-xs text-slate-400 font-medium">Tổng kế hoạch</span>
+                      <span class="text-base sm:text-lg font-black text-white" id="donut-pln-center">5.491.684</span>
+                      <span class="text-[10px] text-slate-400">m²</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-center gap-3 text-[10px] font-bold text-slate-300 mt-2">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#2d6a4f]"></span> A1 (<b id="donut-pln-a1-pct">90,7%</b>)</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#b5d6b2]"></span> A (<b id="donut-pln-a-pct">5,6%</b>)</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-[#e76f51]"></span> B (<b id="donut-pln-b-pct">3,8%</b>)</span>
+                  </div>
+                </div>
+
+                <!-- 6 Metric Cards Right (col-span-7) matching Image 1 -->
+                <div class="sm:col-span-7 grid grid-cols-2 gap-2.5">
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng A1</span>
+                    <span class="text-sm font-black text-emerald-400" id="tile-pln-a1">4.979.291</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Số ngày SX</span>
+                    <span class="text-sm font-black text-cyan-300" id="tile-pln-days">372,00</span>
+                    <span class="text-[10px] text-slate-400 block">ngày</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng A</span>
+                    <span class="text-sm font-black text-amber-300" id="tile-pln-a">306.129</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">TB/ ngày</span>
+                    <span class="text-sm font-black text-white" id="tile-pln-avgday">14.763</span>
+                    <span class="text-[10px] text-slate-400 block">m²/ngày</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">Sản lượng B</span>
+                    <span class="text-sm font-black text-rose-400" id="tile-pln-b">206.264</span>
+                    <span class="text-[10px] text-slate-400 block">m²</span>
+                  </div>
+                  <div class="p-3 bg-[#0a172c] rounded-lg border border-[#1e3a6a]/50">
+                    <span class="block text-[10px] text-slate-400 uppercase font-semibold">T/g dừng 2MF</span>
+                    <span class="text-sm font-black text-amber-400" id="tile-pln-stop2mf">54</span>
+                    <span class="text-[10px] text-slate-400 block">p/ng</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Section Title II: SẢN LƯỢNG THỰC HIỆN THEO CÁC THƯƠNG HIỆU -->
+          <div class="border-b border-emerald-600/40 pb-1.5 flex items-center justify-between pt-3">
+            <h3 class="text-sm font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="award" class="w-4 h-4 text-emerald-400"></i>
+              <span>PHẦN II: SẢN LƯỢNG THỰC HIỆN THEO CÁC THƯƠNG HIỆU</span>
+            </h3>
+            <span id="dash-brand-table-count" class="text-xs text-cyan-300 font-bold bg-cyan-950/80 border border-cyan-800/80 px-3 py-1 rounded-full">
+              19 thương hiệu
+            </span>
+          </div>
+
+          <!-- Brand Breakdown Section (Donut + Table) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <!-- Brand Doughnut Chart (col-span-4) -->
+            <div class="lg:col-span-4 bg-[#0f2042] p-5 rounded-xl border border-[#1e3a6a]/60 shadow-lg flex flex-col justify-between">
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-1.5" id="dash-chart2-title">
+                <i data-lucide="pie-chart" class="w-3.5 h-3.5 text-cyan-400"></i>
+                Cơ Cấu Sản Lượng Theo Thương Hiệu
+              </h4>
+              <div class="h-64 relative flex items-center justify-center">
                 <canvas id="chart-brand-dist"></canvas>
               </div>
             </div>
-          </div>
 
-          <!-- Brand Performance Breakdown Table Section -->
-          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div class="flex items-center gap-2">
-                <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
-                <h3 class="text-xs font-bold text-white uppercase tracking-wider" id="dash-brand-table-title">
-                  Bảng Cơ Cấu Sản Lượng & Tỷ Lệ Chất Lượng Theo Thương Hiệu
-                </h3>
+            <!-- Brand Table (col-span-8) -->
+            <div class="lg:col-span-8 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+              <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 max-h-80 overflow-y-auto">
+                <table class="w-full border-collapse text-xs text-left">
+                  <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px] sticky top-0 z-10">
+                    <tr>
+                      <th class="p-2.5 text-center w-10 border border-[#1e3a6a]/40">STT</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Thương Hiệu</th>
+                      <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
+                      <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng A1 (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng B (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tổng Sản Lượng (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ A1 (%)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Trọng</th>
+                      <th class="p-2.5 text-center w-20 border border-[#1e3a6a]/40">Lọc</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-brand-table-body" class="divide-y divide-[#1e3a6a]/40">
+                    <!-- Dynamic rows -->
+                  </tbody>
+                  <tfoot id="dash-brand-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0">
+                    <!-- Dynamic footer -->
+                  </tfoot>
+                </table>
               </div>
-              <span id="dash-brand-table-count" class="text-xs text-cyan-300 font-medium bg-cyan-950/60 border border-cyan-800/60 px-2.5 py-1 rounded-full">
-                16 thương hiệu
-              </span>
-            </div>
-
-            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
-              <table class="w-full border-collapse text-xs text-left">
-                <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px]">
-                  <tr>
-                    <th class="p-2.5 text-center w-12 border border-[#1e3a6a]/40">STT</th>
-                    <th class="p-2.5 border border-[#1e3a6a]/40">Thương Hiệu</th>
-                    <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
-                    <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
-                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng A1 (m²)</th>
-                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng B (m²)</th>
-                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tổng Sản Lượng (m²)</th>
-                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ A1 (%)</th>
-                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Trọng (%)</th>
-                    <th class="p-2.5 text-center w-24 border border-[#1e3a6a]/40">Lọc Nhanh</th>
-                  </tr>
-                </thead>
-                <tbody id="dash-brand-table-body" class="divide-y divide-[#1e3a6a]/40">
-                  <!-- Dynamic rows -->
-                </tbody>
-                <tfoot id="dash-brand-table-foot" class="bg-[#0b172a] font-bold text-slate-100">
-                  <!-- Dynamic footer -->
-                </tfoot>
-              </table>
             </div>
           </div>
 
@@ -1075,6 +1209,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260904_dash_v3"></script>
+  <script src="app.js?v=20260904_excel_dash_v4"></script>
 </body>
 </html>
