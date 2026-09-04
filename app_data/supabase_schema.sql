@@ -1,33 +1,70 @@
 -- =========================================================================
 -- HỆ THỐNG CƠ SỞ DỮ LIỆU SẢN XUẤT PHƯƠNG NAM 2026 (SUPABASE POSTGRESQL)
+-- GÓI THIẾT LẬP TOÀN DIỆN (DROP + SCHEMA + SEED DATA T1 - T8)
 -- =========================================================================
 
--- 1. Bảng Khối I: Sản Lượng & Chất Lượng (data_production_summary)
-CREATE TABLE IF NOT EXISTS data_production_summary (
+-- Xóa bảng cũ nếu tồn tại để tránh xung đột cấu trúc
+DROP TABLE IF EXISTS master_norms_detail CASCADE;
+DROP TABLE IF EXISTS master_norms_version CASCADE;
+DROP TABLE IF EXISTS data_production_summary CASCADE;
+DROP TABLE IF EXISTS data_brand_production CASCADE;
+DROP TABLE IF EXISTS data_material_consumption CASCADE;
+DROP TABLE IF EXISTS data_coal_consumption CASCADE;
+
+-- 1. Bảng Phiên Bản Định Mức
+CREATE TABLE master_norms_version (
+    id BIGSERIAL PRIMARY KEY,
+    version_code TEXT UNIQUE NOT NULL,
+    version_name TEXT NOT NULL,
+    effective_from_month INT NOT NULL,
+    effective_from_year INT NOT NULL DEFAULT 2026,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Bảng Chi Tiết Định Mức
+CREATE TABLE master_norms_detail (
+    id BIGSERIAL PRIMARY KEY,
+    version_id BIGINT REFERENCES master_norms_version(id) ON DELETE CASCADE,
+    material_name TEXT NOT NULL,
+    line TEXT NOT NULL,
+    size TEXT NOT NULL,
+    unit TEXT,
+    norm_value NUMERIC(15, 4) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Bảng Sản Lượng & Chất Lượng (Khối I)
+CREATE TABLE data_production_summary (
     id BIGSERIAL PRIMARY KEY,
     stt INT,
     excel_row INT,
-    data_type TEXT NOT NULL DEFAULT 'Thực hiện',
     month INT NOT NULL,
     year INT NOT NULL DEFAULT 2026,
     line TEXT NOT NULL,
     size TEXT NOT NULL,
     product_line TEXT,
+    data_type TEXT NOT NULL DEFAULT 'Thực hiện',
     unit TEXT NOT NULL DEFAULT 'm2',
     sl_ep NUMERIC(15, 2) DEFAULT 0,
     a1 NUMERIC(15, 2) DEFAULT 0,
     a NUMERIC(15, 2) DEFAULT 0,
     b NUMERIC(15, 2) DEFAULT 0,
     recovery_total NUMERIC(15, 2) DEFAULT 0,
-    prod_days INT DEFAULT 0,
-    stop_time_2mf INT DEFAULT 0,
-    stop_time_total INT DEFAULT 0,
+    pct_a1 NUMERIC(10, 4) DEFAULT 0,
+    pct_a NUMERIC(10, 4) DEFAULT 0,
+    pct_b NUMERIC(10, 4) DEFAULT 0,
+    prod_days NUMERIC(10, 2) DEFAULT 0,
+    avg_per_day NUMERIC(15, 2) DEFAULT 0,
+    stop_time_2mf NUMERIC(10, 2) DEFAULT 0,
+    stop_time_total NUMERIC(10, 2) DEFAULT 0,
     source_row TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Bảng Khối II: Thương Hiệu (data_brand_production)
-CREATE TABLE IF NOT EXISTS data_brand_production (
+-- 4. Bảng Thương Hiệu (Khối II)
+CREATE TABLE data_brand_production (
     id BIGSERIAL PRIMARY KEY,
     stt INT,
     excel_row INT,
@@ -43,8 +80,8 @@ CREATE TABLE IF NOT EXISTS data_brand_production (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Bảng Khối III: Tiêu Hao Vật Tư So Với Định Mức (data_material_consumption)
-CREATE TABLE IF NOT EXISTS data_material_consumption (
+-- 5. Bảng Tiêu Hao Vật Tư So Với Định Mức (Khối III)
+CREATE TABLE data_material_consumption (
     id BIGSERIAL PRIMARY KEY,
     stt INT,
     excel_row INT,
@@ -66,8 +103,8 @@ CREATE TABLE IF NOT EXISTS data_material_consumption (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Bảng Khối IV: Sử Dụng Than (data_coal_consumption)
-CREATE TABLE IF NOT EXISTS data_coal_consumption (
+-- 6. Bảng Sử Dụng Than (Khối IV)
+CREATE TABLE data_coal_consumption (
     id BIGSERIAL PRIMARY KEY,
     stt INT,
     excel_row INT,
@@ -97,41 +134,17 @@ CREATE TABLE IF NOT EXISTS data_coal_consumption (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Bảng Quản Lý Phiên Bản Định Mức (master_norms_version)
-CREATE TABLE IF NOT EXISTS master_norms_version (
-    id BIGSERIAL PRIMARY KEY,
-    version_code TEXT UNIQUE NOT NULL,
-    version_name TEXT NOT NULL,
-    effective_from_month INT NOT NULL,
-    effective_from_year INT NOT NULL DEFAULT 2026,
-    is_active BOOLEAN DEFAULT TRUE,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 6. Bảng Chi Tiết Định Mức Theo Phiên Bản (master_norms_detail)
-CREATE TABLE IF NOT EXISTS master_norms_detail (
-    id BIGSERIAL PRIMARY KEY,
-    version_id BIGINT REFERENCES master_norms_version(id) ON DELETE CASCADE,
-    material_name TEXT NOT NULL,
-    line TEXT NOT NULL,
-    size TEXT NOT NULL,
-    unit TEXT,
-    norm_value NUMERIC(15, 4) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable Row Level Security (RLS) & Public Read Policy for easy dashboard display
+-- Phân quyền bảo mật Row Level Security (RLS)
+ALTER TABLE master_norms_version ENABLE ROW LEVEL SECURITY;
+ALTER TABLE master_norms_detail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_production_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_brand_production ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_material_consumption ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_coal_consumption ENABLE ROW LEVEL SECURITY;
-ALTER TABLE master_norms_version ENABLE ROW LEVEL SECURITY;
-ALTER TABLE master_norms_detail ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Public Read Access 1" ON data_production_summary FOR SELECT USING (true);
-CREATE POLICY "Public Read Access 2" ON data_brand_production FOR SELECT USING (true);
-CREATE POLICY "Public Read Access 3" ON data_material_consumption FOR SELECT USING (true);
-CREATE POLICY "Public Read Access 4" ON data_coal_consumption FOR SELECT USING (true);
-CREATE POLICY "Public Read Access 5" ON master_norms_version FOR SELECT USING (true);
-CREATE POLICY "Public Read Access 6" ON master_norms_detail FOR SELECT USING (true);
+CREATE POLICY "Public Read master_norms_version" ON master_norms_version FOR SELECT USING (true);
+CREATE POLICY "Public Read master_norms_detail" ON master_norms_detail FOR SELECT USING (true);
+CREATE POLICY "Public Read data_production_summary" ON data_production_summary FOR SELECT USING (true);
+CREATE POLICY "Public Read data_brand_production" ON data_brand_production FOR SELECT USING (true);
+CREATE POLICY "Public Read data_material_consumption" ON data_material_consumption FOR SELECT USING (true);
+CREATE POLICY "Public Read data_coal_consumption" ON data_coal_consumption FOR SELECT USING (true);
