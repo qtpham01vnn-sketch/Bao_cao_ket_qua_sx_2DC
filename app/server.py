@@ -159,10 +159,12 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         month = params.get("month", ["all"])[0]
         line = params.get("line", ["all"])[0]
         size = params.get("size", ["all"])[0]
+        brand = params.get("brand", ["all"])[0]
 
         conn = get_db()
         cur = conn.cursor()
 
+        # 1. Base Summary from data_production_summary
         where_d1 = ["unit = 'm2'"]
         vals_d1 = []
         if month != "all":
@@ -176,44 +178,29 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             vals_d1.append(size)
 
         clause_d1 = ("WHERE " + " AND ".join(where_d1)) if where_d1 else ""
-        
         q_prod = f"SELECT data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(a) as a_m2, SUM(b) as b_m2, SUM(sl_ep) as press_m2, SUM(prod_days) as days, SUM(stop_time_total) as stop_tot, SUM(stop_time_2mf) as stop_2mf FROM data_production_summary {clause_d1} GROUP BY data_type"
         prod_rows = {r["data_type"]: dict(r) for r in cur.execute(q_prod, vals_d1).fetchall()}
         
         actual = prod_rows.get("Thực hiện", {"total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
         plan = prod_rows.get("Kế hoạch", {"total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
 
-        completion_rate = (actual["total_m2"] / plan["total_m2"] * 100) if plan["total_m2"] > 0 else 0
-        a1_pct_actual = (actual["a1_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
-        b_pct_actual = (actual["b_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
-        avg_per_day = (actual["total_m2"] / actual["days"]) if actual["days"] > 0 else 0
-
-        # Monthly Trend
-        trend_where = ["unit = 'm2'"]
-        trend_vals = []
+        # 2. Available Brands list for current month, line, size
+        where_avail = []
+        vals_avail = []
+        if month != "all":
+            where_avail.append("month = ?")
+            vals_avail.append(int(month))
         if line != "all":
-            trend_where.append("line = ?")
-            trend_vals.append(line)
+            where_avail.append("line = ?")
+            vals_avail.append(line)
         if size != "all":
-            trend_where.append("size = ?")
-            trend_vals.append(size)
-        trend_clause = ("WHERE " + " AND ".join(trend_where)) if trend_where else ""
+            where_avail.append("size = ?")
+            vals_avail.append(size)
+        clause_avail = ("WHERE " + " AND ".join(where_avail)) if where_avail else ""
+        q_avail_brands = f"SELECT DISTINCT brand_name FROM data_brand_production {clause_avail} {'AND' if clause_avail else 'WHERE'} brand_name != '' ORDER BY brand_name"
+        available_brands = [r[0] for r in cur.execute(q_avail_brands, vals_avail).fetchall()]
 
-        q_monthly = f"SELECT month, data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(b) as b_m2 FROM data_production_summary {trend_clause} GROUP BY month, data_type ORDER BY month"
-        monthly_map = {}
-        for r in cur.execute(q_monthly, trend_vals).fetchall():
-            m = r["month"]
-            if m not in monthly_map:
-                monthly_map[m] = {"month": f"T{m}", "month_num": m, "plan": 0, "actual": 0, "a1": 0, "b": 0}
-            if r["data_type"] == "Kế hoạch":
-                monthly_map[m]["plan"] = r["total_m2"]
-            else:
-                monthly_map[m]["actual"] = r["total_m2"]
-                monthly_map[m]["a1"] = r["a1_m2"]
-                monthly_map[m]["b"] = r["b_m2"]
-        monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
-
-        # Brand Breakdown
+        # 3. Brand Table rows for current filter
         where_d2 = []
         vals_d2 = []
         if month != "all":
@@ -227,30 +214,170 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             vals_d2.append(size)
 
         clause_d2 = ("WHERE " + " AND ".join(where_d2)) if where_d2 else ""
-        q_brand = f"SELECT brand_name, SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {clause_d2} GROUP BY brand_name ORDER BY total_m2 DESC"
-        brand_rows = [dict(r) for r in cur.execute(q_brand, vals_d2).fetchall()]
+        q_brand = f"""
+            SELECT brand_name, 
+                   SUM(quantity_m2) as total_m2, 
+                   SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, 
+                   SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2,
+                   GROUP_CONCAT(DISTINCT line) as lines,
+                   GROUP_CONCAT(DISTINCT size) as sizes,
+                   GROUP_CONCAT(DISTINCT glaze_type) as glazes
+            FROM data_brand_production 
+            {clause_d2} 
+            GROUP BY brand_name 
+            ORDER BY total_m2 DESC
+        """
+        all_brand_rows = [dict(r) for r in cur.execute(q_brand, vals_d2).fetchall()]
+        grand_total_brand_m2 = sum(r["total_m2"] for r in all_brand_rows)
 
-        # Coal
-        where_d4 = []
-        vals_d4 = []
-        if month != "all":
-            where_d4.append("month = ?")
-            vals_d4.append(int(month))
-        if line != "all":
-            where_d4.append("line = ?")
-            vals_d4.append(line)
-        if size != "all":
-            where_d4.append("size = ?")
-            vals_d4.append(size)
+        brand_table = []
+        for r in all_brand_rows:
+            tot = r["total_m2"]
+            a1 = r["a1_m2"]
+            b = r["b_m2"]
+            a1_p = (a1 / tot * 100) if tot > 0 else 0
+            b_p = (b / tot * 100) if tot > 0 else 0
+            share_p = (tot / grand_total_brand_m2 * 100) if grand_total_brand_m2 > 0 else 0
+            brand_table.append({
+                "brand_name": r["brand_name"],
+                "total_m2": tot,
+                "a1_m2": a1,
+                "b_m2": b,
+                "a1_pct": a1_p,
+                "b_pct": b_p,
+                "share_pct": share_p,
+                "lines": r.get("lines") or "",
+                "sizes": r.get("sizes") or "",
+                "glazes": r.get("glazes") or ""
+            })
 
-        clause_d4 = ("WHERE " + " AND ".join(where_d4)) if where_d4 else ""
-        q_coal = f"SELECT SUM(issued_weight) as total_coal_kg, SUM(production_m2) as total_prod_m2, AVG(rate_lump) as avg_cons_rate, AVG(heat_value) as avg_heat, AVG(ash_rate) as avg_ash, AVG(stone_rate) as avg_stone, SUM(ash_weight) as total_exp_ash FROM data_coal_consumption {clause_d4}"
-        coal_summary = dict(cur.execute(q_coal, vals_d4).fetchone() or {})
+        # 4. If Brand is specified
+        if brand != "all":
+            # Target specific brand
+            where_spec = ["brand_name = ?"]
+            vals_spec = [brand]
+            if month != "all":
+                where_spec.append("month = ?")
+                vals_spec.append(int(month))
+            if line != "all":
+                where_spec.append("line = ?")
+                vals_spec.append(line)
+            if size != "all":
+                where_spec.append("size = ?")
+                vals_spec.append(size)
+            clause_spec = "WHERE " + " AND ".join(where_spec)
+            
+            q_spec = f"SELECT SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {clause_spec}"
+            spec_row = dict(cur.execute(q_spec, vals_spec).fetchone() or {})
+            
+            b_total_m2 = spec_row.get("total_m2") or 0
+            b_a1_m2 = spec_row.get("a1_m2") or 0
+            b_b_m2 = spec_row.get("b_m2") or 0
+            b_a1_pct = (b_a1_m2 / b_total_m2 * 100) if b_total_m2 > 0 else 0
+            b_b_pct = (b_b_m2 / b_total_m2 * 100) if b_total_m2 > 0 else 0
+            share_of_factory = (b_total_m2 / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
+            
+            # Monthly Trend for this brand
+            trend_spec_where = ["brand_name = ?"]
+            trend_spec_vals = [brand]
+            if line != "all":
+                trend_spec_where.append("line = ?")
+                trend_spec_vals.append(line)
+            if size != "all":
+                trend_spec_where.append("size = ?")
+                trend_spec_vals.append(size)
+            trend_spec_clause = "WHERE " + " AND ".join(trend_spec_where)
+            q_spec_trend = f"SELECT month, SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {trend_spec_clause} GROUP BY month ORDER BY month"
+            
+            monthly_map = {}
+            for r in cur.execute(q_spec_trend, trend_spec_vals).fetchall():
+                m = r["month"]
+                monthly_map[m] = {
+                    "month": f"T{m}",
+                    "month_num": m,
+                    "plan": 0,
+                    "actual": r["total_m2"],
+                    "a1": r["a1_m2"],
+                    "b": r["b_m2"]
+                }
+            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
 
-        conn.close()
+            # Distribution breakdown by Glaze / Size for this brand
+            q_brand_dist = f"SELECT glaze_type as brand_name, SUM(quantity_m2) as total_m2 FROM data_brand_production {clause_spec} GROUP BY glaze_type ORDER BY total_m2 DESC"
+            brand_dist_rows = [dict(r) for r in cur.execute(q_brand_dist, vals_spec).fetchall()]
+            if not brand_dist_rows or (len(brand_dist_rows) == 1 and not brand_dist_rows[0]["brand_name"]):
+                q_brand_dist = f"SELECT size as brand_name, SUM(quantity_m2) as total_m2 FROM data_brand_production {clause_spec} GROUP BY size ORDER BY total_m2 DESC"
+                brand_dist_rows = [dict(r) for r in cur.execute(q_brand_dist, vals_spec).fetchall()]
 
-        self.send_json_response({
-            "kpi": {
+            kpi_data = {
+                "is_brand_selected": True,
+                "selected_brand_name": brand,
+                "actual_total_m2": b_total_m2,
+                "plan_total_m2": plan["total_m2"],
+                "completion_rate": share_of_factory,
+                "a1_m2": b_a1_m2,
+                "a1_pct": b_a1_pct,
+                "b_m2": b_b_m2,
+                "b_pct": b_b_pct,
+                "prod_days": actual["days"],
+                "avg_per_day": (b_total_m2 / actual["days"]) if actual["days"] > 0 else 0,
+                "stop_time_2mf": actual["stop_2mf"],
+                "stop_time_total": actual["stop_tot"],
+                "total_coal_kg": 0,
+                "coal_prod_m2": 0,
+                "avg_coal_rate": 0,
+                "avg_coal_heat": 0,
+            }
+        else:
+            # Grand Monthly Trend
+            trend_where = ["unit = 'm2'"]
+            trend_vals = []
+            if line != "all":
+                trend_where.append("line = ?")
+                trend_vals.append(line)
+            if size != "all":
+                trend_where.append("size = ?")
+                trend_vals.append(size)
+            trend_clause = ("WHERE " + " AND ".join(trend_where)) if trend_where else ""
+
+            q_monthly = f"SELECT month, data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(b) as b_m2 FROM data_production_summary {trend_clause} GROUP BY month, data_type ORDER BY month"
+            monthly_map = {}
+            for r in cur.execute(q_monthly, trend_vals).fetchall():
+                m = r["month"]
+                if m not in monthly_map:
+                    monthly_map[m] = {"month": f"T{m}", "month_num": m, "plan": 0, "actual": 0, "a1": 0, "b": 0}
+                if r["data_type"] == "Kế hoạch":
+                    monthly_map[m]["plan"] = r["total_m2"]
+                else:
+                    monthly_map[m]["actual"] = r["total_m2"]
+                    monthly_map[m]["a1"] = r["a1_m2"]
+                    monthly_map[m]["b"] = r["b_m2"]
+            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
+
+            completion_rate = (actual["total_m2"] / plan["total_m2"] * 100) if plan["total_m2"] > 0 else 0
+            a1_pct_actual = (actual["a1_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
+            b_pct_actual = (actual["b_m2"] / actual["total_m2"] * 100) if actual["total_m2"] > 0 else 0
+            avg_per_day = (actual["total_m2"] / actual["days"]) if actual["days"] > 0 else 0
+
+            # Coal query
+            where_d4 = []
+            vals_d4 = []
+            if month != "all":
+                where_d4.append("month = ?")
+                vals_d4.append(int(month))
+            if line != "all":
+                where_d4.append("line = ?")
+                vals_d4.append(line)
+            if size != "all":
+                where_d4.append("size = ?")
+                vals_d4.append(size)
+            clause_d4 = ("WHERE " + " AND ".join(where_d4)) if where_d4 else ""
+            q_coal = f"SELECT SUM(issued_weight) as total_coal_kg, SUM(production_m2) as total_prod_m2, AVG(rate_lump) as avg_cons_rate, AVG(heat_value) as avg_heat, AVG(ash_rate) as avg_ash, AVG(stone_rate) as avg_stone, SUM(ash_weight) as total_exp_ash FROM data_coal_consumption {clause_d4}"
+            coal_summary = dict(cur.execute(q_coal, vals_d4).fetchone() or {})
+
+            kpi_data = {
+                "is_brand_selected": False,
+                "selected_brand_name": "all",
                 "actual_total_m2": actual["total_m2"],
                 "plan_total_m2": plan["total_m2"],
                 "completion_rate": completion_rate,
@@ -266,10 +393,17 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 "coal_prod_m2": coal_summary.get("total_prod_m2") or 0,
                 "avg_coal_rate": coal_summary.get("avg_cons_rate") or 0,
                 "avg_coal_heat": coal_summary.get("avg_heat") or 0,
-            },
+            }
+            brand_dist_rows = all_brand_rows[:10]
+
+        conn.close()
+
+        self.send_json_response({
+            "kpi": kpi_data,
             "monthly_trend": monthly_trend,
-            "top3_brands": brand_rows[:3],
-            "brand_distribution": brand_rows[:10]
+            "brand_distribution": brand_dist_rows,
+            "available_brands": available_brands,
+            "brand_table": brand_table
         })
 
     def handle_get_summary(self, params):

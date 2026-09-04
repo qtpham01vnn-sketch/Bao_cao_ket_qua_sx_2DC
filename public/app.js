@@ -96,76 +96,178 @@ function toggleTheme() {
 }
 
 // ----------------------------------------------------
-// TAB 1: DASHBOARD
+// TAB 1: DASHBOARD (SMART FILTER & BRAND ANALYTICS)
 // ----------------------------------------------------
+let lastSelectedBrand = "all";
+
+function onDashFilterChange(source) {
+  loadDashboardData();
+}
+
+function resetDashFilters() {
+  document.getElementById("dash-filter-month").value = "8";
+  document.getElementById("dash-filter-line").value = "all";
+  document.getElementById("dash-filter-size").value = "all";
+  document.getElementById("dash-filter-brand").value = "all";
+  lastSelectedBrand = "all";
+  loadDashboardData();
+}
+
+function selectDashBrand(brandName) {
+  const brandSelect = document.getElementById("dash-filter-brand");
+  if (brandSelect) brandSelect.value = brandName;
+  lastSelectedBrand = brandName;
+  loadDashboardData();
+  const dashEl = document.getElementById("tab-dashboard");
+  if (dashEl) dashEl.scrollIntoView({ behavior: "smooth" });
+}
+
 async function loadDashboardData() {
   const month = document.getElementById("dash-filter-month").value;
   const line = document.getElementById("dash-filter-line").value;
   const size = document.getElementById("dash-filter-size").value;
+  const brandSelect = document.getElementById("dash-filter-brand");
+  let brand = brandSelect ? brandSelect.value : "all";
 
+  // Build badge
   const badge = document.getElementById("dash-badge-period");
-  badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
+  const monthStr = month === "all" ? "Tất cả kỳ" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
+  const lineStr = line === "all" ? "Tất cả DC" : line;
+  const sizeStr = size === "all" ? "Tất cả kích thước" : size;
+  const brandStr = brand === "all" ? "Tất cả TH" : brand;
+  badge.innerText = `• ${monthStr} / 2026 • ${lineStr} • ${sizeStr} • ${brandStr}`;
 
   try {
-    const res = await fetch(`/api/dashboard?month=${month}&line=${line}&size=${size}`);
+    const res = await fetch(`/api/dashboard?month=${month}&line=${line}&size=${size}&brand=${encodeURIComponent(brand)}`);
     const data = await res.json();
-    const kpi = data.kpi;
+    const kpi = data.kpi || {};
 
-    document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
-    document.getElementById("kpi-plan-total").innerText = formatNumber(kpi.plan_total_m2, 0) + " m²";
-    document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "%";
+    // Update Brand Dropdown Options Dynamically
+    if (data.available_brands && brandSelect) {
+      const currentVal = brand;
+      brandSelect.innerHTML = `<option value="all">Tất cả thương hiệu (${data.available_brands.length})</option>` +
+        data.available_brands.map(b => `<option value="${b}" ${b === currentVal ? 'selected' : ''}>${b}</option>`).join("");
+      if (currentVal !== "all" && data.available_brands.includes(currentVal)) {
+        brandSelect.value = currentVal;
+      }
+    }
 
-    document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
-    document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
-    document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
+    // Update Top KPI Cards
+    const titleTotal = document.getElementById("kpi-title-total");
+    if (kpi.is_brand_selected) {
+      if (titleTotal) titleTotal.innerText = `Sản Lượng: ${kpi.selected_brand_name}`;
+      document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
+      document.getElementById("kpi-plan-total").innerText = "Tỷ trọng: " + formatNumber(kpi.completion_rate, 1) + "%";
+      document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "% NM";
 
-    document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
-    document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
-    document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
+      document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
+      document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
+      document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
 
-    document.getElementById("kpi-coal-rate").innerText = formatNumber(kpi.avg_coal_rate, 3) + " kg/m²";
-    document.getElementById("kpi-coal-total").innerText = formatNumber(kpi.total_coal_kg, 0) + " kg";
-    document.getElementById("kpi-coal-heat").innerText = formatNumber(kpi.avg_coal_heat, 0) + " Kcal";
+      document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
+      document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
+      document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
 
-    renderMonthlyTrendChart(data.monthly_trend);
-    renderBrandDistChart(data.brand_distribution);
+      document.getElementById("kpi-coal-rate").innerText = "2,38 kg/m²";
+      document.getElementById("kpi-coal-total").innerText = "Đốt lò nung";
+      document.getElementById("kpi-coal-heat").innerText = "7.477 Kcal";
+    } else {
+      if (titleTotal) titleTotal.innerText = "Sản Lượng Thu Hồi (m²)";
+      document.getElementById("kpi-actual-total").innerText = formatNumber(kpi.actual_total_m2, 0) + " m²";
+      document.getElementById("kpi-plan-total").innerText = formatNumber(kpi.plan_total_m2, 0) + " m²";
+      document.getElementById("kpi-completion-rate").innerText = formatNumber(kpi.completion_rate, 1) + "%";
+
+      document.getElementById("kpi-a1-pct").innerText = formatNumber(kpi.a1_pct, 1) + "%";
+      document.getElementById("kpi-a1-m2").innerText = formatNumber(kpi.a1_m2, 0) + " m²";
+      document.getElementById("kpi-b-pct").innerText = formatNumber(kpi.b_pct, 1) + "%";
+
+      document.getElementById("kpi-avg-day").innerText = formatNumber(kpi.avg_per_day, 0) + " m²";
+      document.getElementById("kpi-prod-days").innerText = formatNumber(kpi.prod_days, 1) + " ngày";
+      document.getElementById("kpi-stop-2mf").innerText = formatNumber(kpi.stop_time_2mf, 0) + " p/ng";
+
+      document.getElementById("kpi-coal-rate").innerText = formatNumber(kpi.avg_coal_rate, 3) + " kg/m²";
+      document.getElementById("kpi-coal-total").innerText = formatNumber(kpi.total_coal_kg, 0) + " kg";
+      document.getElementById("kpi-coal-heat").innerText = formatNumber(kpi.avg_coal_heat, 0) + " Kcal";
+    }
+
+    // Dynamic Chart Titles
+    const chart1Title = document.getElementById("dash-chart1-title");
+    const chart2Title = document.getElementById("dash-chart2-title");
+    if (kpi.is_brand_selected) {
+      if (chart1Title) chart1Title.innerText = `Diễn biến Sản Lượng ${kpi.selected_brand_name} Qua Các Tháng (T1 - T8)`;
+      if (chart2Title) chart2Title.innerText = `Cơ Cấu ${kpi.selected_brand_name} Theo Loại Men / Kích Thước`;
+    } else {
+      if (chart1Title) chart1Title.innerText = "Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)";
+      if (chart2Title) chart2Title.innerText = "Cơ Cấu Sản Lượng Theo Thương Hiệu";
+    }
+
+    renderMonthlyTrendChart(data.monthly_trend || [], kpi.is_brand_selected);
+    renderBrandDistChart(data.brand_distribution || [], kpi.is_brand_selected);
+    renderDashboardBrandTable(data.brand_table || [], brand);
+
+    if (window.lucide && lucide.createIcons) {
+      lucide.createIcons();
+    }
   } catch (err) {
     console.error("Error loading dashboard data:", err);
   }
 }
 
-function renderMonthlyTrendChart(trends) {
+function renderMonthlyTrendChart(trends, isBrandSelected) {
   const ctx = document.getElementById("chart-monthly-trend").getContext("2d");
   if (monthlyTrendChart) monthlyTrendChart.destroy();
 
   const labels = trends.map(t => t.month);
   const actuals = trends.map(t => t.actual);
   const plans = trends.map(t => t.plan);
+  const a1s = trends.map(t => t.a1);
+
+  const datasets = isBrandSelected ? [
+    {
+      label: "Tổng Sản Lượng (m²)",
+      data: actuals,
+      backgroundColor: "#06b6d4",
+      borderRadius: 6
+    },
+    {
+      label: "Sản Lượng A1 (m²)",
+      data: a1s,
+      backgroundColor: "#10b981",
+      borderRadius: 6
+    }
+  ] : [
+    {
+      label: "Thực hiện (m²)",
+      data: actuals,
+      backgroundColor: "#06b6d4",
+      borderRadius: 6
+    },
+    {
+      label: "Kế hoạch (m²)",
+      data: plans,
+      backgroundColor: "#3b82f6",
+      borderRadius: 6
+    }
+  ];
 
   monthlyTrendChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
-      datasets: [
-        {
-          label: "Thực hiện (m²)",
-          data: actuals,
-          backgroundColor: "#06b6d4",
-          borderRadius: 6
-        },
-        {
-          label: "Kế hoạch (m²)",
-          data: plans,
-          backgroundColor: "#3b82f6",
-          borderRadius: 6
-        }
-      ]
+      datasets: datasets
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#94a3b8", font: { size: 11 } } }
+        legend: { labels: { color: "#94a3b8", font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ${formatNumber(context.raw, 2)} m²`;
+            }
+          }
+        }
       },
       scales: {
         x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
@@ -175,11 +277,11 @@ function renderMonthlyTrendChart(trends) {
   });
 }
 
-function renderBrandDistChart(brands) {
+function renderBrandDistChart(brands, isBrandSelected) {
   const ctx = document.getElementById("chart-brand-dist").getContext("2d");
   if (brandDistChart) brandDistChart.destroy();
 
-  const labels = brands.map(b => b.brand_name);
+  const labels = brands.map(b => b.brand_name || "Chưa phân loại");
   const quantities = brands.map(b => b.total_m2);
 
   brandDistChart = new Chart(ctx, {
@@ -190,7 +292,8 @@ function renderBrandDistChart(brands) {
         data: quantities,
         backgroundColor: [
           "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899",
-          "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e"
+          "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e",
+          "#eab308", "#84cc16", "#06b6d4", "#a855f7", "#f97316"
         ]
       }]
     },
@@ -198,10 +301,98 @@ function renderBrandDistChart(brands) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 10 } } }
+        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 10 } } },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const val = context.raw;
+              const pct = total > 0 ? (val / total * 100).toFixed(1) : 0;
+              return `${context.label}: ${formatNumber(val, 2)} m² (${pct}%)`;
+            }
+          }
+        }
       }
     }
   });
+}
+
+function renderDashboardBrandTable(brandList, currentBrandFilter) {
+  const tbody = document.getElementById("dash-brand-table-body");
+  const tfoot = document.getElementById("dash-brand-table-foot");
+  const countBadge = document.getElementById("dash-brand-table-count");
+
+  if (countBadge) {
+    countBadge.innerText = `${brandList.length} thương hiệu`;
+  }
+
+  if (!tbody || !brandList) return;
+
+  if (brandList.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500">Không có dữ liệu thương hiệu phù hợp</td></tr>`;
+    if (tfoot) tfoot.innerHTML = "";
+    return;
+  }
+
+  let sumA1 = 0, sumB = 0, sumTotal = 0;
+  brandList.forEach(b => {
+    sumA1 += b.a1_m2 || 0;
+    sumB += b.b_m2 || 0;
+    sumTotal += b.total_m2 || 0;
+  });
+  const avgA1Pct = sumTotal > 0 ? (sumA1 / sumTotal * 100) : 0;
+
+  tbody.innerHTML = brandList.map((b, idx) => {
+    const isSelected = currentBrandFilter === b.brand_name;
+    return `
+      <tr class="transition ${isSelected ? 'bg-amber-500/15 text-amber-200 font-semibold' : 'hover:bg-[#13284d]/50 text-slate-200'}">
+        <td class="p-2.5 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
+        <td class="p-2.5 font-bold text-white border border-[#1e3a6a]/40">
+          <div class="flex items-center gap-2">
+            <span>${b.brand_name}</span>
+            ${isSelected ? '<span class="px-1.5 py-0.5 rounded text-[9px] bg-amber-500 text-black font-bold">Đang lọc</span>' : ''}
+          </div>
+        </td>
+        <td class="p-2.5 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
+        <td class="p-2.5 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
+        <td class="p-2.5 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
+        <td class="p-2.5 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
+        <td class="p-2.5 text-right font-black text-white border border-[#1e3a6a]/40">${formatNumber(b.total_m2, 2)}</td>
+        <td class="p-2.5 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40">${formatNumber(b.a1_pct, 1)}%</td>
+        <td class="p-2.5 text-right font-medium text-slate-300 border border-[#1e3a6a]/40">
+          <div class="flex items-center justify-end gap-2">
+            <div class="w-12 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div class="bg-cyan-400 h-full" style="width: ${Math.min(100, b.share_pct)}%"></div>
+            </div>
+            <span>${formatNumber(b.share_pct, 1)}%</span>
+          </div>
+        </td>
+        <td class="p-2.5 text-center border border-[#1e3a6a]/40">
+          <button onclick="selectDashBrand('${b.brand_name}')" class="px-2 py-1 rounded text-[10px] font-bold ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white'} transition">
+            ${isSelected ? 'Đã chọn' : 'Xem chi tiết'}
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr class="bg-[#09152b] text-white border-t-2 border-cyan-500/60 font-black">
+        <td colspan="4" class="p-2.5 text-center uppercase tracking-wider text-cyan-300">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
+        <td class="p-2.5 text-right text-emerald-400 text-sm">${formatNumber(sumA1, 2)}</td>
+        <td class="p-2.5 text-right text-amber-400 text-sm">${formatNumber(sumB, 2)}</td>
+        <td class="p-2.5 text-right text-white text-sm">${formatNumber(sumTotal, 2)}</td>
+        <td class="p-2.5 text-right text-cyan-300 text-sm">${formatNumber(avgA1Pct, 1)}%</td>
+        <td class="p-2.5 text-right text-slate-300">100.0%</td>
+        <td class="p-2.5 text-center">
+          <button onclick="selectDashBrand('all')" class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+            Xem tất cả
+          </button>
+        </td>
+      </tr>
+    `;
+  }
 }
 
 // ----------------------------------------------------

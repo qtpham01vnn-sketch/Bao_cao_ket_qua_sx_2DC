@@ -152,13 +152,13 @@
       <!-- MAIN BODY (Scrollable) -->
       <main class="flex-1 overflow-y-auto p-6 space-y-6" id="main-content">
         
-        <!-- ================= TAB 1: DASHBOARD ================= -->
+                <!-- ================= TAB 1: DASHBOARD ================= -->
         <div id="tab-dashboard" class="tab-pane space-y-6">
           
-          <!-- Unified Slicers Card -->
+          <!-- Unified Smart Slicers Card -->
           <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
             <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex flex-wrap items-center gap-4">
+              <div class="flex flex-wrap items-center gap-3">
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
                   <select id="dash-filter-year" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
@@ -167,7 +167,7 @@
                 </div>
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
-                  <select id="dash-filter-month" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                  <select id="dash-filter-month" onchange="onDashFilterChange('month')" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả các kỳ (T1-T8)</option>
                     <option value="1">Tháng 01</option>
                     <option value="3">Tháng 03</option>
@@ -180,7 +180,7 @@
                 </div>
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
-                  <select id="dash-filter-line" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                  <select id="dash-filter-line" onchange="onDashFilterChange('line')" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả dây chuyền</option>
                     <option value="DC1">DC1</option>
                     <option value="DC2">DC2</option>
@@ -188,12 +188,25 @@
                 </div>
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
-                  <select id="dash-filter-size" onchange="loadDashboardData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                  <select id="dash-filter-size" onchange="onDashFilterChange('size')" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả kích thước</option>
                     <option value="30x60">30x60</option>
                     <option value="50x50">50x50</option>
                     <option value="40x80">40x80</option>
                   </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-amber-400 uppercase font-semibold mb-1">Thương hiệu</label>
+                  <select id="dash-filter-brand" onchange="onDashFilterChange('brand')" class="bg-[#091428] border border-amber-500/40 text-xs text-amber-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả thương hiệu</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-transparent select-none mb-1">Reset</label>
+                  <button onclick="resetDashFilters()" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition border border-slate-700" title="Đặt lại toàn bộ bộ lọc">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    <span>Đặt lại</span>
+                  </button>
                 </div>
               </div>
 
@@ -209,7 +222,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400 font-medium">Sản Lượng Thu Hồi (m²)</span>
+                <span class="text-xs text-slate-400 font-medium" id="kpi-title-total">Sản Lượng Thu Hồi (m²)</span>
                 <i data-lucide="package" class="w-4 h-4 text-cyan-400"></i>
               </div>
               <div class="text-2xl font-black text-white" id="kpi-actual-total">0</div>
@@ -261,7 +274,7 @@
             <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
               <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                 <i data-lucide="bar-chart-3" class="w-4 h-4 text-cyan-400"></i>
-                Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)
+                <span id="dash-chart1-title">Diễn biến Sản lượng & Tỷ lệ A1 qua các Tháng (T1 - T8)</span>
               </h3>
               <div class="h-64">
                 <canvas id="chart-monthly-trend"></canvas>
@@ -271,11 +284,51 @@
             <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
               <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                 <i data-lucide="pie-chart" class="w-4 h-4 text-emerald-400"></i>
-                Cơ Cấu Sản Lượng Theo Thương Hiệu
+                <span id="dash-chart2-title">Cơ Cấu Sản Lượng Theo Thương Hiệu</span>
               </h3>
               <div class="h-64">
                 <canvas id="chart-brand-dist"></canvas>
               </div>
+            </div>
+          </div>
+
+          <!-- Brand Performance Breakdown Table Section -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider" id="dash-brand-table-title">
+                  Bảng Cơ Cấu Sản Lượng & Tỷ Lệ Chất Lượng Theo Thương Hiệu
+                </h3>
+              </div>
+              <span id="dash-brand-table-count" class="text-xs text-cyan-300 font-medium bg-cyan-950/60 border border-cyan-800/60 px-2.5 py-1 rounded-full">
+                16 thương hiệu
+              </span>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+              <table class="w-full border-collapse text-xs text-left">
+                <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px]">
+                  <tr>
+                    <th class="p-2.5 text-center w-12 border border-[#1e3a6a]/40">STT</th>
+                    <th class="p-2.5 border border-[#1e3a6a]/40">Thương Hiệu</th>
+                    <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
+                    <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
+                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng A1 (m²)</th>
+                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng B (m²)</th>
+                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tổng Sản Lượng (m²)</th>
+                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ A1 (%)</th>
+                    <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Trọng (%)</th>
+                    <th class="p-2.5 text-center w-24 border border-[#1e3a6a]/40">Lọc Nhanh</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-brand-table-body" class="divide-y divide-[#1e3a6a]/40">
+                  <!-- Dynamic rows -->
+                </tbody>
+                <tfoot id="dash-brand-table-foot" class="bg-[#0b172a] font-bold text-slate-100">
+                  <!-- Dynamic footer -->
+                </tfoot>
+              </table>
             </div>
           </div>
 
@@ -1022,6 +1075,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260904_print_fix_8421"></script>
+  <script src="app.js?v=20260904_dash_v3"></script>
 </body>
 </html>
