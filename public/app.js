@@ -106,26 +106,45 @@ function toggleTheme() {
 // ----------------------------------------------------
 // TAB 1: DASHBOARD (EXCEL REPLICA 2026 WITH VISUAL SLICERS)
 // ----------------------------------------------------
+// Section 1: Sản lượng & Chất lượng
 let currentDashMonth = "all";
 let currentDashLine = "all";
 let currentDashSize = "all";
 let currentDashBrand = "all";
 
+// Section 2: Sản lượng Thương hiệu
+let currentDashMonthP2 = "all";
+let currentDashLineP2 = "all";
+let currentDashSizeP2 = "all";
+let currentDashBrandP2 = "all";
+
+// Section 3: Tiêu hao Vật tư
+let currentDashMonthP3 = "all";
+let currentDashLineP3 = "all";
+let currentDashSizeP3 = "all";
+
+// Section 4: Sử dụng Than
+let currentDashMonthP4 = "all";
+let currentDashLineP4 = "all";
+let currentDashSizeP4 = "all";
+// ==========================================
+// SECTION 1 HANDLERS
+// ==========================================
 function setDashMonth(m) {
   currentDashMonth = m;
-  updateSlicerButtonStyles();
+  updateSlicerButtonStyles(1);
   loadDashboardData();
 }
 
 function setDashLine(l) {
   currentDashLine = l;
-  updateSlicerButtonStyles();
+  updateSlicerButtonStyles(1);
   loadDashboardData();
 }
 
 function setDashSize(s) {
   currentDashSize = s;
-  updateSlicerButtonStyles();
+  updateSlicerButtonStyles(1);
   loadDashboardData();
 }
 
@@ -136,56 +155,248 @@ function setDashBrand(b) {
   loadDashboardData();
 }
 
+// ==========================================
+// SECTION 2 HANDLERS (Thương hiệu)
+// ==========================================
+function setDashMonthP2(m) {
+  currentDashMonthP2 = m;
+  updateSlicerButtonStyles(2);
+  loadDashboardData();
+}
+
+function setDashLineP2(l) {
+  currentDashLineP2 = l;
+  updateSlicerButtonStyles(2);
+  loadDashboardData();
+}
+
+function setDashSizeP2(s) {
+  currentDashSizeP2 = s;
+  updateSlicerButtonStyles(2);
+  loadDashboardData();
+}
+
+function setDashBrandP2(b) {
+  currentDashBrandP2 = b;
+  loadDashboardData();
+}
+
+// ==========================================
+// SECTION 3 HANDLERS (Vật tư)
+// ==========================================
+function setDashMonthP3(m) {
+  currentDashMonthP3 = m;
+  updateSlicerButtonStyles(3);
+  loadDashboardData();
+}
+
+function setDashLineP3(l) {
+  currentDashLineP3 = l;
+  updateSlicerButtonStyles(3);
+  loadDashboardData();
+}
+
+function setDashSizeP3(s) {
+  currentDashSizeP3 = s;
+  updateSlicerButtonStyles(3);
+  loadDashboardData();
+}
+
+// ==========================================
+// SECTION 4 HANDLERS (Than)
+// ==========================================
+function setDashMonthP4(m) {
+  currentDashMonthP4 = m;
+  updateSlicerButtonStyles(4);
+  loadDashboardData();
+}
+
+function setDashLineP4(l) {
+  currentDashLineP4 = l;
+  updateSlicerButtonStyles(4);
+  loadDashboardData();
+}
+
+function setDashSizeP4(s) {
+  currentDashSizeP4 = s;
+  updateSlicerButtonStyles(4);
+  loadDashboardData();
+}
+
+// ==========================================
+// SYNC & RESET CONTROLLERS
+// ==========================================
+function syncSectionToP1(sec) {
+  if (sec === 2) {
+    currentDashMonthP2 = currentDashMonth;
+    currentDashLineP2 = currentDashLine;
+    currentDashSizeP2 = currentDashSize;
+    updateSlicerButtonStyles(2);
+  } else if (sec === 3) {
+    currentDashMonthP3 = currentDashMonth;
+    currentDashLineP3 = currentDashLine;
+    currentDashSizeP3 = currentDashSize;
+    updateSlicerButtonStyles(3);
+  } else if (sec === 4) {
+    currentDashMonthP4 = currentDashMonth;
+    currentDashLineP4 = currentDashLine;
+    currentDashSizeP4 = currentDashSize;
+    updateSlicerButtonStyles(4);
+  }
+  loadDashboardData();
+}
+
+function syncAllSectionsToP1() {
+  currentDashMonthP2 = currentDashMonth;
+  currentDashLineP2 = currentDashLine;
+  currentDashSizeP2 = currentDashSize;
+
+  currentDashMonthP3 = currentDashMonth;
+  currentDashLineP3 = currentDashLine;
+  currentDashSizeP3 = currentDashSize;
+
+  currentDashMonthP4 = currentDashMonth;
+  currentDashLineP4 = currentDashLine;
+  currentDashSizeP4 = currentDashSize;
+
+  updateSlicerButtonStyles(0);
+  loadDashboardData();
+}
+
+function resetSectionFilter(sec) {
+  if (sec === 2) {
+    currentDashMonthP2 = "all";
+    currentDashLineP2 = "all";
+    currentDashSizeP2 = "all";
+    currentDashBrandP2 = "all";
+    updateSlicerButtonStyles(2);
+  } else if (sec === 3) {
+    currentDashMonthP3 = "all";
+    currentDashLineP3 = "all";
+    currentDashSizeP3 = "all";
+    updateSlicerButtonStyles(3);
+  } else if (sec === 4) {
+    currentDashMonthP4 = "all";
+    currentDashLineP4 = "all";
+    currentDashSizeP4 = "all";
+    updateSlicerButtonStyles(4);
+  }
+  loadDashboardData();
+}
+
 function resetDashFilters() {
   currentDashMonth = "all";
   currentDashLine = "all";
   currentDashSize = "all";
   currentDashBrand = "all";
-  updateSlicerButtonStyles();
+
+  currentDashMonthP2 = "all";
+  currentDashLineP2 = "all";
+  currentDashSizeP2 = "all";
+  currentDashBrandP2 = "all";
+
+  currentDashMonthP3 = "all";
+  currentDashLineP3 = "all";
+  currentDashSizeP3 = "all";
+
+  currentDashMonthP4 = "all";
+  currentDashLineP4 = "all";
+  currentDashSizeP4 = "all";
+
   const brandSelect = document.getElementById("dash-filter-brand");
   if (brandSelect) brandSelect.value = "all";
+
+  const matGroup = document.getElementById("dash-mat-filter-group");
+  if (matGroup) matGroup.value = "all";
+  const matStatus = document.getElementById("dash-mat-filter-status");
+  if (matStatus) matStatus.value = "all";
+  const matSearch = document.getElementById("dash-mat-search");
+  if (matSearch) matSearch.value = "";
+
+  const coalMetric = document.getElementById("dash-coal-filter-metric");
+  if (coalMetric) coalMetric.value = "all";
+  const coalSupp = document.getElementById("dash-coal-filter-supplier");
+  if (coalSupp) coalSupp.value = "all";
+  const coalWh = document.getElementById("dash-coal-filter-warehouse");
+  if (coalWh) coalWh.value = "all";
+  const coalSearch = document.getElementById("dash-coal-search");
+  if (coalSearch) coalSearch.value = "";
+
+  updateSlicerButtonStyles(0);
   loadDashboardData();
 }
 
-function updateSlicerButtonStyles() {
-  // 1. Month buttons
+function updateSlicerButtonStyles(section = 0) {
   const months = ["all", "1", "3", "4", "5", "6", "7", "8"];
-  months.forEach(m => {
-    const btn = document.getElementById("btn-month-" + m);
-    if (btn) {
-      if (currentDashMonth === m) {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 transition text-center";
-      } else {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center";
-      }
-    }
-  });
-
-  // 2. Line buttons
   const lines = ["all", "DC1", "DC2"];
-  lines.forEach(l => {
-    const btn = document.getElementById("btn-line-" + l);
-    if (btn) {
-      if (currentDashLine === l) {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 text-center transition";
-      } else {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition";
-      }
-    }
-  });
-
-  // 3. Size buttons
   const sizes = ["all", "30x60", "50x50", "40x80"];
-  sizes.forEach(s => {
-    const btn = document.getElementById("btn-size-" + s);
-    if (btn) {
-      if (currentDashSize === s) {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 text-center transition";
-      } else {
-        btn.className = "dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 text-center transition";
-      }
-    }
-  });
+
+  const activeCls = "px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-400 transition text-center";
+  const inactiveCls = "px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center";
+
+  // Section 1
+  if (section === 0 || section === 1) {
+    months.forEach(m => {
+      const btn = document.getElementById("btn-month-" + m);
+      if (btn) btn.className = `dash-slicer-btn ${currentDashMonth === m ? activeCls : inactiveCls}`;
+    });
+    lines.forEach(l => {
+      const btn = document.getElementById("btn-line-" + l);
+      if (btn) btn.className = `dash-slicer-btn ${currentDashLine === l ? activeCls : inactiveCls}`;
+    });
+    sizes.forEach(s => {
+      const btn = document.getElementById("btn-size-" + s);
+      if (btn) btn.className = `dash-slicer-btn ${currentDashSize === s ? activeCls : inactiveCls}`;
+    });
+  }
+
+  // Section 2
+  if (section === 0 || section === 2) {
+    months.forEach(m => {
+      const btn = document.getElementById("btn-p2-month-" + m);
+      if (btn) btn.className = `p2-slicer-btn ${currentDashMonthP2 === m ? activeCls : inactiveCls}`;
+    });
+    lines.forEach(l => {
+      const btn = document.getElementById("btn-p2-line-" + l);
+      if (btn) btn.className = `p2-slicer-btn ${currentDashLineP2 === l ? activeCls : inactiveCls}`;
+    });
+    sizes.forEach(s => {
+      const btn = document.getElementById("btn-p2-size-" + s);
+      if (btn) btn.className = `p2-slicer-btn ${currentDashSizeP2 === s ? activeCls : inactiveCls}`;
+    });
+  }
+
+  // Section 3
+  if (section === 0 || section === 3) {
+    months.forEach(m => {
+      const btn = document.getElementById("btn-p3-month-" + m);
+      if (btn) btn.className = `p3-slicer-btn ${currentDashMonthP3 === m ? activeCls : inactiveCls}`;
+    });
+    lines.forEach(l => {
+      const btn = document.getElementById("btn-p3-line-" + l);
+      if (btn) btn.className = `p3-slicer-btn ${currentDashLineP3 === l ? activeCls : inactiveCls}`;
+    });
+    sizes.forEach(s => {
+      const btn = document.getElementById("btn-p3-size-" + s);
+      if (btn) btn.className = `p3-slicer-btn ${currentDashSizeP3 === s ? activeCls : inactiveCls}`;
+    });
+  }
+
+  // Section 4
+  if (section === 0 || section === 4) {
+    months.forEach(m => {
+      const btn = document.getElementById("btn-p4-month-" + m);
+      if (btn) btn.className = `p4-slicer-btn ${currentDashMonthP4 === m ? activeCls : inactiveCls}`;
+    });
+    lines.forEach(l => {
+      const btn = document.getElementById("btn-p4-line-" + l);
+      if (btn) btn.className = `p4-slicer-btn ${currentDashLineP4 === l ? activeCls : inactiveCls}`;
+    });
+    sizes.forEach(s => {
+      const btn = document.getElementById("btn-p4-size-" + s);
+      if (btn) btn.className = `p4-slicer-btn ${currentDashSizeP4 === s ? activeCls : inactiveCls}`;
+    });
+  }
 }
 
 async function loadDashboardData() {
@@ -282,7 +493,7 @@ async function loadDashboardData() {
 
     // 6. Render Brand Distribution Doughnut & Table
     renderBrandDistChart(data.brand_distribution || [], data.is_brand_selected);
-    renderDashboardBrandTable(data.brand_table || [], currentDashBrand);
+    renderDashboardBrandTable(data.brand_table || [], currentDashBrandP2);
 
     // 7. Store Raw Part III Materials Data
     const matSec = data.materials_section || {};
@@ -565,7 +776,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
           </div>
         </td>
         <td class="p-2 text-center border border-[#1e3a6a]/40">
-          <button onclick="setDashBrand('${b.brand_name}')" class="px-2 py-1 rounded text-[10px] font-bold ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white'} transition">
+          <button onclick="setDashBrandP2('${b.brand_name}')" class="px-2 py-1 rounded text-[10px] font-bold ${isSelected ? 'bg-amber-600 text-white' : 'bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white'} transition">
             ${isSelected ? 'Đã chọn' : 'Lọc'}
           </button>
         </td>
@@ -583,7 +794,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
         <td class="p-2 text-right text-cyan-300 text-xs">${formatNumber(avgA1Pct, 1)}%</td>
         <td class="p-2 text-right text-slate-300">100.0%</td>
         <td class="p-2 text-center">
-          <button onclick="setDashBrand('all')" class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          <button onclick="setDashBrandP2('all')" class="px-2 py-1 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
             Tất cả
           </button>
         </td>
