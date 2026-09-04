@@ -724,12 +724,12 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             ash = sum(r["ash_weight"] or 0 for r in group_rows)
             comp = sum(r["compensation_weight"] or 0 for r in group_rows)
             excess_ash = sum(r["excess_ash_weight"] or 0 for r in group_rows)
-            total_used = sum(r["total_used_weight"] or (r["issued_weight"] or 0) + (r["ash_weight"] or 0) + (r["compensation_weight"] or 0) for r in group_rows)
+            total_used = sum(r["total_used_weight"] or ((r["issued_weight"] or 0) + (r["ash_weight"] or 0) + (r["compensation_weight"] or 0) - (r["excess_ash_weight"] or 0)) for r in group_rows)
             prod_m2 = sum(r["production_m2"] or 0 for r in group_rows)
             
             ash_pct = (ash / (issued + ash) * 100) if (issued + ash) > 0 else 0
             rate_lump = (issued / prod_m2) if prod_m2 > 0 else 0
-            rate_with_ash = ((issued + ash) / prod_m2) if prod_m2 > 0 else 0
+            rate_with_ash = ((issued + ash - excess_ash) / prod_m2) if prod_m2 > 0 else 0
             rate_total = (total_used / prod_m2) if prod_m2 > 0 else 0
             
             return {

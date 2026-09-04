@@ -1083,7 +1083,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all", firingMode = "all
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const used = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     if (isDrying) {
@@ -1108,11 +1108,11 @@ function renderDashboardCoalTable(rows, currentMetric = "all", firingMode = "all
   const totalM2All = sumM2Firing;
 
   const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
-  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring - sumExcessFiring) / sumM2Firing) : 0;
   const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
 
   const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
-  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll - sumExcessFiring) / totalM2All) : 0;
   const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
 
   const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
@@ -1145,7 +1145,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all", firingMode = "all
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
@@ -1890,7 +1890,7 @@ function renderCoalTable(rows, summary) {
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const used = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     if (isDrying) {
@@ -1915,11 +1915,11 @@ function renderCoalTable(rows, summary) {
   const totalM2All = sumM2Firing;
 
   const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
-  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring - sumExcessFiring) / sumM2Firing) : 0;
   const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
 
   const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
-  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll - sumExcessFiring) / totalM2All) : 0;
   const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
 
   const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
@@ -1952,7 +1952,7 @@ function renderCoalTable(rows, summary) {
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
@@ -2264,7 +2264,7 @@ function printCoalReport() {
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const used = Number(r.total_used_weight || (issued + ash + comp));
+    const used = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     if (isDrying) {
@@ -2289,11 +2289,11 @@ function printCoalReport() {
   const totalM2All = sumM2Firing;
 
   const rateLumpFiring = sumM2Firing > 0 ? (sumLumpFiring / sumM2Firing) : 0;
-  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring) / sumM2Firing) : 0;
+  const rateWithAshFiring = sumM2Firing > 0 ? ((sumLumpFiring + sumAshFiring - sumExcessFiring) / sumM2Firing) : 0;
   const rateTotalFiring = sumM2Firing > 0 ? (sumUsedFiring / sumM2Firing) : 0;
 
   const rateLumpAll = totalM2All > 0 ? (totalIssuedAll / totalM2All) : 0;
-  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll) / totalM2All) : 0;
+  const rateWithAshAll = totalM2All > 0 ? ((totalIssuedAll + totalAshAll - sumExcessFiring) / totalM2All) : 0;
   const rateTotalAll = totalM2All > 0 ? (totalUsedAll / totalM2All) : 0;
 
   const ashPctFiring = (sumLumpFiring + sumAshFiring) > 0 ? (sumAshFiring / (sumLumpFiring + sumAshFiring) * 100) : 0;
@@ -2307,7 +2307,7 @@ function printCoalReport() {
     const ash = Number(r.ash_weight || 0);
     const comp = Number(r.compensation_weight || 0);
     const excess = Number(r.excess_ash_weight || 0);
-    const totalUsed = Number(r.total_used_weight || (issued + ash + comp));
+    const totalUsed = Number(r.total_used_weight || (issued + ash + comp - excess));
     const m2 = Number(r.production_m2 || 0);
 
     const rateLump = r.rate_lump > 0 ? r.rate_lump : (m2 > 0 ? (issued / m2) : 0);
