@@ -1,6 +1,8 @@
 // Global State
 let currentTab = "dashboard";
 let monthlyTrendChart = null;
+let donutActualChart = null;
+let donutPlanChart = null;
 let brandDistChart = null;
 let currentNormVersionId = 1;
 let rawSummaryData = [];
@@ -10,14 +12,14 @@ let rawCoalData = [];
 
 // Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
-  lucide.createIcons();
-  loadDashboardData();
-  loadSummaryData();
-  loadBrandsData();
-  loadNormVersions();
-  loadConsumptionData();
-  loadCoalData();
-  renderFormMauPreview();
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+  try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }
+  try { loadSummaryData(); } catch(e) { console.error("loadSummaryData err:", e); }
+  try { loadBrandsData(); } catch(e) { console.error("loadBrandsData err:", e); }
+  try { loadNormVersions(); } catch(e) { console.error("loadNormVersions err:", e); }
+  try { loadConsumptionData(); } catch(e) { console.error("loadConsumptionData err:", e); }
+  try { loadCoalData(); } catch(e) { console.error("loadCoalData err:", e); }
+  try { renderFormMauPreview(); } catch(e) { console.error("renderFormMauPreview err:", e); }
 });
 
 // Vietnamese Number Formatter
@@ -102,11 +104,6 @@ let currentDashMonth = "all";
 let currentDashLine = "all";
 let currentDashSize = "all";
 let currentDashBrand = "all";
-
-let monthlyTrendChart = null;
-let donutActualChart = null;
-let donutPlanChart = null;
-let brandDistChart = null;
 
 function setDashMonth(m) {
   currentDashMonth = m;
@@ -271,183 +268,213 @@ async function loadDashboardData() {
 }
 
 function renderDualDonutCharts(act, pln) {
+  if (typeof Chart === "undefined") return;
+  
   // 1. Actual Donut
-  const ctxAct = document.getElementById("chart-donut-actual").getContext("2d");
-  if (donutActualChart) donutActualChart.destroy();
+  try {
+    const elAct = document.getElementById("chart-donut-actual");
+    if (elAct) {
+      const ctxAct = elAct.getContext("2d");
+      if (donutActualChart) donutActualChart.destroy();
 
-  donutActualChart = new Chart(ctxAct, {
-    type: "doughnut",
-    data: {
-      labels: ["Sum of A1", "Sum of A", "Sum of B"],
-      datasets: [{
-        data: [act.a1_m2 || 0, act.a_m2 || 0, act.b_m2 || 0],
-        backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
-        borderWidth: 2,
-        borderColor: "#0f2042"
-      }]
-    },
-    options: {
-      cutout: "68%",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(c) {
-              const total = (act.total_m2 || 0);
-              const val = c.raw;
-              const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
-              return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+      donutActualChart = new Chart(ctxAct, {
+        type: "doughnut",
+        data: {
+          labels: ["Sum of A1", "Sum of A", "Sum of B"],
+          datasets: [{
+            data: [act.a1_m2 || 0, act.a_m2 || 0, act.b_m2 || 0],
+            backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
+            borderWidth: 2,
+            borderColor: "#0f2042"
+          }]
+        },
+        options: {
+          cutout: "68%",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  const total = (act.total_m2 || 0);
+                  const val = c.raw;
+                  const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
+                  return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+                }
+              }
             }
           }
         }
-      }
+      });
     }
-  });
+  } catch (errAct) {
+    console.error("Error rendering Actual Donut:", errAct);
+  }
 
   // 2. Plan Donut
-  const ctxPln = document.getElementById("chart-donut-plan").getContext("2d");
-  if (donutPlanChart) donutPlanChart.destroy();
+  try {
+    const elPln = document.getElementById("chart-donut-plan");
+    if (elPln) {
+      const ctxPln = elPln.getContext("2d");
+      if (donutPlanChart) donutPlanChart.destroy();
 
-  donutPlanChart = new Chart(ctxPln, {
-    type: "doughnut",
-    data: {
-      labels: ["Sum of A1", "Sum of A", "Sum of B"],
-      datasets: [{
-        data: [pln.a1_m2 || 0, pln.a_m2 || 0, pln.b_m2 || 0],
-        backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
-        borderWidth: 2,
-        borderColor: "#0f2042"
-      }]
-    },
-    options: {
-      cutout: "68%",
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(c) {
-              const total = (pln.total_m2 || 0);
-              const val = c.raw;
-              const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
-              return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+      donutPlanChart = new Chart(ctxPln, {
+        type: "doughnut",
+        data: {
+          labels: ["Sum of A1", "Sum of A", "Sum of B"],
+          datasets: [{
+            data: [pln.a1_m2 || 0, pln.a_m2 || 0, pln.b_m2 || 0],
+            backgroundColor: ["#2d6a4f", "#b5d6b2", "#e76f51"],
+            borderWidth: 2,
+            borderColor: "#0f2042"
+          }]
+        },
+        options: {
+          cutout: "68%",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(c) {
+                  const total = (pln.total_m2 || 0);
+                  const val = c.raw;
+                  const pct = total > 0 ? (val / total * 100).toFixed(2) : 0;
+                  return `${c.label}: ${formatNumber(val, 0)} m² (${pct}%)`;
+                }
+              }
             }
           }
         }
-      }
+      });
     }
-  });
+  } catch (errPln) {
+    console.error("Error rendering Plan Donut:", errPln);
+  }
 }
 
 function renderMonthlyTrendChart(trends, isBrandSelected) {
-  const ctx = document.getElementById("chart-monthly-trend").getContext("2d");
-  if (monthlyTrendChart) monthlyTrendChart.destroy();
+  if (typeof Chart === "undefined") return;
+  try {
+    const el = document.getElementById("chart-monthly-trend");
+    if (!el) return;
+    const ctx = el.getContext("2d");
+    if (monthlyTrendChart) monthlyTrendChart.destroy();
 
-  const labels = trends.map(t => t.month);
-  const actuals = trends.map(t => t.actual);
-  const plans = trends.map(t => t.plan);
+    const labels = (trends || []).map(t => t.month);
+    const actuals = (trends || []).map(t => t.actual);
+    const plans = (trends || []).map(t => t.plan);
 
-  monthlyTrendChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: "Kế hoạch",
-          data: plans,
-          backgroundColor: "#94b89f",
-          borderRadius: 4,
-          barPercentage: 0.8,
-          categoryPercentage: 0.7
-        },
-        {
-          label: "Thực hiện",
-          data: actuals,
-          backgroundColor: "#2d6a4f",
-          borderRadius: 4,
-          barPercentage: 0.8,
-          categoryPercentage: 0.7
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const val = context.raw;
-              return `${context.dataset.label}: ${formatNumber(val, 0)} m² (${(val / 1000).toFixed(0)}K)`;
+    monthlyTrendChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Kế hoạch",
+            data: plans,
+            backgroundColor: "#94b89f",
+            borderRadius: 4,
+            barPercentage: 0.8,
+            categoryPercentage: 0.7
+          },
+          {
+            label: "Thực hiện",
+            data: actuals,
+            backgroundColor: "#2d6a4f",
+            borderRadius: 4,
+            barPercentage: 0.8,
+            categoryPercentage: 0.7
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw;
+                return `${context.dataset.label}: ${formatNumber(val, 0)} m² (${(val / 1000).toFixed(0)}K)`;
+              }
             }
           }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: "#cbd5e1", font: { weight: "bold", size: 11 } },
-          grid: { display: false }
         },
-        y: {
-          ticks: {
-            color: "#94a3b8",
-            callback: function(v) {
-              if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
-              if (v >= 1000) return (v / 1000).toFixed(0) + "K";
-              return v;
-            }
+        scales: {
+          x: {
+            ticks: { color: "#cbd5e1", font: { weight: "bold", size: 11 } },
+            grid: { display: false }
           },
-          grid: { color: "rgba(255,255,255,0.06)" }
+          y: {
+            ticks: {
+              color: "#94a3b8",
+              callback: function(v) {
+                if (v >= 1000000) return (v / 1000000).toFixed(1) + "M";
+                if (v >= 1000) return (v / 1000).toFixed(0) + "K";
+                return v;
+              }
+            },
+            grid: { color: "rgba(255,255,255,0.06)" }
+          }
         }
       }
-    }
-  });
+    });
+  } catch (errTrend) {
+    console.error("Error rendering Monthly Trend Chart:", errTrend);
+  }
 }
 
 function renderBrandDistChart(brands, isBrandSelected) {
-  const ctx = document.getElementById("chart-brand-dist").getContext("2d");
-  if (brandDistChart) brandDistChart.destroy();
+  if (typeof Chart === "undefined") return;
+  try {
+    const el = document.getElementById("chart-brand-dist");
+    if (!el) return;
+    const ctx = el.getContext("2d");
+    if (brandDistChart) brandDistChart.destroy();
 
-  const labels = brands.map(b => b.brand_name || "Chưa phân loại");
-  const quantities = brands.map(b => b.total_m2);
+    const labels = (brands || []).map(b => b.brand_name || "Chưa phân loại");
+    const quantities = (brands || []).map(b => b.total_m2);
 
-  brandDistChart = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: labels,
-      datasets: [{
-        data: quantities,
-        backgroundColor: [
-          "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899",
-          "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e",
-          "#eab308", "#84cc16", "#06b6d4", "#a855f7", "#f97316"
-        ],
-        borderWidth: 2,
-        borderColor: "#0f2042"
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 9.5 } } },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const val = context.raw;
-              const pct = total > 0 ? (val / total * 100).toFixed(1) : 0;
-              return `${context.label}: ${formatNumber(val, 2)} m² (${pct}%)`;
+    brandDistChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: quantities,
+          backgroundColor: [
+            "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899",
+            "#06b6d4", "#14b8a6", "#6366f1", "#d946ef", "#f43f5e",
+            "#eab308", "#84cc16", "#06b6d4", "#a855f7", "#f97316"
+          ],
+          borderWidth: 2,
+          borderColor: "#0f2042"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "right", labels: { color: "#94a3b8", font: { size: 9.5 } } },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const val = context.raw;
+                const pct = total > 0 ? (val / total * 100).toFixed(1) : 0;
+                return `${context.label}: ${formatNumber(val, 2)} m² (${pct}%)`;
+              }
             }
           }
         }
       }
-    }
-  });
+    });
+  } catch (errBrand) {
+    console.error("Error rendering Brand Dist Chart:", errBrand);
+  }
 }
 
 function renderDashboardBrandTable(brandList, currentBrandFilter) {
