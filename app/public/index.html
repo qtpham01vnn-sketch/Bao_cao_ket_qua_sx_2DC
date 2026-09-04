@@ -468,14 +468,41 @@
 
           <!-- ================= PHẦN III: TIÊU HAO NGUYÊN LIỆU & VẬT TƯ ================= -->
           <div class="space-y-4 pt-4 border-t border-[#1e3a6a]/60">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                <i data-lucide="boxes" class="w-4 h-4"></i>
-                PHẦN III: TIÊU HAO NGUYÊN LIỆU & VẬT TƯ (BÁO CÁO ĐỊNH MỨC)
-              </h3>
-              <span id="dash-mat-badge-count" class="text-xs bg-[#0b172a] text-cyan-300 font-bold px-3 py-1 rounded-full border border-cyan-500/30">
-                0 loại vật tư
-              </span>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                  <i data-lucide="boxes" class="w-4 h-4"></i>
+                  PHẦN III: TIÊU HAO NGUYÊN LIỆU & VẬT TƯ (BÁO CÁO ĐỊNH MỨC)
+                </h3>
+                <span id="dash-mat-badge-count" class="text-xs bg-[#0b172a] text-cyan-300 font-bold px-3 py-1 rounded-full border border-cyan-500/30">
+                  0 loại vật tư
+                </span>
+              </div>
+
+              <!-- Smart Filters for Materials -->
+              <div class="flex flex-wrap items-center gap-2">
+                <div>
+                  <select id="dash-mat-filter-group" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-emerald-300 font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả nhóm vật tư</option>
+                    <option value="xuong">Nhóm bột xương</option>
+                    <option value="men">Nhóm men (EWB, GWB, SFSV...)</option>
+                    <option value="donggoi">Bao bì & Ke đai nan nẹp</option>
+                    <option value="nhienlieu">Nhiên liệu (Vỏ điều)</option>
+                    <option value="bi">Bi nghiền (Trung / Cao nhôm)</option>
+                  </select>
+                </div>
+                <div>
+                  <select id="dash-mat-filter-status" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="reduced">Tiết kiệm (Giảm ĐM)</option>
+                    <option value="over">Vượt định mức</option>
+                  </select>
+                </div>
+                <div class="relative w-44">
+                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-400"></i>
+                  <input type="text" id="dash-mat-search" oninput="filterDashboardMaterials()" placeholder="Tìm vật tư..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1.5 rounded-lg focus:outline-none focus:border-emerald-400" />
+                </div>
+              </div>
             </div>
 
             <!-- 4 KPI Cards for Materials -->
@@ -546,14 +573,62 @@
 
           <!-- ================= PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN ================= -->
           <div class="space-y-4 pt-4 border-t border-[#1e3a6a]/60">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
-                PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN TRONG KỲ
-              </h3>
-              <span id="dash-coal-badge-count" class="text-xs bg-[#0b172a] text-amber-300 font-bold px-3 py-1 rounded-full border border-amber-500/30">
-                0 lô đốt lò
-              </span>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                  <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+                  PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN TRONG KỲ
+                </h3>
+                <span id="dash-coal-badge-count" class="text-xs bg-[#0b172a] text-amber-300 font-bold px-3 py-1 rounded-full border border-amber-500/30">
+                  0 lô đốt lò
+                </span>
+              </div>
+
+              <!-- Smart Filters Bar for Coal -->
+              <div class="flex flex-wrap items-center gap-2">
+                <!-- 1. Bộ lọc Nghiệp vụ Tiêu hao Than -->
+                <div>
+                  <label class="block text-[9.5px] text-amber-300/80 uppercase font-semibold mb-0.5">Chế độ tiêu hao</label>
+                  <select id="dash-coal-filter-metric" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-amber-500/50 text-xs text-amber-200 font-bold rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả loại tiêu hao</option>
+                    <option value="rate_lump">1. Tiêu hao than cục (kg/m²)</option>
+                    <option value="rate_with_ash">2. Tiêu hao than cục + cám (kg/m²)</option>
+                    <option value="rate_total">3. Tiêu hao than cục + cám + lĩnh bù (kg/m²)</option>
+                    <option value="excess_ash">4. Lô than cám vượt định mức</option>
+                    <option value="compensation">5. Lô có lĩnh bù cám</option>
+                  </select>
+                </div>
+
+                <!-- 2. Bộ lọc Nhà Cung Cấp / Loại Than -->
+                <div>
+                  <label class="block text-[9.5px] text-slate-400 uppercase font-semibold mb-0.5">Nhà cung cấp</label>
+                  <select id="dash-coal-filter-supplier" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả nhà CC</option>
+                    <option value="Hưng Tam Long">Hưng Tam Long</option>
+                    <option value="Hải Thành">Hải Thành</option>
+                  </select>
+                </div>
+
+                <!-- 3. Bộ lọc Kho Than -->
+                <div>
+                  <label class="block text-[9.5px] text-slate-400 uppercase font-semibold mb-0.5">Kho than</label>
+                  <select id="dash-coal-filter-warehouse" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all">Tất cả kho</option>
+                    <option value="Kho 1">Kho 1</option>
+                    <option value="Kho 2">Kho 2</option>
+                    <option value="Kho 3">Kho 3</option>
+                    <option value="Kho 4">Kho 4</option>
+                    <option value="Kho 1+2">Kho 1+2</option>
+                    <option value="Kho 3+4">Kho 3+4</option>
+                  </select>
+                </div>
+
+                <!-- 4. Tìm kiếm nhanh -->
+                <div class="relative w-36 self-end">
+                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-400"></i>
+                  <input type="text" id="dash-coal-search" oninput="filterDashboardCoal()" placeholder="Tìm lô than..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1.5 rounded-lg focus:outline-none focus:border-amber-400" />
+                </div>
+              </div>
             </div>
 
             <!-- 4 KPI Cards for Coal -->
@@ -566,7 +641,7 @@
               <div class="bg-[#0f2042] p-3.5 rounded-xl border border-cyan-500/30 shadow-md">
                 <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Suất Tiêu Hao Than</div>
                 <div class="text-lg font-black text-cyan-400 mt-1" id="dash-coal-kpi-rate">0 kg/m²</div>
-                <div class="text-[10px] text-cyan-300/80">Bình quân theo sản lượng</div>
+                <div class="text-[10px] text-cyan-300/80" id="dash-coal-kpi-rate-desc">Bình quân theo sản lượng</div>
               </div>
               <div class="bg-[#0f2042] p-3.5 rounded-xl border border-emerald-500/30 shadow-md">
                 <div class="text-[10.5px] text-slate-400 font-semibold uppercase">Tỷ Lệ Cám Bình Quân</div>
@@ -597,23 +672,26 @@
               <div class="lg:col-span-8 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
                 <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 max-h-80 overflow-y-auto">
                   <table class="w-full border-collapse text-xs text-left">
-                    <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px] sticky top-0 z-10">
+                    <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10px] sticky top-0 z-10">
                       <tr>
-                        <th class="p-2.5 text-center w-10 border border-[#1e3a6a]/40">STT</th>
-                        <th class="p-2.5 border border-[#1e3a6a]/40">Nhà Cung Cấp / Lô Than</th>
-                        <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kho / Ngày Nhập</th>
-                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Nhiệt Trị</th>
-                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ Cám</th>
-                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Khối Lượng Lĩnh</th>
-                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng (m²)</th>
-                        <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tiêu Hao (kg/m²)</th>
-                        <th class="p-2.5 border border-[#1e3a6a]/40">Ghi Chú Đốt Lò</th>
+                        <th class="p-2 text-center w-8 border border-[#1e3a6a]/40">STT</th>
+                        <th class="p-2 border border-[#1e3a6a]/40">Nhà Cung Cấp / Tên Than</th>
+                        <th class="p-2 text-center border border-[#1e3a6a]/40">Kho / Ngày Nhập</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40">Nhiệt Trị</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40">Tỷ Lệ Cám</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40">Lĩnh Than (kg)</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40">Lĩnh Bù (kg)</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40">Sản Lượng (m²)</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-cyan-300 font-bold">TH Cục</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-amber-300 font-bold">TH Cục+Cám</th>
+                        <th class="p-2 text-right border border-[#1e3a6a]/40 text-emerald-300 font-bold">TH Tổng</th>
+                        <th class="p-2 border border-[#1e3a6a]/40">Ghi Chú Đốt Lò</th>
                       </tr>
                     </thead>
                     <tbody id="dash-coal-table-body" class="divide-y divide-[#1e3a6a]/40">
                       <!-- Dynamic rows -->
                     </tbody>
-                    <tfoot id="dash-coal-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0">
+                    <tfoot id="dash-coal-table-foot" class="bg-[#0b172a] font-bold text-slate-100 sticky bottom-0 text-[11px]">
                       <!-- Dynamic footer -->
                     </tfoot>
                   </table>
@@ -1365,6 +1443,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260904_full_part1_4_v1"></script>
+  <script src="app.js?v=20260904_smart_coal_filters_v2"></script>
 </body>
 </html>
