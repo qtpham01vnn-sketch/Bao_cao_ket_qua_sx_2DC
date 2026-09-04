@@ -992,28 +992,6 @@ function filterDashboardCoal() {
 
   let filtered = [...(currentDashRawCoal || [])];
 
-  // Slicer Filter 1: Month
-  if (dashFilterState.p4_month !== 'all') {
-    filtered = filtered.filter(c => {
-      if (c.month_num) return String(c.month_num) === String(dashFilterState.p4_month);
-      if (c.import_date) {
-        const parts = c.import_date.split('/');
-        if (parts.length >= 2) return String(parseInt(parts[1], 10)) === String(dashFilterState.p4_month);
-      }
-      return true;
-    });
-  }
-
-  // Slicer Filter 2: Line
-  if (dashFilterState.p4_line !== 'all') {
-    filtered = filtered.filter(c => (c.line || '').toUpperCase().includes(dashFilterState.p4_line.toUpperCase()));
-  }
-
-  // Slicer Filter 3: Size
-  if (dashFilterState.p4_size !== 'all') {
-    filtered = filtered.filter(c => (c.size || '').includes(dashFilterState.p4_size));
-  }
-
   // 1. Metric filter (Rate Type / Ash / Compensation)
   if (metric === "rate_lump") {
     filtered = filtered.filter(c => (c.rate_lump || 0) > 0);

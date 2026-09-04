@@ -511,6 +511,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         valid_ashes = [r["ash_rate"] for r in raw_coal_rows if r["ash_rate"] is not None and r["ash_rate"] > 0]
         avg_coal_ash = (sum(valid_ashes) / len(valid_ashes)) if valid_ashes else 0
 
+        where_coal_trend = []
+        vals_coal_trend = []
+        if p4_line != "all":
+            where_coal_trend.append("line = ?")
+            vals_coal_trend.append(p4_line)
+        if p4_size != "all":
+            where_coal_trend.append("size = ?")
+            vals_coal_trend.append(p4_size)
+        clause_coal_trend = ("WHERE " + " AND ".join(where_coal_trend)) if where_coal_trend else ""
+
         q_coal_trend = f"""
             SELECT month, 
                    SUM(total_used_weight) as used_kg, 
@@ -518,12 +528,12 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                    AVG(heat_value) as heat_val,
                    AVG(ash_rate) as ash_pct
             FROM data_coal_consumption
-            {clause_d4}
+            {clause_coal_trend}
             GROUP BY month
             ORDER BY month
         """
         coal_monthly_trend = []
-        for r in cur.execute(q_coal_trend, vals_d4).fetchall():
+        for r in cur.execute(q_coal_trend, vals_coal_trend).fetchall():
             m_used = r["used_kg"] or 0
             m_prod = r["prod_m2"] or 0
             m_rate = (m_used / m_prod) if m_prod > 0 else 0
