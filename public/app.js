@@ -1206,7 +1206,7 @@ function renderDashboardCoalTable(rows, currentMetric = "all", firingMode = "all
         <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
         <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2, true) : '-'}</td>
-        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${(comp > 0 && rateTotal > 0) ? formatNumber(rateTotal, 2, true) : '-'}</td>
         <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
       </tr>
     `;
@@ -2000,7 +2000,7 @@ function renderCoalTable(rows, summary) {
         <td class="p-2 text-right font-bold text-emerald-300">${m2 > 0 ? formatNumber(m2, 2) : '-'}</td>
         <td class="p-2 text-right font-bold text-amber-300">${rateLump > 0 ? formatNumber(rateLump, 2, true) : '-'}</td>
         <td class="p-2 text-right font-bold text-cyan-300">${rateWithAsh > 0 ? formatNumber(rateWithAsh, 2, true) : '-'}</td>
-        <td class="p-2 text-right font-black text-white">${rateTotal > 0 ? formatNumber(rateTotal, 2, true) : '-'}</td>
+        <td class="p-2 text-right font-black text-white">${(comp > 0 && rateTotal > 0) ? formatNumber(rateTotal, 2, true) : '-'}</td>
         <td class="p-2 text-[11px] text-slate-300">${r.note || ''}</td>
       </tr>
     `;
