@@ -214,7 +214,26 @@ async function loadDashboardData() {
   }
 
   try {
-    const res = await fetch(`/api/dashboard?month=${currentDashMonth}&line=${currentDashLine}&size=${currentDashSize}&brand=${encodeURIComponent(currentDashBrand)}`);
+    const query = new URLSearchParams({
+      p1_month: currentDashMonth,
+      p1_line: currentDashLine,
+      p1_size: currentDashSize,
+      p1_brand: currentDashBrand,
+
+      p2_month: currentDashMonthP2,
+      p2_line: currentDashLineP2,
+      p2_size: currentDashSizeP2,
+      p2_brand: currentDashBrandP2,
+
+      p3_month: currentDashMonthP3,
+      p3_line: currentDashLineP3,
+      p3_size: currentDashSizeP3,
+
+      p4_month: currentDashMonthP4,
+      p4_line: currentDashLineP4,
+      p4_size: currentDashSizeP4
+    });
+    const res = await fetch(`/api/dashboard?${query.toString()}`);
     const data = await res.json();
     const act = data.actual || {};
     const pln = data.plan || {};

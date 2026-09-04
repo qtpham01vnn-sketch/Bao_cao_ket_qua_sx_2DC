@@ -170,7 +170,11 @@
               <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
                 • Tất cả các kỳ (T1 - T8) • Tất cả DC
               </span>
-              <button onclick="resetDashFilters()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b1b36] hover:bg-[#132d59] border border-blue-500/30 text-xs font-bold text-cyan-300 transition" title="Đặt lại bộ lọc về mặc định">
+              <button onclick="syncAllSectionsToP1()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 border border-emerald-400/50 text-xs font-bold text-white shadow transition" title="Áp dụng bộ lọc Phần I cho toàn bộ Phần II, III, IV">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Đồng bộ 4 phần</span>
+              </button>
+              <button onclick="resetDashFilters()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b1b36] hover:bg-[#132d59] border border-blue-500/30 text-xs font-bold text-cyan-300 transition" title="Đặt lại tất cả bộ lọc về mặc định">
                 <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                 <span>Đặt lại</span>
               </button>
@@ -424,6 +428,62 @@
             </span>
           </div>
 
+          <!-- Section II Interactive Slicer Toolbar -->
+          <div class="p-3.5 bg-[#0a172c] rounded-xl border border-[#1e3a6a]/60 shadow-md flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <!-- Slicer Tháng P2 -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                  <i data-lucide="calendar" class="w-3 h-3 text-cyan-400"></i> Tháng:
+                </span>
+                <div class="flex items-center gap-1 flex-wrap">
+                  <button onclick="setDashMonthP2('all')" id="btn-p2-month-all" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                  <button onclick="setDashMonthP2('1')" id="btn-p2-month-1" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">1</button>
+                  <button onclick="setDashMonthP2('3')" id="btn-p2-month-3" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">3</button>
+                  <button onclick="setDashMonthP2('4')" id="btn-p2-month-4" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">4</button>
+                  <button onclick="setDashMonthP2('5')" id="btn-p2-month-5" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">5</button>
+                  <button onclick="setDashMonthP2('6')" id="btn-p2-month-6" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
+                  <button onclick="setDashMonthP2('7')" id="btn-p2-month-7" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
+                  <button onclick="setDashMonthP2('8')" id="btn-p2-month-8" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                </div>
+              </div>
+
+              <!-- Slicer DC P2 -->
+              <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                  <i data-lucide="cpu" class="w-3 h-3 text-cyan-400"></i> DC:
+                </span>
+                <div class="flex items-center gap-1">
+                  <button onclick="setDashLineP2('all')" id="btn-p2-line-all" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                  <button onclick="setDashLineP2('DC1')" id="btn-p2-line-DC1" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC1</button>
+                  <button onclick="setDashLineP2('DC2')" id="btn-p2-line-DC2" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC2</button>
+                </div>
+              </div>
+
+              <!-- Slicer KT P2 -->
+              <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                  <i data-lucide="maximize" class="w-3 h-3 text-cyan-400"></i> KT:
+                </span>
+                <div class="flex items-center gap-1">
+                  <button onclick="setDashSizeP2('all')" id="btn-p2-size-all" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                  <button onclick="setDashSizeP2('30x60')" id="btn-p2-size-30x60" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">30x60</button>
+                  <button onclick="setDashSizeP2('50x50')" id="btn-p2-size-50x50" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">50x50</button>
+                  <button onclick="setDashSizeP2('40x80')" id="btn-p2-size-40x80" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">40x80</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="syncSectionToP1(2)" class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0f2042] border border-cyan-500/40 text-[11px] font-bold text-cyan-300 hover:bg-cyan-900/30 transition" title="Đồng bộ bộ lọc giống Phần I">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Đồng bộ P1
+              </button>
+              <button onclick="resetSectionFilter(2)" class="px-2 py-1 rounded bg-[#0f2042] border border-slate-700 text-[11px] font-bold text-slate-400 hover:text-white transition">
+                Mặc định
+              </button>
+            </div>
+          </div>
+
           <!-- Brand Breakdown Section (Donut + Table) -->
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <!-- Brand Doughnut Chart (col-span-4) -->
@@ -478,11 +538,70 @@
                   0 loại vật tư
                 </span>
               </div>
+            </div>
 
-              <!-- Smart Filters for Materials -->
-              <div class="flex flex-wrap items-center gap-2">
-                <div>
-                  <select id="dash-mat-filter-group" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-emerald-300 font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+            <!-- Section III Interactive Slicer Toolbar -->
+            <div class="p-3.5 bg-[#0a172c] rounded-xl border border-[#1e3a6a]/60 shadow-md space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <!-- Tháng P3 -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="calendar" class="w-3 h-3 text-emerald-400"></i> Tháng:
+                    </span>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <button onclick="setDashMonthP3('all')" id="btn-p3-month-all" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashMonthP3('1')" id="btn-p3-month-1" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">1</button>
+                      <button onclick="setDashMonthP3('3')" id="btn-p3-month-3" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">3</button>
+                      <button onclick="setDashMonthP3('4')" id="btn-p3-month-4" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">4</button>
+                      <button onclick="setDashMonthP3('5')" id="btn-p3-month-5" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">5</button>
+                      <button onclick="setDashMonthP3('6')" id="btn-p3-month-6" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
+                      <button onclick="setDashMonthP3('7')" id="btn-p3-month-7" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
+                      <button onclick="setDashMonthP3('8')" id="btn-p3-month-8" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                    </div>
+                  </div>
+
+                  <!-- Dây chuyền P3 -->
+                  <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="cpu" class="w-3 h-3 text-emerald-400"></i> DC:
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button onclick="setDashLineP3('all')" id="btn-p3-line-all" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashLineP3('DC1')" id="btn-p3-line-DC1" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC1</button>
+                      <button onclick="setDashLineP3('DC2')" id="btn-p3-line-DC2" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC2</button>
+                    </div>
+                  </div>
+
+                  <!-- Kích thước P3 -->
+                  <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="maximize" class="w-3 h-3 text-emerald-400"></i> KT:
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button onclick="setDashSizeP3('all')" id="btn-p3-size-all" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashSizeP3('30x60')" id="btn-p3-size-30x60" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">30x60</button>
+                      <button onclick="setDashSizeP3('50x50')" id="btn-p3-size-50x50" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">50x50</button>
+                      <button onclick="setDashSizeP3('40x80')" id="btn-p3-size-40x80" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">40x80</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button onclick="syncSectionToP1(3)" class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0f2042] border border-emerald-500/40 text-[11px] font-bold text-emerald-300 hover:bg-emerald-900/30 transition" title="Đồng bộ bộ lọc giống Phần I">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Đồng bộ P1
+                  </button>
+                  <button onclick="resetSectionFilter(3)" class="px-2 py-1 rounded bg-[#0f2042] border border-slate-700 text-[11px] font-bold text-slate-400 hover:text-white transition">
+                    Mặc định
+                  </button>
+                </div>
+              </div>
+
+              <!-- Row 2: Secondary material filters -->
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700/40">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-slate-400 uppercase font-semibold">Nhóm VT:</span>
+                  <select id="dash-mat-filter-group" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-emerald-300 font-semibold rounded px-2 py-1 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả nhóm vật tư</option>
                     <option value="xuong">Nhóm bột xương</option>
                     <option value="men">Nhóm men (EWB, GWB, SFSV...)</option>
@@ -491,16 +610,17 @@
                     <option value="bi">Bi nghiền (Trung / Cao nhôm)</option>
                   </select>
                 </div>
-                <div>
-                  <select id="dash-mat-filter-status" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-slate-400 uppercase font-semibold">Trạng thái:</span>
+                  <select id="dash-mat-filter-status" onchange="filterDashboardMaterials()" class="bg-[#09152b] border border-emerald-500/40 text-xs text-white rounded px-2 py-1 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả trạng thái</option>
                     <option value="reduced">Tiết kiệm (Giảm ĐM)</option>
                     <option value="over">Vượt định mức</option>
                   </select>
                 </div>
-                <div class="relative w-44">
-                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-400"></i>
-                  <input type="text" id="dash-mat-search" oninput="filterDashboardMaterials()" placeholder="Tìm vật tư..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1.5 rounded-lg focus:outline-none focus:border-emerald-400" />
+                <div class="relative w-48 ml-auto">
+                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2 text-slate-400"></i>
+                  <input type="text" id="dash-mat-search" oninput="filterDashboardMaterials()" placeholder="Tìm tên vật tư..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1 rounded focus:outline-none focus:border-emerald-400" />
                 </div>
               </div>
             </div>
@@ -583,13 +703,70 @@
                   0 lô đốt lò
                 </span>
               </div>
+            </div>
 
-              <!-- Smart Filters Bar for Coal -->
-              <div class="flex flex-wrap items-center gap-2">
-                <!-- 1. Bộ lọc Nghiệp vụ Tiêu hao Than -->
-                <div>
-                  <label class="block text-[9.5px] text-amber-300/80 uppercase font-semibold mb-0.5">Chế độ tiêu hao</label>
-                  <select id="dash-coal-filter-metric" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-amber-500/50 text-xs text-amber-200 font-bold rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+            <!-- Section IV Interactive Slicer Toolbar -->
+            <div class="p-3.5 bg-[#0a172c] rounded-xl border border-[#1e3a6a]/60 shadow-md space-y-2.5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <!-- Tháng P4 -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="calendar" class="w-3 h-3 text-amber-400"></i> Tháng:
+                    </span>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <button onclick="setDashMonthP4('all')" id="btn-p4-month-all" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashMonthP4('1')" id="btn-p4-month-1" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">1</button>
+                      <button onclick="setDashMonthP4('3')" id="btn-p4-month-3" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">3</button>
+                      <button onclick="setDashMonthP4('4')" id="btn-p4-month-4" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">4</button>
+                      <button onclick="setDashMonthP4('5')" id="btn-p4-month-5" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">5</button>
+                      <button onclick="setDashMonthP4('6')" id="btn-p4-month-6" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
+                      <button onclick="setDashMonthP4('7')" id="btn-p4-month-7" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
+                      <button onclick="setDashMonthP4('8')" id="btn-p4-month-8" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                    </div>
+                  </div>
+
+                  <!-- Dây chuyền P4 -->
+                  <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="cpu" class="w-3 h-3 text-amber-400"></i> DC:
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button onclick="setDashLineP4('all')" id="btn-p4-line-all" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashLineP4('DC1')" id="btn-p4-line-DC1" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC1</button>
+                      <button onclick="setDashLineP4('DC2')" id="btn-p4-line-DC2" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">DC2</button>
+                    </div>
+                  </div>
+
+                  <!-- Kích thước P4 -->
+                  <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                    <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                      <i data-lucide="maximize" class="w-3 h-3 text-amber-400"></i> KT:
+                    </span>
+                    <div class="flex items-center gap-1">
+                      <button onclick="setDashSizeP4('all')" id="btn-p4-size-all" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                      <button onclick="setDashSizeP4('30x60')" id="btn-p4-size-30x60" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">30x60</button>
+                      <button onclick="setDashSizeP4('50x50')" id="btn-p4-size-50x50" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">50x50</button>
+                      <button onclick="setDashSizeP4('40x80')" id="btn-p4-size-40x80" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">40x80</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button onclick="syncSectionToP1(4)" class="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0f2042] border border-amber-500/40 text-[11px] font-bold text-amber-300 hover:bg-amber-900/30 transition" title="Đồng bộ bộ lọc giống Phần I">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Đồng bộ P1
+                  </button>
+                  <button onclick="resetSectionFilter(4)" class="px-2 py-1 rounded bg-[#0f2042] border border-slate-700 text-[11px] font-bold text-slate-400 hover:text-white transition">
+                    Mặc định
+                  </button>
+                </div>
+              </div>
+
+              <!-- Row 2: Specialized Coal Filters -->
+              <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-700/40">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-amber-300/80 uppercase font-semibold">Chế độ tiêu hao:</span>
+                  <select id="dash-coal-filter-metric" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-amber-500/50 text-xs text-amber-200 font-bold rounded px-2 py-1 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả loại tiêu hao</option>
                     <option value="rate_lump">1. Tiêu hao than cục (kg/m²)</option>
                     <option value="rate_with_ash">2. Tiêu hao than cục + cám (kg/m²)</option>
@@ -599,20 +776,18 @@
                   </select>
                 </div>
 
-                <!-- 2. Bộ lọc Nhà Cung Cấp / Loại Than -->
-                <div>
-                  <label class="block text-[9.5px] text-slate-400 uppercase font-semibold mb-0.5">Nhà cung cấp</label>
-                  <select id="dash-coal-filter-supplier" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-slate-400 uppercase font-semibold">Nhà CC:</span>
+                  <select id="dash-coal-filter-supplier" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded px-2 py-1 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả nhà CC</option>
                     <option value="Hưng Tam Long">Hưng Tam Long</option>
                     <option value="Hải Thành">Hải Thành</option>
                   </select>
                 </div>
 
-                <!-- 3. Bộ lọc Kho Than -->
-                <div>
-                  <label class="block text-[9.5px] text-slate-400 uppercase font-semibold mb-0.5">Kho than</label>
-                  <select id="dash-coal-filter-warehouse" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded-lg px-2.5 py-1.5 focus:outline-none cursor-pointer">
+                <div class="flex items-center gap-1">
+                  <span class="text-[10px] text-slate-400 uppercase font-semibold">Kho:</span>
+                  <select id="dash-coal-filter-warehouse" onchange="filterDashboardCoal()" class="bg-[#09152b] border border-blue-500/30 text-xs text-white rounded px-2 py-1 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả kho</option>
                     <option value="Kho 1">Kho 1</option>
                     <option value="Kho 2">Kho 2</option>
@@ -623,10 +798,9 @@
                   </select>
                 </div>
 
-                <!-- 4. Tìm kiếm nhanh -->
-                <div class="relative w-36 self-end">
-                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-400"></i>
-                  <input type="text" id="dash-coal-search" oninput="filterDashboardCoal()" placeholder="Tìm lô than..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1.5 rounded-lg focus:outline-none focus:border-amber-400" />
+                <div class="relative w-44 ml-auto">
+                  <i data-lucide="search" class="w-3 h-3 absolute left-2.5 top-2 text-slate-400"></i>
+                  <input type="text" id="dash-coal-search" oninput="filterDashboardCoal()" placeholder="Tìm lô than..." class="w-full bg-[#09152b] border border-slate-700 text-xs text-white pl-7 pr-2.5 py-1 rounded focus:outline-none focus:border-amber-400" />
                 </div>
               </div>
             </div>

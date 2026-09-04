@@ -156,26 +156,45 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def handle_dashboard(self, params):
-        month = params.get("month", ["all"])[0]
-        line = params.get("line", ["all"])[0]
-        size = params.get("size", ["all"])[0]
-        brand = params.get("brand", ["all"])[0]
+        # Section 1 parameters (Sản lượng & Chất lượng)
+        p1_month = params.get("p1_month", params.get("month", ["all"]))[0]
+        p1_line = params.get("p1_line", params.get("line", ["all"]))[0]
+        p1_size = params.get("p1_size", params.get("size", ["all"]))[0]
+        p1_brand = params.get("p1_brand", params.get("brand", ["all"]))[0]
+
+        # Section 2 parameters (Sản lượng Thương hiệu)
+        p2_month = params.get("p2_month", params.get("month", ["all"]))[0]
+        p2_line = params.get("p2_line", params.get("line", ["all"]))[0]
+        p2_size = params.get("p2_size", params.get("size", ["all"]))[0]
+        p2_brand = params.get("p2_brand", ["all"])[0]
+
+        # Section 3 parameters (Tiêu hao Vật tư)
+        p3_month = params.get("p3_month", params.get("month", ["all"]))[0]
+        p3_line = params.get("p3_line", params.get("line", ["all"]))[0]
+        p3_size = params.get("p3_size", params.get("size", ["all"]))[0]
+
+        # Section 4 parameters (Sử dụng Than)
+        p4_month = params.get("p4_month", params.get("month", ["all"]))[0]
+        p4_line = params.get("p4_line", params.get("line", ["all"]))[0]
+        p4_size = params.get("p4_size", params.get("size", ["all"]))[0]
 
         conn = get_db()
         cur = conn.cursor()
 
-        # 1. Base Summary from data_production_summary
+        # =========================================================================
+        # 1. SECTION 1: Summary & Quality (Using p1_* filters)
+        # =========================================================================
         where_d1 = ["unit = 'm2'"]
         vals_d1 = []
-        if month != "all":
+        if p1_month != "all":
             where_d1.append("month = ?")
-            vals_d1.append(int(month))
-        if line != "all":
+            vals_d1.append(int(p1_month))
+        if p1_line != "all":
             where_d1.append("line = ?")
-            vals_d1.append(line)
-        if size != "all":
+            vals_d1.append(p1_line)
+        if p1_size != "all":
             where_d1.append("size = ?")
-            vals_d1.append(size)
+            vals_d1.append(p1_size)
 
         clause_d1 = ("WHERE " + " AND ".join(where_d1)) if where_d1 else ""
         q_prod = f"""
@@ -198,8 +217,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         actual = prod_rows.get("Thực hiện", {"row_count": 1, "total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
         plan = prod_rows.get("Kế hoạch", {"row_count": 1, "total_m2": 0, "a1_m2": 0, "a_m2": 0, "b_m2": 0, "press_m2": 0, "days": 0, "stop_tot": 0, "stop_2mf": 0})
 
-        # Calculate exact metrics for Dual Donut Charts (matching Excel Image 1)
-        # Actual metrics
+        # Section 1 Dual Donut Metrics
         act_tot = actual["total_m2"]
         act_a1 = actual["a1_m2"]
         act_a = actual["a_m2"]
@@ -211,7 +229,6 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         act_avg_day = (act_tot / act_days) if act_days > 0 else 0
         act_stop_2mf = (actual["stop_2mf"] / actual["row_count"]) if actual["row_count"] > 0 else 0
 
-        # Plan metrics
         pln_tot = plan["total_m2"]
         pln_a1 = plan["a1_m2"]
         pln_a = plan["a_m2"]
@@ -225,34 +242,113 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
 
         completion_rate = (act_tot / pln_tot * 100) if pln_tot > 0 else 0
 
-        # 2. Available Brands list for current month, line, size
+        # Section 1 Monthly Trend Chart (Grouped Bar Chart)
+        if p1_brand != "all":
+            # If Section 1 selected a specific brand
+            trend_spec_where = ["brand_name = ?"]
+            trend_spec_vals = [p1_brand]
+            if p1_line != "all":
+                trend_spec_where.append("line = ?")
+                trend_spec_vals.append(p1_line)
+            if p1_size != "all":
+                trend_spec_where.append("size = ?")
+                trend_spec_vals.append(p1_size)
+            trend_spec_clause = "WHERE " + " AND ".join(trend_spec_where)
+            q_spec_trend = f"SELECT month, SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {trend_spec_clause} GROUP BY month ORDER BY month"
+            
+            monthly_map = {}
+            for r in cur.execute(q_spec_trend, trend_spec_vals).fetchall():
+                m = r["month"]
+                monthly_map[m] = {
+                    "month": f"{m}",
+                    "month_num": m,
+                    "plan": 0,
+                    "actual": r["total_m2"],
+                    "a1": r["a1_m2"],
+                    "b": r["b_m2"]
+                }
+            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
+        else:
+            trend_where = ["unit = 'm2'"]
+            trend_vals = []
+            if p1_line != "all":
+                trend_where.append("line = ?")
+                trend_vals.append(p1_line)
+            if p1_size != "all":
+                trend_where.append("size = ?")
+                trend_vals.append(p1_size)
+            trend_clause = ("WHERE " + " AND ".join(trend_where)) if trend_where else ""
+
+            q_monthly = f"SELECT month, data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(a) as a_m2, SUM(b) as b_m2 FROM data_production_summary {trend_clause} GROUP BY month, data_type ORDER BY month"
+            monthly_map = {}
+            for r in cur.execute(q_monthly, trend_vals).fetchall():
+                m = r["month"]
+                if m not in monthly_map:
+                    monthly_map[m] = {"month": f"{m}", "month_num": m, "plan": 0, "actual": 0, "a1": 0, "a": 0, "b": 0}
+                if r["data_type"] == "Kế hoạch":
+                    monthly_map[m]["plan"] = r["total_m2"]
+                else:
+                    monthly_map[m]["actual"] = r["total_m2"]
+                    monthly_map[m]["a1"] = r["a1_m2"]
+                    monthly_map[m]["a"] = r["a_m2"]
+                    monthly_map[m]["b"] = r["b_m2"]
+            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
+
+        actual_data = {
+            "total_m2": act_tot,
+            "a1_m2": act_a1,
+            "a_m2": act_a,
+            "b_m2": act_b,
+            "a1_pct": act_a1_pct,
+            "a_pct": act_a_pct,
+            "b_pct": act_b_pct,
+            "days": act_days,
+            "avg_per_day": act_avg_day,
+            "stop_time_2mf": act_stop_2mf,
+            "share_pct": 100.0
+        }
+        plan_data = {
+            "total_m2": pln_tot,
+            "a1_m2": pln_a1,
+            "a_m2": pln_a,
+            "b_m2": pln_b,
+            "a1_pct": pln_a1_pct,
+            "a_pct": pln_a_pct,
+            "b_pct": pln_b_pct,
+            "days": pln_days,
+            "avg_per_day": pln_avg_day,
+            "stop_time_2mf": pln_stop_2mf
+        }
+
+        # =========================================================================
+        # 2. SECTION 2: Brand Distribution & Table (Using p2_* filters)
+        # =========================================================================
         where_avail = []
         vals_avail = []
-        if month != "all":
+        if p2_month != "all":
             where_avail.append("month = ?")
-            vals_avail.append(int(month))
-        if line != "all":
+            vals_avail.append(int(p2_month))
+        if p2_line != "all":
             where_avail.append("line = ?")
-            vals_avail.append(line)
-        if size != "all":
+            vals_avail.append(p2_line)
+        if p2_size != "all":
             where_avail.append("size = ?")
-            vals_avail.append(size)
+            vals_avail.append(p2_size)
         clause_avail = ("WHERE " + " AND ".join(where_avail)) if where_avail else ""
         q_avail_brands = f"SELECT DISTINCT brand_name FROM data_brand_production {clause_avail} {'AND' if clause_avail else 'WHERE'} brand_name != '' ORDER BY brand_name"
         available_brands = [r[0] for r in cur.execute(q_avail_brands, vals_avail).fetchall()]
 
-        # 3. Brand Table rows for current filter
         where_d2 = []
         vals_d2 = []
-        if month != "all":
+        if p2_month != "all":
             where_d2.append("month = ?")
-            vals_d2.append(int(month))
-        if line != "all":
+            vals_d2.append(int(p2_month))
+        if p2_line != "all":
             where_d2.append("line = ?")
-            vals_d2.append(line)
-        if size != "all":
+            vals_d2.append(p2_line)
+        if p2_size != "all":
             where_d2.append("size = ?")
-            vals_d2.append(size)
+            vals_d2.append(p2_size)
 
         clause_d2 = ("WHERE " + " AND ".join(where_d2)) if where_d2 else ""
         q_brand = f"""
@@ -292,154 +388,43 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 "glazes": r.get("glazes") or ""
             })
 
-        # 4. If Brand is specified
-        if brand != "all":
+        if p2_brand != "all":
+            # Breakdown by glaze or size for this single brand
             where_spec = ["brand_name = ?"]
-            vals_spec = [brand]
-            if month != "all":
+            vals_spec = [p2_brand]
+            if p2_month != "all":
                 where_spec.append("month = ?")
-                vals_spec.append(int(month))
-            if line != "all":
+                vals_spec.append(int(p2_month))
+            if p2_line != "all":
                 where_spec.append("line = ?")
-                vals_spec.append(line)
-            if size != "all":
+                vals_spec.append(p2_line)
+            if p2_size != "all":
                 where_spec.append("size = ?")
-                vals_spec.append(size)
+                vals_spec.append(p2_size)
             clause_spec = "WHERE " + " AND ".join(where_spec)
             
-            q_spec = f"SELECT SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {clause_spec}"
-            spec_row = dict(cur.execute(q_spec, vals_spec).fetchone() or {})
-            
-            b_total_m2 = spec_row.get("total_m2") or 0
-            b_a1_m2 = spec_row.get("a1_m2") or 0
-            b_b_m2 = spec_row.get("b_m2") or 0
-            b_a1_pct = (b_a1_m2 / b_total_m2 * 100) if b_total_m2 > 0 else 0
-            b_b_pct = (b_b_m2 / b_total_m2 * 100) if b_total_m2 > 0 else 0
-            share_of_factory = (b_total_m2 / act_tot * 100) if act_tot > 0 else 0
-            
-            # Monthly Trend for this brand
-            trend_spec_where = ["brand_name = ?"]
-            trend_spec_vals = [brand]
-            if line != "all":
-                trend_spec_where.append("line = ?")
-                trend_spec_vals.append(line)
-            if size != "all":
-                trend_spec_where.append("size = ?")
-                trend_spec_vals.append(size)
-            trend_spec_clause = "WHERE " + " AND ".join(trend_spec_where)
-            q_spec_trend = f"SELECT month, SUM(quantity_m2) as total_m2, SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2 FROM data_brand_production {trend_spec_clause} GROUP BY month ORDER BY month"
-            
-            monthly_map = {}
-            for r in cur.execute(q_spec_trend, trend_spec_vals).fetchall():
-                m = r["month"]
-                monthly_map[m] = {
-                    "month": f"{m}",
-                    "month_num": m,
-                    "plan": 0,
-                    "actual": r["total_m2"],
-                    "a1": r["a1_m2"],
-                    "b": r["b_m2"]
-                }
-            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
-
-            # Distribution breakdown by Glaze / Size for this brand
             q_brand_dist = f"SELECT glaze_type as brand_name, SUM(quantity_m2) as total_m2 FROM data_brand_production {clause_spec} GROUP BY glaze_type ORDER BY total_m2 DESC"
             brand_dist_rows = [dict(r) for r in cur.execute(q_brand_dist, vals_spec).fetchall()]
             if not brand_dist_rows or (len(brand_dist_rows) == 1 and not brand_dist_rows[0]["brand_name"]):
                 q_brand_dist = f"SELECT size as brand_name, SUM(quantity_m2) as total_m2 FROM data_brand_production {clause_spec} GROUP BY size ORDER BY total_m2 DESC"
                 brand_dist_rows = [dict(r) for r in cur.execute(q_brand_dist, vals_spec).fetchall()]
-
-            actual_data = {
-                "total_m2": b_total_m2,
-                "a1_m2": b_a1_m2,
-                "a_m2": 0,
-                "b_m2": b_b_m2,
-                "a1_pct": b_a1_pct,
-                "a_pct": 0,
-                "b_pct": b_b_pct,
-                "days": act_days,
-                "avg_per_day": (b_total_m2 / act_days) if act_days > 0 else 0,
-                "stop_time_2mf": act_stop_2mf,
-                "share_pct": share_of_factory
-            }
-            plan_data = {
-                "total_m2": pln_tot,
-                "a1_m2": pln_a1,
-                "a_m2": pln_a,
-                "b_m2": pln_b,
-                "a1_pct": pln_a1_pct,
-                "a_pct": pln_a_pct,
-                "b_pct": pln_b_pct,
-                "days": pln_days,
-                "avg_per_day": pln_avg_day,
-                "stop_time_2mf": pln_stop_2mf
-            }
         else:
-            # Grand Monthly Trend across active months (1, 3, 4, 5, 6, 7, 8)
-            trend_where = ["unit = 'm2'"]
-            trend_vals = []
-            if line != "all":
-                trend_where.append("line = ?")
-                trend_vals.append(line)
-            if size != "all":
-                trend_where.append("size = ?")
-                trend_vals.append(size)
-            trend_clause = ("WHERE " + " AND ".join(trend_where)) if trend_where else ""
-
-            q_monthly = f"SELECT month, data_type, SUM(recovery_total) as total_m2, SUM(a1) as a1_m2, SUM(a) as a_m2, SUM(b) as b_m2 FROM data_production_summary {trend_clause} GROUP BY month, data_type ORDER BY month"
-            monthly_map = {}
-            for r in cur.execute(q_monthly, trend_vals).fetchall():
-                m = r["month"]
-                if m not in monthly_map:
-                    monthly_map[m] = {"month": f"{m}", "month_num": m, "plan": 0, "actual": 0, "a1": 0, "a": 0, "b": 0}
-                if r["data_type"] == "Kế hoạch":
-                    monthly_map[m]["plan"] = r["total_m2"]
-                else:
-                    monthly_map[m]["actual"] = r["total_m2"]
-                    monthly_map[m]["a1"] = r["a1_m2"]
-                    monthly_map[m]["a"] = r["a_m2"]
-                    monthly_map[m]["b"] = r["b_m2"]
-            monthly_trend = sorted(list(monthly_map.values()), key=lambda x: x["month_num"])
-
-            actual_data = {
-                "total_m2": act_tot,
-                "a1_m2": act_a1,
-                "a_m2": act_a,
-                "b_m2": act_b,
-                "a1_pct": act_a1_pct,
-                "a_pct": act_a_pct,
-                "b_pct": act_b_pct,
-                "days": act_days,
-                "avg_per_day": act_avg_day,
-                "stop_time_2mf": act_stop_2mf,
-                "share_pct": 100.0
-            }
-            plan_data = {
-                "total_m2": pln_tot,
-                "a1_m2": pln_a1,
-                "a_m2": pln_a,
-                "b_m2": pln_b,
-                "a1_pct": pln_a1_pct,
-                "a_pct": pln_a_pct,
-                "b_pct": pln_b_pct,
-                "days": pln_days,
-                "avg_per_day": pln_avg_day,
-                "stop_time_2mf": pln_stop_2mf
-            }
             brand_dist_rows = all_brand_rows[:10]
 
-        # 5. Materials Section Data (Phần III: Tiêu hao vật tư)
+        # =========================================================================
+        # 3. SECTION 3: Materials Consumption (Using p3_* filters)
+        # =========================================================================
         where_d3 = []
         vals_d3 = []
-        if month != "all":
+        if p3_month != "all":
             where_d3.append("month = ?")
-            vals_d3.append(int(month))
-        if line != "all":
+            vals_d3.append(int(p3_month))
+        if p3_line != "all":
             where_d3.append("line = ?")
-            vals_d3.append(line)
-        if size != "all":
+            vals_d3.append(p3_line)
+        if p3_size != "all":
             where_d3.append("size = ?")
-            vals_d3.append(size)
+            vals_d3.append(p3_size)
         clause_d3 = ("WHERE " + " AND ".join(where_d3)) if where_d3 else ""
 
         q_mat_list = f"""
@@ -486,18 +471,20 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 "total_over": round(d["total_over"] or 0, 2)
             })
 
-        # 6. Coal Section Data (Phần IV: Tình hình sử dụng than)
+        # =========================================================================
+        # 4. SECTION 4: Coal Consumption (Using p4_* filters)
+        # =========================================================================
         where_d4 = []
         vals_d4 = []
-        if month != "all":
+        if p4_month != "all":
             where_d4.append("month = ?")
-            vals_d4.append(int(month))
-        if line != "all":
+            vals_d4.append(int(p4_month))
+        if p4_line != "all":
             where_d4.append("line = ?")
-            vals_d4.append(line)
-        if size != "all":
+            vals_d4.append(p4_line)
+        if p4_size != "all":
             where_d4.append("size = ?")
-            vals_d4.append(size)
+            vals_d4.append(p4_size)
         clause_d4 = ("WHERE " + " AND ".join(where_d4)) if where_d4 else ""
 
         q_coal_list = f"""
@@ -553,8 +540,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         conn.close()
 
         self.send_json_response({
-            "is_brand_selected": (brand != "all"),
-            "selected_brand_name": brand,
+            "is_brand_selected": (p1_brand != "all"),
+            "selected_brand_name": p1_brand,
             "completion_rate": completion_rate,
             "actual": actual_data,
             "plan": plan_data,
