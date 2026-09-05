@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
 
 body {
   font-family: 'Plus Jakarta Sans', sans-serif;
@@ -21,54 +21,334 @@ body {
   background: #2563eb;
 }
 
-/* Light Theme Variables */
+/* Excel-like Grid Border Styling (Dark Mode Default) */
+.table-excel-grid {
+  border-collapse: collapse !important;
+  width: 100%;
+}
+.table-excel-grid th, .table-excel-grid td {
+  border: 1px solid rgba(30, 58, 106, 0.7) !important;
+}
+.table-excel-grid thead th {
+  border: 1px solid rgba(40, 75, 130, 0.85) !important;
+}
+
+/* ========================================================================== */
+/* TONE SÁNG DOANH NGHIỆP (LIGHT THEME) - TỐI ƯU TƯƠNG PHẢN, CHỮ & SỐ RÕ NÉT */
+/* ========================================================================== */
+
 html:not(.dark) body {
   background-color: #f1f5f9;
   color: #0f172a;
 }
+
+/* 1. SIDEBAR IN LIGHT MODE */
 html:not(.dark) #sidebar {
   background-color: #064e3b;
   border-right-color: #047857;
 }
+html:not(.dark) #sidebar h1 {
+  color: #ffffff !important;
+}
+html:not(.dark) #sidebar p,
+html:not(.dark) #sidebar .text-slate-400 {
+  color: #a7f3d0 !important;
+}
+html:not(.dark) #sidebar .nav-btn {
+  color: #d1fae5 !important;
+}
+html:not(.dark) #sidebar .nav-btn:hover {
+  background-color: #047857 !important;
+  color: #ffffff !important;
+}
+html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90 {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+html:not(.dark) #sidebar .bg-\[\#081224\] {
+  background-color: #043c2e !important;
+  border-top-color: #047857 !important;
+}
+html:not(.dark) #sidebar .bg-\[\#081224\] .text-white {
+  color: #ffffff !important;
+}
+html:not(.dark) #sidebar .bg-\[\#081224\] .text-slate-400 {
+  color: #a7f3d0 !important;
+}
+
+/* 2. HEADER & BREADCRUMBS */
 html:not(.dark) header {
-  background-color: #ffffff;
-  border-bottom-color: #e2e8f0;
+  background-color: #ffffff !important;
+  border-bottom-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 html:not(.dark) #breadcrumb-current {
-  color: #0f172a;
-}
-html:not(.dark) .slicers-bar {
-  background-color: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-html:not(.dark) .slicers-bar select,
-html:not(.dark) .slicers-bar input {
-  background-color: #ffffff;
-  border-color: #cbd5e1;
-  color: #0f172a;
-}
-html:not(.dark) .bg-\[\#0f2042\] {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
   color: #0f172a !important;
+  font-weight: 800;
 }
-html:not(.dark) .bg-\[\#091428\] {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
-}
-html:not(.dark) thead {
-  background-color: #f8fafc !important;
+html:not(.dark) header .text-slate-400,
+html:not(.dark) header .text-slate-500 {
   color: #475569 !important;
 }
-html:not(.dark) tbody tr:hover {
-  background-color: #f1f5f9 !important;
+html:not(.dark) header button.bg-\[\#112348\] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
 }
-html:not(.dark) tbody td {
-  color: #1e293b !important;
+html:not(.dark) header button.bg-\[\#112348\]:hover {
+  background-color: #e2e8f0 !important;
 }
+
+/* 3. CARD CONTAINERS & MAIN PANELS */
+html:not(.dark) .flex-1.bg-\[\#091428\] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-\[\#0f2042\],
+html:not(.dark) .bg-\[\#0a1832\],
+html:not(.dark) .bg-\[\#0b172a\],
+html:not(.dark) .bg-\[\#071020\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+}
+
+html:not(.dark) .bg-\[\#0a172c\],
+html:not(.dark) .bg-\[\#09152b\],
+html:not(.dark) .bg-\[\#091428\],
+html:not(.dark) .bg-\[\#08142a\],
+html:not(.dark) .bg-\[\#0b1b36\] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* 4. GENERAL TEXT CONTRAST BOOST */
 html:not(.dark) .text-white {
   color: #0f172a !important;
+}
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200 {
+  color: #0f172a !important;
+}
+html:not(.dark) .text-slate-300 {
+  color: #1e293b !important;
+}
+html:not(.dark) .text-slate-400 {
+  color: #475569 !important;
+}
+html:not(.dark) .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* 5. METRIC & NUMBER COLORS (ĐẬM ĐÀ, SẮC NÉT TRÊN NỀN TRẮNG) */
+html:not(.dark) .text-amber-300,
+html:not(.dark) .text-amber-400,
+html:not(.dark) .text-amber-200\/80 {
+  color: #b45309 !important; /* Amber 700 - Đậm rõ */
+}
+
+html:not(.dark) .text-cyan-200,
+html:not(.dark) .text-cyan-300,
+html:not(.dark) .text-cyan-400,
+html:not(.dark) .text-cyan-200\/80 {
+  color: #0284c7 !important; /* Sky 600 - Rực rỡ, độ tương phản cao */
+}
+
+html:not(.dark) .text-emerald-300,
+html:not(.dark) .text-emerald-400 {
+  color: #047857 !important; /* Emerald 700 - Xanh đậm nét */
+}
+
+html:not(.dark) .text-rose-300,
+html:not(.dark) .text-rose-400 {
+  color: #be123c !important; /* Rose 700 */
+}
+
+html:not(.dark) .text-purple-300,
+html:not(.dark) .text-purple-400 {
+  color: #6d28d9 !important; /* Purple 700 */
+}
+
+/* 6. SLICERS, DROPDOWNS & BUTTONS */
+html:not(.dark) .dash-slicer-btn,
+html:not(.dark) .p2-slicer-btn,
+html:not(.dark) .p3-slicer-btn,
+html:not(.dark) .p4-slicer-btn {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+html:not(.dark) .dash-slicer-btn:hover,
+html:not(.dark) .p2-slicer-btn:hover,
+html:not(.dark) .p3-slicer-btn:hover,
+html:not(.dark) .p4-slicer-btn:hover {
+  background-color: #f1f5f9;
+  border-color: #059669;
+  color: #065f46;
+}
+
+html:not(.dark) .bg-emerald-600 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border-color: #047857 !important;
+}
+
+html:not(.dark) select,
+html:not(.dark) input[type="text"],
+html:not(.dark) input[type="search"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* 7. BADGES & PILL TAGS */
+html:not(.dark) #dash-badge-period,
+html:not(.dark) #coal-badge-period,
+html:not(.dark) #summary-badge-period,
+html:not(.dark) #brands-badge-period,
+html:not(.dark) #consumption-badge-period,
+html:not(.dark) .bg-amber-500\/10 {
+  background-color: #fef3c7 !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+}
+
+html:not(.dark) .bg-emerald-950\/60,
+html:not(.dark) .bg-emerald-500\/10 {
+  background-color: #dcfce7 !important;
+  border: 1px solid #86efac !important;
+  color: #065f46 !important;
+}
+
+html:not(.dark) .bg-cyan-950\/30,
+html:not(.dark) .bg-blue-500\/10 {
+  background-color: #e0f2fe !important;
+  border: 1px solid #bae6fd !important;
+  color: #0369a1 !important;
+}
+
+html:not(.dark) .bg-rose-500\/10 {
+  background-color: #ffe4e6 !important;
+  border: 1px solid #fecdd3 !important;
+  color: #9f1239 !important;
+}
+
+html:not(.dark) .bg-purple-950\/30 {
+  background-color: #f3e8ff !important;
+  border: 1px solid #e9d5ff !important;
+  color: #6b21a8 !important;
+}
+
+/* 8. TABLE STYLING IN LIGHT MODE */
+html:not(.dark) table {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .table-excel-grid th,
+html:not(.dark) .table-excel-grid td {
+  border: 1px solid #cbd5e1 !important;
+}
+
+html:not(.dark) thead tr {
+  background-color: #f1f5f9 !important;
+}
+html:not(.dark) thead th {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+html:not(.dark) thead th span {
+  color: #64748b !important;
+}
+html:not(.dark) thead th.bg-cyan-950\/30 {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+html:not(.dark) thead th.bg-amber-950\/30 {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+html:not(.dark) thead th.bg-purple-950\/30 {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+}
+
+html:not(.dark) tbody tr {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+html:not(.dark) tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+html:not(.dark) tbody td {
+  color: #0f172a;
+}
+
+/* Drying Row */
+html:not(.dark) tbody tr.bg-\[\#0b172a\]\/70 {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+}
+html:not(.dark) tbody tr.bg-\[\#0b172a\]\/70 td {
+  color: #64748b !important;
+}
+
+/* Table Footer Tier 1: TỔNG SẤY LÒ */
+html:not(.dark) tfoot tr.bg-\[\#0a1526\] {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#0a1526\] td {
+  color: #1e293b !important;
+}
+
+/* Table Footer Tier 2: TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ (Xanh nổi bật) */
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] {
+  background-color: #dcfce7 !important;
+  border-top: 2px solid #059669 !important;
+  border-bottom: 2px solid #059669 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] td {
+  color: #065f46 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] td.text-emerald-300,
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] td.text-white {
+  color: #047857 !important;
+  font-weight: 800 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] td.text-amber-300 {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#0b291b\] td.text-cyan-300 {
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+}
+
+/* Table Footer Tier 3: TỔNG + SẤY LÒ */
+html:not(.dark) tfoot tr.bg-\[\#09152b\] {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#09152b\] td {
+  color: #0f172a !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#09152b\] td.text-amber-300 {
+  color: #b45309 !important;
+  font-weight: 800 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#09152b\] td.text-cyan-300 {
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+}
+html:not(.dark) tfoot tr.bg-\[\#09152b\] td.text-emerald-400 {
+  color: #047857 !important;
+  font-weight: 800 !important;
 }
 
 /* Print Styles */
@@ -89,23 +369,4 @@ html:not(.dark) .text-white {
     border: none !important;
     padding: 0 !important;
   }
-}
-
-
-/* Excel-like Grid Border Styling */
-.table-excel-grid {
-  border-collapse: collapse !important;
-  width: 100%;
-}
-.table-excel-grid th, .table-excel-grid td {
-  border: 1px solid rgba(40, 75, 130, 0.75) !important;
-}
-.table-excel-grid thead th {
-  border: 1px solid rgba(50, 90, 150, 0.9) !important;
-}
-.light-mode .table-excel-grid th, .light-mode .table-excel-grid td {
-  border: 1px solid #cbd5e1 !important;
-}
-.light-mode .table-excel-grid thead th {
-  border: 1px solid #94a3b8 !important;
 }
