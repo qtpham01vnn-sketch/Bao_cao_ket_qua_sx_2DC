@@ -1,0 +1,18 @@
+{
+  "name": "Phương Nam - Quản Lý Sản Xuất 2 Dây Chuyền",
+  "short_name": "PXSX Phương Nam",
+  "description": "Hệ thống quản lý sản xuất, chất lượng và tiêu hao than 2 dây chuyền - Gạch Men Phương Nam 2026",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#091428",
+  "theme_color": "#0a1832",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%23059669'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='220' font-weight='900' fill='%23ffffff'%3EPN%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

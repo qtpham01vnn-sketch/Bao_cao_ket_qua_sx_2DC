@@ -17,24 +17,224 @@ let currentDashRawMaterialsChart = [];
 let currentDashRawCoalTrend = [];
 
 // ==========================================
-// ROLE-BASED ACCESS CONTROL (RBAC)
+// PWA (PROGRESSIVE WEB APP) CONTROLLER
 // ==========================================
-let currentRole = localStorage.getItem("user_role") || "admin";
+let deferredPWAInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPWAInstallPrompt = e;
+  console.log("PWA beforeinstallprompt captured!");
+  const installBtn = document.getElementById("btn-pwa-install");
+  if (installBtn) {
+    installBtn.classList.add("ring-2", "ring-emerald-400", "animate-pulse");
+  }
+});
+
+window.addEventListener("appinstalled", () => {
+  console.log("PWA đã được cài đặt thành công trên thiết bị!");
+  deferredPWAInstallPrompt = null;
+  alert("Chúc mừng! Ứng dụng Quản lý Sản xuất 2DC đã được cài đặt thành công vào màn hình chính của bạn.");
+});
+
+function triggerPWAInstall() {
+  if (deferredPWAInstallPrompt) {
+    deferredPWAInstallPrompt.prompt();
+    deferredPWAInstallPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === "accepted") {
+        console.log("User accepted PWA installation");
+      }
+      deferredPWAInstallPrompt = null;
+    });
+  } else {
+    openModal("modal-pwa-install");
+  }
+}
+
+function triggerNativeInstallPrompt() {
+  if (deferredPWAInstallPrompt) {
+    deferredPWAInstallPrompt.prompt();
+    deferredPWAInstallPrompt.userChoice.then((choiceResult) => {
+      deferredPWAInstallPrompt = null;
+      closeModal("modal-pwa-install");
+    });
+  } else {
+    alert("Vui lòng thực hiện theo hướng dẫn tương ứng với thiết bị của bạn ở bên dưới.");
+  }
+}
+
+// Service Worker Registration
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      console.log("PWA Service Worker registered with scope:", reg.scope);
+    }).catch((err) => {
+      console.log("PWA Service Worker registration skipped or failed:", err);
+    });
+  });
+}
+
+// ==========================================
+// USERS DATABASE & AUTHENTICATION (RBAC)
+// ==========================================
+const DEFAULT_USERS_DB = [
+  {
+    username: "admin",
+    fullname: "Quản Trị Hệ Thống",
+    title: "Admin System",
+    role: "admin",
+    roleName: "ADMIN System",
+    roleBadgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+    roleDotBg: "bg-rose-400",
+    permissionsDesc: "Toàn quyền. Quản lý Master Data & Tài khoản.",
+    pin: "0179",
+    status: "Hoạt Động",
+    avatar: "AD",
+    avatarBg: "bg-rose-700"
+  },
+  {
+    username: "quanly",
+    fullname: "Bùi Văn A - Phó TGĐ",
+    title: "BGD & Trưởng Phòng",
+    role: "ptgd",
+    roleName: "Management (Read-Only)",
+    roleBadgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+    roleDotBg: "bg-purple-400",
+    permissionsDesc: "Giám sát. Xem toàn bộ báo cáo, KHÔNG có quyền Thêm/Xoá/Sửa.",
+    pin: "1111",
+    status: "Hoạt Động",
+    avatar: "TGĐ",
+    avatarBg: "bg-purple-700"
+  },
+  {
+    username: "kcs_tester",
+    fullname: "Phạm Thị Thu Hiền",
+    title: "Nhân viên KCS (Người KT)",
+    role: "operator",
+    roleName: "Operator (Thống Kê)",
+    roleBadgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    roleDotBg: "bg-emerald-400",
+    permissionsDesc: "Tác nghiệp. Nhập liệu hằng ngày, KHÔNG sửa đổi Master Data.",
+    pin: "1234",
+    status: "Hoạt Động",
+    avatar: "KT",
+    avatarBg: "bg-emerald-700"
+  },
+  {
+    username: "driver_ncc",
+    fullname: "Trần Ngọc Triển",
+    title: "Người giao hàng (Tài xế/NCC)",
+    role: "operator",
+    roleName: "Operator (Thống Kê)",
+    roleBadgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    roleDotBg: "bg-emerald-400",
+    permissionsDesc: "Tác nghiệp. Nhập liệu hằng ngày, KHÔNG sửa đổi Master Data.",
+    pin: "2222",
+    status: "Hoạt Động",
+    avatar: "TX",
+    avatarBg: "bg-teal-700"
+  },
+  {
+    username: "kcs_manager",
+    fullname: "Vũ Văn Bảy",
+    title: "Phụ trách KCS / Kỹ thuật",
+    role: "quan_doc",
+    roleName: "Management (Read-Only)",
+    roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    roleDotBg: "bg-amber-400",
+    permissionsDesc: "Giám sát. Xem toàn bộ báo cáo, KHÔNG có quyền Thêm/Xoá/Sửa.",
+    pin: "3333",
+    status: "Hoạt Động",
+    avatar: "QL",
+    avatarBg: "bg-amber-700"
+  },
+  {
+    username: "thongke",
+    fullname: "Thống Kê Sản Xuất",
+    title: "Thống Kê PXSX / KTCN",
+    role: "operator",
+    roleName: "Operator (Thống Kê)",
+    roleBadgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    roleDotBg: "bg-emerald-400",
+    permissionsDesc: "Tác nghiệp. Nhập liệu hằng ngày, KHÔNG sửa đổi Master Data.",
+    pin: "9999",
+    status: "Hoạt Động",
+    avatar: "TK",
+    avatarBg: "bg-emerald-700"
+  },
+  {
+    username: "tp_ktkh",
+    fullname: "Nguyễn Văn B - Trưởng Phòng",
+    title: "Trưởng Phòng KT-KH",
+    role: "truong_phong",
+    roleName: "Management (Read-Only)",
+    roleBadgeClass: "bg-blue-500/20 text-cyan-300 border-blue-500/40",
+    roleDotBg: "bg-cyan-400",
+    permissionsDesc: "Giám sát & Phân tích số liệu, KHÔNG có quyền sửa đổi Master Data.",
+    pin: "tp3333",
+    status: "Hoạt Động",
+    avatar: "TP",
+    avatarBg: "bg-blue-700"
+  },
+  {
+    username: "quandoc",
+    fullname: "Trần Văn C - Quản Đốc",
+    title: "Quản Đốc Phân Xưởng",
+    role: "quan_doc",
+    roleName: "Management (Read-Only)",
+    roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    roleDotBg: "bg-amber-400",
+    permissionsDesc: "Giám sát vận hành 2 dây chuyền, theo dõi lò nung & sấy.",
+    pin: "qd4444",
+    status: "Hoạt Động",
+    avatar: "QĐ",
+    avatarBg: "bg-amber-700"
+  }
+];
+
+function getUsersDb() {
+  try {
+    const raw = localStorage.getItem("px_users_db_v3");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error("Error reading users db:", e);
+  }
+  saveUsersDb(DEFAULT_USERS_DB);
+  return DEFAULT_USERS_DB;
+}
+
+function saveUsersDb(users) {
+  try {
+    localStorage.setItem("px_users_db_v3", JSON.stringify(users));
+  } catch (e) {
+    console.error("Error saving users db:", e);
+  }
+}
+
+function getActiveUser() {
+  const users = getUsersDb();
+  const sessionUsername = localStorage.getItem("px_auth_session") || "admin";
+  const user = users.find(u => u.username === sessionUsername) || users[0];
+  return user;
+}
+
+let currentAuthUser = getActiveUser();
+let currentRole = currentAuthUser ? currentAuthUser.role : "admin";
 
 const ROLES_INFO = {
   admin: {
     title: "Quản trị viên",
-    email: "admin@phuongnam.local",
+    roleName: "ADMIN System",
     badge: "Toàn quyền",
-    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-    avatarBg: "bg-emerald-700",
+    badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+    avatarBg: "bg-rose-700",
     avatarText: "AD",
     canEdit: true,
     canImport: true
   },
   ptgd: {
     title: "Phó Tổng Giám Đốc",
-    email: "ptgd.sx@phuongnam.local",
+    roleName: "Management (Read-Only)",
     badge: "Chỉ xem",
     badgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
     avatarBg: "bg-purple-700",
@@ -44,7 +244,7 @@ const ROLES_INFO = {
   },
   truong_phong: {
     title: "Trưởng / Phó Phòng KT-KH",
-    email: "truongphong@phuongnam.local",
+    roleName: "Management (Read-Only)",
     badge: "Chỉ xem",
     badgeClass: "bg-blue-500/20 text-cyan-300 border-blue-500/40",
     avatarBg: "bg-blue-700",
@@ -54,11 +254,21 @@ const ROLES_INFO = {
   },
   quan_doc: {
     title: "Quản Đốc Phân Xưởng",
-    email: "quandoc.px@phuongnam.local",
+    roleName: "Management (Read-Only)",
     badge: "Chỉ xem",
     badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
     avatarBg: "bg-amber-700",
     avatarText: "QĐ",
+    canEdit: false,
+    canImport: false
+  },
+  operator: {
+    title: "Thống Kê / Tác Nghiệp",
+    roleName: "Operator (Thống Kê)",
+    badge: "Chỉ xem",
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    avatarBg: "bg-emerald-700",
+    avatarText: "TK",
     canEdit: false,
     canImport: false
   }
@@ -68,10 +278,16 @@ function changeUserRole(roleKey) {
   if (!ROLES_INFO[roleKey]) roleKey = "admin";
   currentRole = roleKey;
   localStorage.setItem("user_role", roleKey);
+  
+  // Update current user role temporarily for test
+  if (currentAuthUser) {
+    currentAuthUser.role = roleKey;
+  }
   applyRolePermissions();
 }
 
 function applyRolePermissions() {
+  currentAuthUser = getActiveUser();
   const role = ROLES_INFO[currentRole] || ROLES_INFO.admin;
 
   // Sync role dropdowns
@@ -81,21 +297,22 @@ function applyRolePermissions() {
   const adminSel = document.getElementById("admin-role-select");
   if (adminSel && adminSel.value !== currentRole) adminSel.value = currentRole;
 
-  // Sync sidebar footer
-  const badgeEl = document.getElementById("sidebar-role-badge");
-  const titleEl = document.getElementById("sidebar-user-title");
-  const emailEl = document.getElementById("sidebar-user-email");
-  const avatarEl = document.getElementById("sidebar-user-avatar");
+  // Update Sidebar User Profile Card
+  const userNameEl = document.getElementById("auth-user-name");
+  const userAvatarEl = document.getElementById("auth-user-avatar");
+  const roleBadgeEl = document.getElementById("auth-role-badge");
+  const roleTextEl = document.getElementById("auth-role-text");
 
-  if (badgeEl) {
-    badgeEl.innerText = role.badge;
-    badgeEl.className = `px-1.5 py-0.5 rounded text-[9.5px] font-bold border ${role.badgeClass}`;
+  if (userNameEl && currentAuthUser) userNameEl.innerText = currentAuthUser.fullname;
+  if (userAvatarEl && currentAuthUser) {
+    userAvatarEl.innerText = currentAuthUser.avatar || "AD";
+    userAvatarEl.className = `w-7 h-7 rounded-full ${currentAuthUser.avatarBg || 'bg-rose-700'} text-white flex items-center justify-center text-xs font-black shadow shrink-0`;
   }
-  if (titleEl) titleEl.innerText = role.title;
-  if (emailEl) emailEl.innerText = role.email;
-  if (avatarEl) {
-    avatarEl.innerText = role.avatarText;
-    avatarEl.className = `w-7 h-7 rounded-full ${role.avatarBg} text-white flex items-center justify-center text-xs font-bold shrink-0`;
+  if (roleBadgeEl && currentAuthUser) {
+    roleBadgeEl.className = `px-2 py-0.5 rounded text-[9.5px] font-bold border flex items-center gap-1 truncate ${currentAuthUser.roleBadgeClass || role.badgeClass}`;
+  }
+  if (roleTextEl && currentAuthUser) {
+    roleTextEl.innerText = currentAuthUser.roleName || role.roleName || role.badge;
   }
 
   // Permission enforcement for Norms Tab
@@ -146,6 +363,476 @@ function applyRolePermissions() {
   }
 }
 
+// ==========================================
+// AUTHENTICATION MODAL & LOGOUT CONTROLLER
+// ==========================================
+function handleLogout() {
+  if (confirm("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?")) {
+    localStorage.removeItem("px_auth_session");
+    openModal("modal-login");
+  }
+}
+
+function handleManualLogin() {
+  const uInput = document.getElementById("login-username").value.trim().toLowerCase();
+  const pInput = document.getElementById("login-password").value.trim();
+  const errEl = document.getElementById("login-error-msg");
+
+  if (!uInput || !pInput) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu!";
+    }
+    return;
+  }
+
+  const users = getUsersDb();
+  const user = users.find(u => u.username.toLowerCase() === uInput);
+
+  if (!user || user.pin !== pInput) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Tên đăng nhập hoặc Mật khẩu không chính xác. Vui lòng kiểm tra lại!";
+    }
+    return;
+  }
+
+  if (user.status === "Tạm Khóa") {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Tài khoản của bạn đang bị TẠM KHÓA. Vui lòng liên hệ Admin!";
+    }
+    return;
+  }
+
+  // Success login
+  if (errEl) errEl.classList.add("hidden");
+  localStorage.setItem("px_auth_session", user.username);
+  localStorage.setItem("user_role", user.role);
+  currentRole = user.role;
+  currentAuthUser = user;
+  
+  closeModal("modal-login");
+  applyRolePermissions();
+  renderAccountsTable();
+  alert(`Đăng nhập thành công! Chào mừng ${user.fullname} (${user.roleName || user.title}).`);
+}
+
+function quickLogin(username, pin) {
+  document.getElementById("login-username").value = username;
+  document.getElementById("login-password").value = pin;
+  handleManualLogin();
+}
+
+function openChangePasswordModal() {
+  const user = getActiveUser();
+  document.getElementById("cp-old-pass").value = "";
+  document.getElementById("cp-new-pass").value = "";
+  document.getElementById("cp-confirm-pass").value = "";
+  const errEl = document.getElementById("cp-error-msg");
+  if (errEl) errEl.classList.add("hidden");
+  openModal("modal-change-password");
+}
+
+function submitChangePassword() {
+  const oldPass = document.getElementById("cp-old-pass").value.trim();
+  const newPass = document.getElementById("cp-new-pass").value.trim();
+  const confirmPass = document.getElementById("cp-confirm-pass").value.trim();
+  const errEl = document.getElementById("cp-error-msg");
+
+  const user = getActiveUser();
+  if (!user) return;
+
+  if (!oldPass || !newPass || !confirmPass) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Vui lòng nhập đầy đủ các trường thông tin!";
+    }
+    return;
+  }
+
+  if (user.pin !== oldPass) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Mật khẩu hiện tại không đúng!";
+    }
+    return;
+  }
+
+  if (newPass !== confirmPass) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Mật khẩu mới và xác nhận mật khẩu không trùng khớp!";
+    }
+    return;
+  }
+
+  if (newPass.length < 4) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Mật khẩu mới phải có ít nhất 4 ký tự!";
+    }
+    return;
+  }
+
+  // Update in DB
+  const users = getUsersDb();
+  const idx = users.findIndex(u => u.username === user.username);
+  if (idx !== -1) {
+    users[idx].pin = newPass;
+    saveUsersDb(users);
+  }
+
+  if (errEl) errEl.classList.add("hidden");
+  closeModal("modal-change-password");
+  renderAccountsTable();
+  alert("Chúc mừng! Bạn đã đổi mật khẩu thành công.");
+}
+
+// ==========================================
+// MASTER DATA SUB-TABS & ACCOUNTS CRUD
+// ==========================================
+function switchMasterSubTab(subTabId) {
+  document.querySelectorAll(".master-sub-pane").forEach(p => p.classList.add("hidden"));
+  document.querySelectorAll(".master-sub-btn").forEach(b => {
+    b.classList.remove("bg-blue-600", "text-white", "shadow");
+    b.classList.add("text-slate-300");
+  });
+
+  const activePane = document.getElementById(`sub-master-${subTabId}`);
+  if (activePane) activePane.classList.remove("hidden");
+
+  const activeBtn = document.getElementById(`btn-sub-${subTabId}`);
+  if (activeBtn) {
+    activeBtn.classList.add("bg-blue-600", "text-white", "shadow");
+    activeBtn.classList.remove("text-slate-300");
+  }
+
+  if (subTabId === "accounts") {
+    renderAccountsTable();
+  } else if (subTabId === "norms") {
+    loadNormVersions();
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderAccountsTable() {
+  const tbody = document.getElementById("accounts-table-body");
+  if (!tbody) return;
+
+  const users = getUsersDb();
+  tbody.innerHTML = users.map((u, idx) => {
+    const isCurrentUser = currentAuthUser && currentAuthUser.username === u.username;
+    return `
+      <tr class="hover:bg-[#13284d]/60 transition ${isCurrentUser ? 'bg-cyan-950/20' : ''}">
+        <td class="p-3 font-mono font-bold text-cyan-300 border border-[#1e3a6a]/40">
+          ${u.username}
+          ${isCurrentUser ? '<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">Bạn</span>' : ''}
+        </td>
+        <td class="p-3 font-bold text-white border border-[#1e3a6a]/40">${u.fullname}</td>
+        <td class="p-3 text-slate-300 border border-[#1e3a6a]/40">${u.title}</td>
+        <td class="p-3 text-center border border-[#1e3a6a]/40">
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${u.roleBadgeClass || 'bg-slate-700 text-slate-300'}">
+            <span class="w-1.5 h-1.5 rounded-full ${u.roleDotBg || 'bg-slate-400'}"></span>
+            ${u.roleName || u.role}
+          </span>
+        </td>
+        <td class="p-3 text-[11px] text-slate-400 max-w-xs border border-[#1e3a6a]/40">${u.permissionsDesc || 'Chỉ xem dữ liệu'}</td>
+        <td class="p-3 text-center font-mono font-black text-slate-300 border border-[#1e3a6a]/40 tracking-widest">
+          ${u.pin}
+        </td>
+        <td class="p-3 text-center border border-[#1e3a6a]/40">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'Hoạt Động' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}">
+            ${u.status}
+          </span>
+        </td>
+        <td class="p-3 text-center border border-[#1e3a6a]/40">
+          <div class="flex items-center justify-center gap-1.5">
+            <button onclick="editUserAccount('${u.username}')" class="px-2 py-1 rounded bg-[#112348] hover:bg-[#183266] border border-blue-500/30 text-[10.5px] font-bold text-cyan-300 transition flex items-center gap-1" title="Sửa thông tin">
+              <i data-lucide="edit-3" class="w-3 h-3"></i> Sửa
+            </button>
+            ${u.username !== 'admin' ? `
+              <button onclick="deleteUserAccount('${u.username}')" class="px-2 py-1 rounded bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-[10.5px] font-bold text-rose-300 transition flex items-center gap-1" title="Xóa tài khoản">
+                <i data-lucide="trash-2" class="w-3 h-3"></i> Xóa
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function openAddUserModal() {
+  document.getElementById("user-modal-title-text").innerHTML = `<i data-lucide="user-plus" class="w-4 h-4 text-cyan-400 inline mr-1"></i> Thêm Tài Khoản Người Dùng Mới`;
+  document.getElementById("user-modal-edit-mode").value = "create";
+  
+  const uField = document.getElementById("user-modal-username");
+  uField.value = "";
+  uField.disabled = false;
+  uField.classList.remove("opacity-60", "cursor-not-allowed");
+
+  document.getElementById("user-modal-fullname").value = "";
+  document.getElementById("user-modal-title").value = "";
+  document.getElementById("user-modal-role").value = "operator";
+  document.getElementById("user-modal-pin").value = Math.floor(1000 + Math.random() * 9000).toString();
+  document.getElementById("user-modal-status").value = "Hoạt Động";
+  document.getElementById("user-modal-desc").value = "Tác nghiệp. Nhập liệu hằng ngày, KHÔNG sửa đổi Master Data.";
+
+  const errEl = document.getElementById("user-modal-error-msg");
+  if (errEl) errEl.classList.add("hidden");
+
+  openModal("modal-user-account");
+  if (window.lucide) lucide.createIcons();
+}
+
+function editUserAccount(username) {
+  const users = getUsersDb();
+  const user = users.find(u => u.username === username);
+  if (!user) return;
+
+  document.getElementById("user-modal-title-text").innerHTML = `<i data-lucide="edit" class="w-4 h-4 text-amber-400 inline mr-1"></i> Sửa Thông Tin Tài Khoản: <b>${user.username}</b>`;
+  document.getElementById("user-modal-edit-mode").value = "edit";
+
+  const uField = document.getElementById("user-modal-username");
+  uField.value = user.username;
+  uField.disabled = true;
+  uField.classList.add("opacity-60", "cursor-not-allowed");
+
+  document.getElementById("user-modal-fullname").value = user.fullname;
+  document.getElementById("user-modal-title").value = user.title;
+  document.getElementById("user-modal-role").value = user.role || "operator";
+  document.getElementById("user-modal-pin").value = user.pin;
+  document.getElementById("user-modal-status").value = user.status;
+  document.getElementById("user-modal-desc").value = user.permissionsDesc || "";
+
+  const errEl = document.getElementById("user-modal-error-msg");
+  if (errEl) errEl.classList.add("hidden");
+
+  openModal("modal-user-account");
+  if (window.lucide) lucide.createIcons();
+}
+
+function deleteUserAccount(username) {
+  if (username === "admin") {
+    alert("Không thể xóa tài khoản Quản trị viên gốc (Admin)!");
+    return;
+  }
+  if (confirm(`Bạn có chắc chắn muốn xóa tài khoản [${username}] không? Hành động này không thể hoàn tác.`)) {
+    let users = getUsersDb();
+    users = users.filter(u => u.username !== username);
+    saveUsersDb(users);
+    renderAccountsTable();
+    alert(`Đã xóa thành công tài khoản [${username}].`);
+  }
+}
+
+function submitSaveUserAccount() {
+  const mode = document.getElementById("user-modal-edit-mode").value;
+  const username = document.getElementById("user-modal-username").value.trim().toLowerCase();
+  const fullname = document.getElementById("user-modal-fullname").value.trim();
+  const title = document.getElementById("user-modal-title").value.trim();
+  const role = document.getElementById("user-modal-role").value;
+  const pin = document.getElementById("user-modal-pin").value.trim();
+  const status = document.getElementById("user-modal-status").value;
+  const desc = document.getElementById("user-modal-desc").value.trim();
+  const errEl = document.getElementById("user-modal-error-msg");
+
+  if (!username || !fullname || !pin) {
+    if (errEl) {
+      errEl.classList.remove("hidden");
+      errEl.innerText = "Vui lòng điền đầy đủ Username, Họ & Tên và Mã PIN!";
+    }
+    return;
+  }
+
+  const users = getUsersDb();
+
+  // Role metadata mapping matching Image 3
+  const roleMeta = {
+    admin: {
+      roleName: "ADMIN System",
+      roleBadgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+      roleDotBg: "bg-rose-400",
+      avatarBg: "bg-rose-700"
+    },
+    ptgd: {
+      roleName: "Management (Read-Only)",
+      roleBadgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+      roleDotBg: "bg-purple-400",
+      avatarBg: "bg-purple-700"
+    },
+    truong_phong: {
+      roleName: "Management (Read-Only)",
+      roleBadgeClass: "bg-blue-500/20 text-cyan-300 border-blue-500/40",
+      roleDotBg: "bg-cyan-400",
+      avatarBg: "bg-blue-700"
+    },
+    quan_doc: {
+      roleName: "Management (Read-Only)",
+      roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+      roleDotBg: "bg-amber-400",
+      avatarBg: "bg-amber-700"
+    },
+    operator: {
+      roleName: "Operator (Thống Kê)",
+      roleBadgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+      roleDotBg: "bg-emerald-400",
+      avatarBg: "bg-emerald-700"
+    }
+  };
+
+  const meta = roleMeta[role] || roleMeta.operator;
+  const nameParts = fullname.split(" ").filter(Boolean);
+  const avatarInitials = nameParts.length >= 2 ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase() : fullname.substring(0, 2).toUpperCase();
+
+  if (mode === "create") {
+    if (users.some(u => u.username.toLowerCase() === username)) {
+      if (errEl) {
+        errEl.classList.remove("hidden");
+        errEl.innerText = `Username [${username}] đã tồn tại trong hệ thống! Vui lòng chọn tên khác.`;
+      }
+      return;
+    }
+
+    users.push({
+      username,
+      fullname,
+      title,
+      role,
+      roleName: meta.roleName,
+      roleBadgeClass: meta.roleBadgeClass,
+      roleDotBg: meta.roleDotBg,
+      permissionsDesc: desc || "Tác nghiệp. Nhập liệu hằng ngày.",
+      pin,
+      status,
+      avatar: avatarInitials,
+      avatarBg: meta.avatarBg
+    });
+  } else {
+    // Edit mode
+    const idx = users.findIndex(u => u.username === username);
+    if (idx !== -1) {
+      users[idx].fullname = fullname;
+      users[idx].title = title;
+      users[idx].role = role;
+      users[idx].roleName = meta.roleName;
+      users[idx].roleBadgeClass = meta.roleBadgeClass;
+      users[idx].roleDotBg = meta.roleDotBg;
+      users[idx].permissionsDesc = desc;
+      users[idx].pin = pin;
+      users[idx].status = status;
+      users[idx].avatar = avatarInitials;
+      users[idx].avatarBg = meta.avatarBg;
+    }
+  }
+
+  saveUsersDb(users);
+  closeModal("modal-user-account");
+  renderAccountsTable();
+  applyRolePermissions();
+  alert(`Đã lưu thông tin tài khoản [${username}] thành công!`);
+}
+
+function downloadUsersTemplate() {
+  const csvContent = "\uFEFF" + "USERNAME,HO_VA_TEN,CHUC_DANH,VAI_TRO,MA_PIN,TRANG_THAI,QUYEN_HAN\n"
+    + "admin,Quản Trị Hệ Thống,Admin System,admin,0179,Hoạt Động,Toàn quyền quản lý\n"
+    + "quanly,Bùi Văn A - Phó TGĐ,Ban Giám Đốc,ptgd,1111,Hoạt Động,Giám sát toàn bộ báo cáo\n"
+    + "kcs_01,Phạm Văn D,Nhân viên KCS,operator,1234,Hoạt Động,Nhập liệu KCS hàng ngày\n";
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Mau_Danh_Sach_Tai_Khoan_PhuongNam.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerImportUsersExcel() {
+  document.getElementById("users-excel-file").click();
+}
+
+function importUsersFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length <= 1) {
+        alert("File không chứa dữ liệu tài khoản hợp lệ!");
+        return;
+      }
+
+      const users = getUsersDb();
+      let importedCount = 0;
+
+      // Skip header line
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
+        if (cols.length >= 3 && cols[0]) {
+          const uName = cols[0].toLowerCase();
+          const fName = cols[1] || uName;
+          const tName = cols[2] || "Nhân viên";
+          const rName = cols[3] || "operator";
+          const pinCode = cols[4] || "1234";
+          const stat = cols[5] || "Hoạt Động";
+          const perm = cols[6] || "Tác nghiệp. Nhập liệu hằng ngày.";
+
+          const existingIdx = users.findIndex(u => u.username === uName);
+          const userObj = {
+            username: uName,
+            fullname: fName,
+            title: tName,
+            role: rName,
+            roleName: rName === "admin" ? "ADMIN System" : (rName === "operator" ? "Operator (Thống Kê)" : "Management (Read-Only)"),
+            roleBadgeClass: rName === "admin" ? "bg-rose-500/20 text-rose-300 border-rose-500/40" : (rName === "operator" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" : "bg-purple-500/20 text-purple-300 border-purple-500/40"),
+            roleDotBg: rName === "admin" ? "bg-rose-400" : (rName === "operator" ? "bg-emerald-400" : "bg-purple-400"),
+            permissionsDesc: perm,
+            pin: pinCode,
+            status: stat,
+            avatar: fName.substring(0, 2).toUpperCase(),
+            avatarBg: rName === "admin" ? "bg-rose-700" : "bg-blue-700"
+          };
+
+          if (existingIdx !== -1) {
+            users[existingIdx] = userObj;
+          } else {
+            users.push(userObj);
+          }
+          importedCount++;
+        }
+      }
+
+      saveUsersDb(users);
+      renderAccountsTable();
+      alert(`Đã nhập thành công ${importedCount} tài khoản từ file!`);
+    } catch (err) {
+      alert("Lỗi khi đọc file tài khoản: " + err);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Modal generic opener/closer
+function openModal(modalId) {
+  const m = document.getElementById(modalId);
+  if (m) m.classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeModal(modalId) {
+  const m = document.getElementById(modalId);
+  if (m) m.classList.add("hidden");
+}
+
 // Mobile Sidebar Drawer Toggle
 function toggleMobileSidebar(show) {
   const sidebar = document.getElementById("sidebar");
@@ -168,6 +855,7 @@ function toggleMobileSidebar(show) {
 document.addEventListener("DOMContentLoaded", () => {
   if (window.lucide && lucide.createIcons) lucide.createIcons();
   applyRolePermissions();
+  renderAccountsTable();
   try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }
   try { loadSummaryData(); } catch(e) { console.error("loadSummaryData err:", e); }
   try { loadBrandsData(); } catch(e) { console.error("loadBrandsData err:", e); }
@@ -220,22 +908,23 @@ function switchTab(tabId) {
     "dashboard": "Tổng quan",
     "summary": "Sản lượng · chất lượng",
     "brands": "Thương hiệu",
-    "norms": "Định mức phiên bản",
     "consumption": "Tiêu hao vật tư",
     "coal": "Sử dụng than",
-    "import": "Import Excel",
     "export-report": "Báo cáo trình ký",
-    "admin": "Phân quyền & CSDL"
+    "master-data": "Quản Lý Danh Mục"
   };
   document.getElementById("breadcrumb-current").innerText = titles[tabId] || "Tổng quan";
 
   if (tabId === "dashboard") loadDashboardData();
   else if (tabId === "summary") loadSummaryData();
   else if (tabId === "brands") loadBrandsData();
-  else if (tabId === "norms") loadNormVersions();
   else if (tabId === "consumption") loadConsumptionData();
   else if (tabId === "coal") loadCoalData();
   else if (tabId === "export-report") renderFormMauPreview();
+  else if (tabId === "master-data") {
+    renderAccountsTable();
+    loadNormVersions();
+  }
 
   applyRolePermissions();
   if (window.lucide) lucide.createIcons();

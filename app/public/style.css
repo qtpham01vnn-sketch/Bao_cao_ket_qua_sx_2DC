@@ -451,6 +451,41 @@ html:not(.dark) #form-mau-sig-box .text-slate-200 {
   color: #0f172a !important;
 }
 
+/* 10. MASTER DATA SUBTABS & MODALS IN LIGHT THEME */
+html:not(.dark) .master-sub-btn {
+  color: #334155 !important;
+}
+html:not(.dark) .master-sub-btn.bg-blue-600 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+html:not(.dark) .master-sub-btn:hover:not(.bg-blue-600) {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) [id^="modal-"] .bg-\[\#0f2042\] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) [id^="modal-"] input,
+html:not(.dark) [id^="modal-"] select,
+html:not(.dark) [id^="modal-"] textarea {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) [id^="modal-"] label {
+  color: #334155 !important;
+}
+html:not(.dark) [id^="modal-"] .bg-\[\#091428\] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+html:not(.dark) [id^="modal-"] .text-white {
+  color: #0f172a !important;
+}
+
 /* Print Styles */
 @media print {
   body {
