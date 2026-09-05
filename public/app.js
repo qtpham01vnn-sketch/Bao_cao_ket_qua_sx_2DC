@@ -873,7 +873,7 @@ document.addEventListener("DOMContentLoaded", () => {
   try { loadNormVersions(); } catch(e) { console.error("loadNormVersions err:", e); }
   try { loadConsumptionData(); } catch(e) { console.error("loadConsumptionData err:", e); }
   try { loadCoalData(); } catch(e) { console.error("loadCoalData err:", e); }
-  try { renderFormMauPreview(); } catch(e) { console.error("renderFormMauPreview err:", e); }
+  try { populateFormMauPeriodSelect(); loadFormMauData(); } catch(e) { console.error("loadFormMauData err:", e); }
 });
 
 // Vietnamese Number Formatter
@@ -4138,83 +4138,982 @@ async function submitMonthlyImport() {
 }
 
 // ----------------------------------------------------
-// TAB 8: FORM MẪU TRÌNH KÝ PREVIEW & EXPORT
+// TAB 8: FORM MẪU BÁO CÁO TỔNG HỢP TRÌNH KÝ 8 PHẦN
 // ----------------------------------------------------
-async function renderFormMauPreview() {
-  const month = document.getElementById("export-select-month").value || "8";
-  document.getElementById("form-mau-header-title").innerText = `BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG ${month.length === 1 ? '0' + month : month}/2026`;
+let formMauPeriodType = 'month';
+let formMauPeriodValue = '8';
+let formMauYear = 2026;
+let currentFormMauData = null;
+let isFormMauEditMode = false;
+let selectedFormMauFile = null;
+
+function setFormMauPeriodType(type) {
+  formMauPeriodType = type;
+  ['month', 'quarter', 'half_year', 'full_year'].forEach(t => {
+    const btn = document.getElementById('btn-period-type-' + t);
+    if (btn) {
+      if (t === type) {
+        btn.className = 'px-2.5 py-1 rounded text-xs font-bold bg-cyan-600 text-white transition shadow';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition';
+      }
+    }
+  });
+
+  populateFormMauPeriodSelect();
+  loadFormMauData();
+}
+
+function populateFormMauPeriodSelect() {
+  const sel = document.getElementById('form-mau-select-value');
+  if (!sel) return;
+  sel.innerHTML = '';
+
+  if (formMauPeriodType === 'month') {
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.innerText = `Tháng ${m < 10 ? '0' + m : m}/${formMauYear}`;
+      if (m === 8) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  } else if (formMauPeriodType === 'quarter') {
+    const quarters = [
+      { val: 'Q1', text: `Quý I (Tháng 01 - 03/${formMauYear})` },
+      { val: 'Q2', text: `Quý II (Tháng 04 - 06/${formMauYear})` },
+      { val: 'Q3', text: `Quý III (Tháng 07 - 09/${formMauYear})` },
+      { val: 'Q4', text: `Quý IV (Tháng 10 - 12/${formMauYear})` }
+    ];
+    quarters.forEach(q => {
+      const opt = document.createElement('option');
+      opt.value = q.val;
+      opt.innerText = q.text;
+      if (q.val === 'Q3') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } else if (formMauPeriodType === 'half_year') {
+    const halves = [
+      { val: 'H1', text: `6 Tháng đầu năm (T01 - T06/${formMauYear})` },
+      { val: 'H2', text: `6 Tháng cuối năm (T07 - T12/${formMauYear})` }
+    ];
+    halves.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h.val;
+      opt.innerText = h.text;
+      if (h.val === 'H2') opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } else if (formMauPeriodType === 'full_year') {
+    const opt = document.createElement('option');
+    opt.value = formMauYear;
+    opt.innerText = `Cả năm ${formMauYear} (12 Tháng)`;
+    opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+async function loadFormMauData() {
+  const selVal = document.getElementById('form-mau-select-value');
+  const selYear = document.getElementById('form-mau-select-year');
+  if (selVal) formMauPeriodValue = selVal.value;
+  if (selYear) formMauYear = parseInt(selYear.value) || 2026;
+
+  const contentDiv = document.getElementById('form-mau-content');
+  if (contentDiv) {
+    contentDiv.innerHTML = `
+      <div class="p-12 text-center text-slate-400">
+        <div class="inline-block animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full mb-3"></div>
+        <div class="font-bold text-sm text-cyan-300">Đang tổng hợp dữ liệu Form Mẫu chuẩn Form gốc...</div>
+      </div>
+    `;
+  }
 
   try {
-    const res = await fetch(`/api/data/summary?month=${month}&unit=m2`);
+    const res = await fetch(`/api/report/form-mau?period_type=${formMauPeriodType}&period_value=${formMauPeriodValue}&year=${formMauYear}`);
     const json = await res.json();
-    const rows = json.data || [];
+    currentFormMauData = json;
+    renderFormMauContent(currentFormMauData);
+  } catch (err) {
+    console.error('Error loading form mau data:', err);
+    if (contentDiv) {
+      contentDiv.innerHTML = `<div class="p-6 text-center text-rose-400 bg-rose-500/10 rounded-xl border border-rose-500/30">Lỗi nạp dữ liệu: ${err.message}</div>`;
+    }
+  }
+}
 
-    const contentDiv = document.getElementById("form-mau-content");
-    contentDiv.innerHTML = `
-      <!-- Phần I: Tổng Hợp Sản Lượng -->
-      <div>
-        <h4 class="font-bold text-emerald-400 uppercase mb-2 border-b border-[#1e3a6a] pb-1 tracking-wider text-xs">I. KẾT QUẢ SẢN XUẤT TỔNG HỢP</h4>
+// Backward compatibility
+function renderFormMauPreview() {
+  loadFormMauData();
+}
+
+function renderFormMauContent(d) {
+  if (!d || !d.section_1_production) return;
+
+  const pInfo = d.period_info || {};
+  document.getElementById('form-mau-header-title').innerText = `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT ${pInfo.period_title || ''} CỦA 2 DÂY CHUYỀN`;
+
+  const s1 = d.section_1_production;
+  const s2 = d.section_2_brands;
+  const s3 = d.section_3_materials;
+  const s4 = d.section_4_coal;
+  const s5 = d.section_5_hr;
+  const s6 = d.section_6_plan;
+  const s7 = d.section_7_goals;
+  const s8 = d.section_8_evaluation;
+
+  // --- SECTION I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI ---
+  const s1ItemsHtml = s1.items.map(it => {
+    const p = it.plan;
+    const a = it.actual;
+    const diff = it.diff_m2;
+    const rate = it.rate_pct;
+
+    return `
+      <!-- Row Kế hoạch (m2) -->
+      <tr class="hover:bg-[#13284d]/60">
+        <td rowspan="6" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">${it.line}</td>
+        <td rowspan="6" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">${it.size}</td>
+        <td rowspan="2" class="p-2 font-semibold text-center border border-[#1e3a6a] text-slate-300 align-middle">Kế hoạch</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(p.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(p.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(p.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(p.recovery_total, 2)}</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(p.prod_days, 1)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.avg_per_day, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.a_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.c_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.huy_ep, 2)}%</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(p.stop_time_2mf, 0)}</td>
+      </tr>
+      <!-- Row Kế hoạch (%) -->
+      <tr class="hover:bg-[#13284d]/60 text-slate-400">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_b, 2)}%</td>
+        <td colspan="7" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+
+      <!-- Row Thực hiện (m2) -->
+      <tr class="hover:bg-[#13284d]/60 bg-emerald-500/5">
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] text-emerald-400 align-middle">Thực hiện</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(a.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(a.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-300">${formatNumber(a.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-300">${formatNumber(a.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(a.recovery_total, 2)}</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(a.prod_days, 1)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a]">${formatNumber(a.avg_per_day, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(a.a_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(a.c_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(a.huy_ep, 2)}%</td>
+        <td class="p-1.5 text-center font-mono font-bold border border-[#1e3a6a] text-amber-300">${formatNumber(a.stop_time_2mf, 0)}</td>
+      </tr>
+      <!-- Row Thực hiện (%) -->
+      <tr class="hover:bg-[#13284d]/60 bg-emerald-500/5 text-slate-400">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(a.pct_a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(a.pct_a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(a.pct_b, 2)}%</td>
+        <td colspan="7" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+
+      <!-- Row So sánh TH/KH (m2) -->
+      <tr class="hover:bg-[#13284d]/60 bg-cyan-500/5">
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] text-cyan-400 align-middle">So sánh TH/KH</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${diff.sl_ep >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.sl_ep >= 0 ? '+' : ''}${formatNumber(diff.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${diff.a1 >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.a1 >= 0 ? '+' : ''}${formatNumber(diff.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${diff.a >= 0 ? '+' : ''}${formatNumber(diff.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${diff.b >= 0 ? '+' : ''}${formatNumber(diff.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${diff.recovery_total >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.recovery_total >= 0 ? '+' : ''}${formatNumber(diff.recovery_total, 2)}</td>
+        <td colspan="6" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+      <!-- Row So sánh TH/KH (%) -->
+      <tr class="hover:bg-[#13284d]/60 bg-cyan-500/5">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.sl_ep >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.sl_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.a1 >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(rate.a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(rate.b, 2)}%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.recovery_total >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.recovery_total, 2)}%</td>
+        <td colspan="6" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+    `;
+  }).join('');
+
+  // Function to render Summary block for DC2 and 2DC
+  function renderTotalBlock(tot, bgColor = 'bg-amber-500/10') {
+    const p = tot.plan;
+    const a = tot.actual;
+    const diff = tot.diff_m2;
+    const rate = tot.rate_pct;
+
+    return `
+      <tr class="${bgColor} font-bold">
+        <td rowspan="6" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] text-amber-300 align-middle font-black">${tot.name}</td>
+        <td rowspan="2" class="p-2 text-center border border-[#1e3a6a] text-slate-300 align-middle">Tổng kế hoạch</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(p.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(p.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(p.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(p.recovery_total, 2)}</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(p.prod_days, 1)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.avg_per_day, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.a_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.c_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.huy_ep, 2)}%</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(p.stop_time_2mf, 0)}</td>
+      </tr>
+      <tr class="${bgColor}">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(p.pct_b, 2)}%</td>
+        <td colspan="7" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+
+      <tr class="${bgColor} bg-emerald-500/10">
+        <td rowspan="2" class="p-2 text-center border border-[#1e3a6a] text-emerald-300 align-middle">Tổng thực hiện</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(a.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(a.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-300">${formatNumber(a.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-300">${formatNumber(a.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300 text-sm">${formatNumber(a.recovery_total, 2)}</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(a.prod_days, 1)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a]">${formatNumber(a.avg_per_day, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(a.a_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(a.c_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(a.huy_ep, 2)}%</td>
+        <td class="p-1.5 text-center font-mono font-bold border border-[#1e3a6a] text-amber-300">${formatNumber(a.stop_time_2mf, 0)}</td>
+      </tr>
+      <tr class="${bgColor} bg-emerald-500/10">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(a.pct_a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(a.pct_a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(a.pct_b, 2)}%</td>
+        <td colspan="7" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+
+      <tr class="${bgColor} bg-cyan-500/10">
+        <td rowspan="2" class="p-2 text-center border border-[#1e3a6a] text-cyan-300 align-middle">So sánh TH/KH</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${diff.sl_ep >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.sl_ep >= 0 ? '+' : ''}${formatNumber(diff.sl_ep, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${diff.a1 >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.a1 >= 0 ? '+' : ''}${formatNumber(diff.a1, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${diff.a >= 0 ? '+' : ''}${formatNumber(diff.a, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${diff.b >= 0 ? '+' : ''}${formatNumber(diff.b, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] ${diff.recovery_total >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${diff.recovery_total >= 0 ? '+' : ''}${formatNumber(diff.recovery_total, 2)}</td>
+        <td colspan="6" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+      <tr class="${bgColor} bg-cyan-500/10">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.sl_ep >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.sl_ep, 2)}%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.a1 >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.a1, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(rate.a, 2)}%</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(rate.b, 2)}%</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${rate.recovery_total >= 100 ? 'text-emerald-400' : 'text-amber-400'}">${formatNumber(rate.recovery_total, 2)}%</td>
+        <td colspan="6" class="p-1.5 border border-[#1e3a6a]"></td>
+      </tr>
+    `;
+  }
+
+  // --- SECTION II: THƯƠNG HIỆU & CƠ CẤU MEN ---
+  const s2Dc1BrandsHtml = s2.dc1_30x60.map((b, idx) => {
+    const tot = b.total_m2 || 0;
+    const pct = s2.dc1_30x60_sum.total > 0 ? (tot / s2.dc1_30x60_sum.total * 100) : 0;
+    return `
+      <tr>
+        ${idx === 0 ? `<td rowspan="${s2.dc1_30x60.length}" class="p-2 text-center border border-[#1e3a6a] bg-[#0c1a35] align-middle font-bold text-slate-300">Phương Nam</td>` : ''}
+        ${idx === 0 ? `<td rowspan="${s2.dc1_30x60.length}" class="p-2 text-center border border-[#1e3a6a] bg-[#0c1a35] align-middle font-bold text-white">30x60</td>` : ''}
+        <td class="p-1.5 font-semibold text-white border border-[#1e3a6a]">${b.brand_name}</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td class="p-1.5 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(b.a1_m2, 2)}</td>
+        <td class="p-1.5 text-right font-mono text-blue-400 border border-[#1e3a6a]">${formatNumber(b.a_m2, 2)}</td>
+        <td class="p-1.5 text-right font-mono text-amber-400 border border-[#1e3a6a]">${formatNumber(b.b_m2, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(tot, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold text-cyan-300 border border-[#1e3a6a]">${formatNumber(pct, 2)}%</td>
+        <td class="p-1.5 border border-[#1e3a6a] text-slate-400 text-[11px]">${b.glaze_type || ''}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const s2Dc1GlazesHtml = s2.dc1_glazes.map((g, idx) => `
+    <tr>
+      <td class="p-1.5 text-center border border-[#1e3a6a]">${idx + 1}</td>
+      <td class="p-1.5 font-semibold text-white border border-[#1e3a6a]">Gạch ốp</td>
+      <td class="p-1.5 text-center border border-[#1e3a6a]">${g.size}</td>
+      <td class="p-1.5 font-semibold text-cyan-300 border border-[#1e3a6a]">${g.glaze_type || 'Phương Nam'}</td>
+      <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(g.prod_m2, 2)}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${g.months_active || 1} kỳ</td>
+      <td class="p-1.5 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(g.pct, 2)}%</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-slate-400 text-[11px]">Chuẩn chất lượng</td>
+    </tr>
+  `).join('');
+
+  function renderDc2BrandSizeSection(title, brandsList, glazeName = 'Sugar / Men bóng / Panson') {
+    if (!brandsList || brandsList.length === 0) return '';
+    const sumTot = brandsList.reduce((acc, b) => acc + (b.total_m2 || 0), 0);
+    const sumA1 = brandsList.reduce((acc, b) => acc + (b.a1_m2 || 0), 0);
+    const sumA = brandsList.reduce((acc, b) => acc + (b.a_m2 || 0), 0);
+    const sumB = brandsList.reduce((acc, b) => acc + (b.b_m2 || 0), 0);
+
+    const rows = brandsList.map((b, idx) => {
+      const tot = b.total_m2 || 0;
+      const pct = sumTot > 0 ? (tot / sumTot * 100) : 0;
+      return `
+        <tr>
+          ${idx === 0 ? `<td rowspan="${brandsList.length}" class="p-2 text-center border border-[#1e3a6a] bg-[#0c1a35] align-middle font-bold text-slate-300">${glazeName}</td>` : ''}
+          ${idx === 0 ? `<td rowspan="${brandsList.length}" class="p-2 text-center border border-[#1e3a6a] bg-[#0c1a35] align-middle font-bold text-white">${brandsList[0].size}</td>` : ''}
+          <td class="p-1.5 font-semibold text-white border border-[#1e3a6a]">${b.brand_name}</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+          <td class="p-1.5 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(b.a1_m2, 2)}</td>
+          <td class="p-1.5 text-right font-mono text-blue-400 border border-[#1e3a6a]">${formatNumber(b.a_m2, 2)}</td>
+          <td class="p-1.5 text-right font-mono text-amber-400 border border-[#1e3a6a]">${formatNumber(b.b_m2, 2)}</td>
+          <td class="p-1.5 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(tot, 2)}</td>
+          <td class="p-1.5 text-right font-mono font-bold text-cyan-300 border border-[#1e3a6a]">${formatNumber(pct, 2)}%</td>
+          <td class="p-1.5 border border-[#1e3a6a] text-slate-400 text-[11px]">${b.glaze_type || ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <div class="mt-4">
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">${title}</h5>
         <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
-          <table class="table-excel-grid w-full text-center text-[11px]">
-            <thead class="bg-[#0b172a] text-slate-300 font-bold">
+          <table class="table-excel-grid w-full text-[11px] text-left">
+            <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
               <tr>
-                <th class="p-2 text-center align-middle">Dây Chuyền</th>
-                <th class="p-2 text-center align-middle">Kích Thước</th>
-                <th class="p-2 text-center align-middle">Dòng Sản Phẩm</th>
-                <th class="p-2 text-center align-middle">Loại Số Liệu</th>
-                <th class="p-2 text-right align-middle">SL Ép (m²)</th>
-                <th class="p-2 text-right align-middle">A1 (m²)</th>
-                <th class="p-2 text-right align-middle">A (m²)</th>
-                <th class="p-2 text-right align-middle">B (m²)</th>
-                <th class="p-2 text-right align-middle">Tổng (m²)</th>
-                <th class="p-2 text-center align-middle">Ngày SX</th>
-                <th class="p-2 text-center align-middle">Dừng (p/ng)</th>
+                <th class="p-2 text-center">Men</th>
+                <th class="p-2 text-center">Kích Thước</th>
+                <th class="p-2">Thương Hiệu</th>
+                <th class="p-2 text-center">ĐVT</th>
+                <th class="p-2 text-right text-emerald-300">A1</th>
+                <th class="p-2 text-right text-blue-300">A</th>
+                <th class="p-2 text-right text-amber-300">B</th>
+                <th class="p-2 text-right text-white">Tổng A1+A+B</th>
+                <th class="p-2 text-right text-cyan-300">Tỷ Lệ %</th>
+                <th class="p-2">Ghi Chú</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
-              ${rows.map(r => `
-                <tr class="hover:bg-[#13284d]/60">
-                  <td class="p-1.5 font-bold">${r.line}</td>
-                  <td class="p-1.5">${r.size}</td>
-                  <td class="p-1.5">${r.product_line || 'Phương Nam'}</td>
-                  <td class="p-1.5 font-semibold ${r.data_type === 'Thực hiện' ? 'text-emerald-400' : 'text-cyan-400'}">${r.data_type}</td>
-                  <td class="p-1.5 text-right font-mono">${formatNumber(r.sl_ep, 2)}</td>
-                  <td class="p-1.5 text-right font-mono font-bold text-emerald-400">${formatNumber(r.a1, 2)}</td>
-                  <td class="p-1.5 text-right font-mono">${formatNumber(r.a, 2)}</td>
-                  <td class="p-1.5 text-right font-mono text-amber-400">${formatNumber(r.b, 2)}</td>
-                  <td class="p-1.5 text-right font-mono font-bold text-white">${formatNumber(r.recovery_total, 2)}</td>
-                  <td class="p-1.5 font-mono">${formatNumber(r.prod_days, 1)}</td>
-                  <td class="p-1.5 font-mono">${formatNumber(r.stop_time_2mf, 0)}</td>
-                </tr>
-              `).join("")}
+              ${rows}
+            </tbody>
+            <tfoot class="bg-[#0c1a35] font-bold border-t-2 border-[#1e3a6a]">
+              <tr>
+                <td colspan="4" class="p-2 text-center uppercase text-amber-300">TỔNG CỘNG ${brandsList[0].size}:</td>
+                <td class="p-2 text-right font-mono text-emerald-400">${formatNumber(sumA1, 2)}</td>
+                <td class="p-2 text-right font-mono text-blue-400">${formatNumber(sumA, 2)}</td>
+                <td class="p-2 text-right font-mono text-amber-400">${formatNumber(sumB, 2)}</td>
+                <td class="p-2 text-right font-mono text-white text-sm">${formatNumber(sumTot, 2)}</td>
+                <td class="p-2 text-right font-mono text-cyan-300">100%</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- SECTION III: TIÊU HAO VẬT TƯ ---
+  function renderMaterialSection(title, matList) {
+    if (!matList || matList.length === 0) return '';
+    const rows = matList.map((m, idx) => {
+      const diff = Number(m.diff_qty || 0);
+      const diffStr = diff !== 0 ? (diff > 0 ? `+${formatNumber(diff, 2)}` : formatNumber(diff, 2)) : '-';
+      const isSave = diff <= 0;
+      return `
+        <tr class="hover:bg-[#13284d]/60">
+          <td class="p-1.5 text-center border border-[#1e3a6a]">${idx + 1}</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a] font-semibold text-slate-300">${m.size}</td>
+          <td class="p-1.5 font-semibold text-white border border-[#1e3a6a]">${m.material_name}</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">${m.unit}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">${formatSmartDecimal(m.norm_value)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] ${isSave ? 'text-emerald-400' : 'text-rose-400'}">${formatSmartDecimal(m.actual_rate)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(m.used_qty, 2)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${diff < 0 ? formatNumber(Math.abs(diff), 2) : '-'}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-rose-400">${diff > 0 ? formatNumber(diff, 2) : '-'}</td>
+          <td class="p-1.5 border border-[#1e3a6a] text-[11px] text-slate-400">${diff <= 0 ? 'Đạt định mức ✓' : 'Vượt định mức'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <div class="mt-4">
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">${title}</h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+          <table class="table-excel-grid w-full text-[11px] text-left">
+            <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 text-center" style="width: 30px;">STT</th>
+                <th class="p-2 text-center" style="width: 60px;">Kích Thước</th>
+                <th class="p-2">Nguyên Liệu / Vật Tư</th>
+                <th class="p-2 text-center" style="width: 45px;">ĐVT</th>
+                <th class="p-2 text-right" style="width: 90px;">Định Mức</th>
+                <th class="p-2 text-right" style="width: 90px;">Thực Tế</th>
+                <th class="p-2 text-right" style="width: 90px;">Lượng SD</th>
+                <th class="p-2 text-right text-emerald-300" style="width: 80px;">Giảm ĐM</th>
+                <th class="p-2 text-right text-rose-300" style="width: 80px;">Vượt ĐM</th>
+                <th class="p-2" style="width: 140px;">Ghi Chú</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- SECTION IV: SỬ DỤNG THAN ---
+  const s4Html = `
+    <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+      <table class="table-excel-grid w-full text-[11px] text-left">
+        <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+          <tr>
+            <th class="p-2 text-center">STT</th>
+            <th class="p-2">Hạng Mục Lò & Dây Chuyền</th>
+            <th class="p-2 text-right">Than Cục Cấp (Kg)</th>
+            <th class="p-2 text-right">Than Cám Xỉ (Kg)</th>
+            <th class="p-2 text-right text-white">Tổng Than Sử Dụng (Kg)</th>
+            <th class="p-2 text-right">Sản Lượng (m²)</th>
+            <th class="p-2 text-right text-cyan-300">Suất Tiêu Hao (Kg/m²)</th>
+            <th class="p-2">Đánh Giá</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+          <tr class="hover:bg-[#13284d]/60">
+            <td class="p-2 text-center border border-[#1e3a6a]">1</td>
+            <td class="p-2 font-bold text-cyan-300 border border-[#1e3a6a]">Dây chuyền số 1 (30x60)</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc1_30x60.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc1_30x60.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(s4.dc1_30x60.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc1_30x60.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(s4.dc1_30x60.rate_kg_m2, 4)}</td>
+            <td class="p-2 border border-[#1e3a6a] text-emerald-400">Đạt định mức khoán ✓</td>
+          </tr>
+          <tr class="hover:bg-[#13284d]/60">
+            <td class="p-2 text-center border border-[#1e3a6a]">2</td>
+            <td class="p-2 font-semibold text-slate-300 border border-[#1e3a6a]">DC2 - Kích thước 50x50</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_50x50.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_50x50.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(s4.dc2_50x50.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_50x50.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(s4.dc2_50x50.rate_kg_m2, 4)}</td>
+            <td class="p-2 border border-[#1e3a6a] text-slate-400">Ổn định</td>
+          </tr>
+          <tr class="hover:bg-[#13284d]/60">
+            <td class="p-2 text-center border border-[#1e3a6a]">3</td>
+            <td class="p-2 font-semibold text-slate-300 border border-[#1e3a6a]">DC2 - Kích thước 60x60</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_60x60.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_60x60.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(s4.dc2_60x60.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_60x60.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(s4.dc2_60x60.rate_kg_m2, 4)}</td>
+            <td class="p-2 border border-[#1e3a6a] text-slate-400">Ổn định</td>
+          </tr>
+          <tr class="hover:bg-[#13284d]/60">
+            <td class="p-2 text-center border border-[#1e3a6a]">4</td>
+            <td class="p-2 font-semibold text-slate-300 border border-[#1e3a6a]">DC2 - Kích thước 40x80</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_40x80.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_40x80.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-white border border-[#1e3a6a]">${formatNumber(s4.dc2_40x80.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_40x80.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-emerald-400 border border-[#1e3a6a]">${formatNumber(s4.dc2_40x80.rate_kg_m2, 4)}</td>
+            <td class="p-2 border border-[#1e3a6a] text-slate-400">Ổn định</td>
+          </tr>
+        </tbody>
+        <tfoot class="bg-[#0c1a35] font-bold border-t-2 border-[#1e3a6a]">
+          <tr class="text-amber-300">
+            <td colspan="2" class="p-2 text-center uppercase">TỔNG SỬ DỤNG DÂY CHUYỀN 2:</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_dc2.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_dc2.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono font-bold text-white">${formatNumber(s4.total_dc2.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_dc2.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono text-emerald-400">${formatNumber(s4.total_dc2.rate_kg_m2, 4)}</td>
+            <td></td>
+          </tr>
+          <tr class="bg-cyan-500/10 text-cyan-300 font-black">
+            <td colspan="2" class="p-2 text-center uppercase">TỔNG SỬ DỤNG 2 DÂY CHUYỀN:</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_2dc.issued_weight, 2)}</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_2dc.ash_weight, 2)}</td>
+            <td class="p-2 text-right font-mono text-white text-sm">${formatNumber(s4.total_2dc.total_used_weight, 2)}</td>
+            <td class="p-2 text-right font-mono">${formatNumber(s4.total_2dc.production_m2, 2)}</td>
+            <td class="p-2 text-right font-mono text-emerald-300">${formatNumber(s4.total_2dc.rate_kg_m2, 4)}</td>
+            <td class="text-emerald-400">Đạt kế hoạch năm ✓</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  `;
+
+  // --- SECTION V: NHÂN SỰ ---
+  const hrRowsHtml = s5.table.map((r, idx) => `
+    <tr>
+      <td class="p-1.5 text-center border border-[#1e3a6a]">${r.stt || idx + 1}</td>
+      <td class="p-1.5 font-semibold text-white border border-[#1e3a6a]">${r.position}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${r.dinhbien_dc1 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${r.dinhbien_dc2 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-emerald-400">${r.tuyenmoi_dc1 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-emerald-400">${r.tuyenmoi_dc2 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${r.chuyen_dc1 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${r.chuyen_dc2 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-rose-400">${r.nghi_dc1 || 0}</td>
+      <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-rose-400">${r.nghi_dc2 || 0}</td>
+      <td class="p-1.5 text-center font-mono font-bold text-cyan-300 border border-[#1e3a6a]">${r.hientai_dc1 || 0}</td>
+      <td class="p-1.5 text-center font-mono font-bold text-cyan-300 border border-[#1e3a6a]">${r.hientai_dc2 || 0}</td>
+    </tr>
+  `).join('');
+
+  // --- SECTION VII: DEPARTMENT TASKS ---
+  const deptTasksHtml = s7.department_tasks.map(dt => `
+    <div class="p-3.5 bg-[#091428] rounded-lg border border-[#1e3a6a]/60 space-y-1.5">
+      <div class="font-bold text-cyan-300 flex items-center gap-1.5">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+        <span>${dt.dept}</span>
+      </div>
+      <div class="text-slate-300 text-xs whitespace-pre-line pl-5 leading-relaxed">${dt.tasks}</div>
+    </div>
+  `).join('');
+
+  // Assemble the entire Form Mẫu HTML with 8 parts
+  const fullContentHtml = `
+    <!-- PHẦN I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI -->
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+          <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">I</span>
+          <span>Sản Lượng - Chất Lượng - Thu Hồi Tổng A1+A+B/Ép</span>
+        </h4>
+        <span class="text-[11px] text-slate-400 italic">Đơn vị tính: m²</span>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+        <table class="table-excel-grid w-full text-[11px] text-left">
+          <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+            <tr>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 45px;">DC</th>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 55px;">Kích Thước</th>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 75px;">KH / TH</th>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 35px;">ĐVT</th>
+              <th rowspan="2" class="p-2 text-right align-middle" style="width: 90px;">Tổng SL Ép</th>
+              <th colspan="3" class="p-2 text-center align-middle">Sản Lượng Thu Hồi</th>
+              <th rowspan="2" class="p-2 text-right align-middle font-black text-white" style="width: 90px;">Tổng (A1+A+B)</th>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 50px;">Số Ngày SX</th>
+              <th rowspan="2" class="p-2 text-right align-middle" style="width: 75px;">TB / Ngày</th>
+              <th rowspan="2" class="p-2 text-right align-middle text-emerald-300" style="width: 55px;">A/ép (%)</th>
+              <th rowspan="2" class="p-2 text-right align-middle" style="width: 55px;">C/ép (%)</th>
+              <th rowspan="2" class="p-2 text-right align-middle text-rose-300" style="width: 55px;">Huỷ/ép (%)</th>
+              <th rowspan="2" class="p-2 text-center align-middle text-amber-300" style="width: 65px;">T/g Dừng 2MF</th>
+            </tr>
+            <tr>
+              <th class="p-1.5 text-right text-emerald-300" style="width: 75px;">A1</th>
+              <th class="p-1.5 text-right text-blue-300" style="width: 65px;">A</th>
+              <th class="p-1.5 text-right text-amber-300" style="width: 65px;">B</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+            ${s1ItemsHtml}
+            ${renderTotalBlock(s1.total_dc2, 'bg-amber-500/10')}
+            ${renderTotalBlock(s1.total_2dc, 'bg-cyan-500/10')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-3 bg-[#091428] rounded-lg border border-[#1e3a6a]/50 text-[11px] text-slate-300">
+        <b class="text-amber-300 uppercase">* Ghi chú phân xưởng:</b>
+        <div class="mt-1 whitespace-pre-line">${s1.notes || 'Không có ghi chú sự cố đặc biệt.'}</div>
+      </div>
+    </div>
+
+    <!-- PHẦN II: SẢN LƯỢNG THEO THƯƠNG HIỆU -->
+    <div class="space-y-4 pt-4 border-t border-[#1e3a6a]">
+      <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+        <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">II</span>
+        <span>Sản Lượng Theo Các Thương Hiệu</span>
+      </h4>
+
+      <div>
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">1. Kết quả thực hiện sản phẩm 30x60 các thương hiệu của Dây chuyền số 1:</h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+          <table class="table-excel-grid w-full text-[11px] text-left">
+            <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 text-center" style="width: 80px;">Men</th>
+                <th class="p-2 text-center" style="width: 60px;">Kích Thước</th>
+                <th class="p-2">Thương Hiệu</th>
+                <th class="p-2 text-center" style="width: 40px;">ĐVT</th>
+                <th class="p-2 text-right text-emerald-300" style="width: 85px;">A1</th>
+                <th class="p-2 text-right text-blue-300" style="width: 75px;">A</th>
+                <th class="p-2 text-right text-amber-300" style="width: 75px;">B</th>
+                <th class="p-2 text-right text-white" style="width: 95px;">Tổng A1+A+B</th>
+                <th class="p-2 text-right text-cyan-300" style="width: 65px;">Tỷ Lệ %</th>
+                <th class="p-2">Ghi Chú</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              ${s2Dc1BrandsHtml}
+            </tbody>
+            <tfoot class="bg-[#0c1a35] font-bold border-t-2 border-[#1e3a6a]">
+              <tr>
+                <td colspan="4" class="p-2 text-center uppercase text-amber-300">TỔNG CỘNG DC1 (30x60):</td>
+                <td class="p-2 text-right font-mono text-emerald-400">${formatNumber(s2.dc1_30x60_sum.a1, 2)}</td>
+                <td class="p-2 text-right font-mono text-blue-400">${formatNumber(s2.dc1_30x60_sum.a, 2)}</td>
+                <td class="p-2 text-right font-mono text-amber-400">${formatNumber(s2.dc1_30x60_sum.b, 2)}</td>
+                <td class="p-2 text-right font-mono text-white text-sm">${formatNumber(s2.dc1_30x60_sum.total, 2)}</td>
+                <td class="p-2 text-right font-mono text-cyan-300">100%</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">Sản lượng theo cơ cấu chủng loại sản phẩm DC1:</h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+          <table class="table-excel-grid w-full text-[11px] text-left">
+            <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 text-center" style="width: 35px;">STT</th>
+                <th class="p-2">Chủng Loại</th>
+                <th class="p-2 text-center" style="width: 65px;">Kích Thước</th>
+                <th class="p-2">Men</th>
+                <th class="p-2 text-right" style="width: 100px;">Sản Lượng (m²)</th>
+                <th class="p-2 text-center" style="width: 80px;">Số Ngày SX</th>
+                <th class="p-2 text-right text-emerald-300" style="width: 75px;">Tỷ Lệ (%)</th>
+                <th class="p-2">Ghi Chú</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              ${s2Dc1GlazesHtml}
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- Phần II: Ghi Chú Đánh Giá -->
-      <div class="mt-4">
-        <h4 class="font-bold text-emerald-400 uppercase mb-2 border-b border-[#1e3a6a] pb-1 tracking-wider text-xs">II. ĐÁNH GIÁ TÌNH HÌNH SẢN XUẤT</h4>
-        <ul class="list-disc pl-5 space-y-1.5 text-slate-300">
-          <li>Dây chuyền 1 hoạt động ổn định, đạt tỷ lệ A1 vượt kế hoạch đề ra.</li>
-          <li>Dây chuyền 2 chạy chuyển đổi các dòng Men bóng, Sugar sân vườn và Panson 40x80 đảm bảo chỉ tiêu chất lượng.</li>
-          <li>Thời gian dừng máy do 2 máy phát điện và bảo dưỡng cơ điện được kiểm soát chặt chẽ trong khung cho phép.</li>
-        </ul>
+      <div>
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">2. Kết quả thực hiện sản phẩm các thương hiệu của Dây chuyền số 2:</h5>
+        ${renderDc2BrandSizeSection('Cơ cấu thương hiệu gạch lát 50x50 SX DC2:', s2.dc2_50x50, 'Sugar Sân vườn')}
+        ${renderDc2BrandSizeSection('Cơ cấu thương hiệu gạch lát 60x60 SX DC2:', s2.dc2_60x60, 'Men bóng / Matt')}
+        ${renderDc2BrandSizeSection('Cơ cấu thương hiệu gạch ốp 40x80 SX DC2:', s2.dc2_40x80, 'Panson 40x80')}
       </div>
-    `;
+    </div>
+
+    <!-- PHẦN III: TIÊU HAO VẬT TƯ -->
+    <div class="space-y-4 pt-4 border-t border-[#1e3a6a]">
+      <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+        <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">III</span>
+        <span>Tiêu Hao Vật Tư & Nguyên Nhiên Liệu Sản Xuất</span>
+      </h4>
+
+      ${renderMaterialSection('1. Tiêu hao vật tư 30x60 SX DC1 (18 nguyên liệu/vật tư chính):', s3.dc1_30x60)}
+      ${renderMaterialSection('2. Tiêu hao vật tư 50x50 SX DC2:', s3.dc2_50x50)}
+      ${renderMaterialSection('3. Tiêu hao vật tư 60x60 SX DC2:', s3.dc2_60x60)}
+      ${renderMaterialSection('4. Tiêu hao vật tư 40x80 SX DC2:', s3.dc2_40x80)}
+    </div>
+
+    <!-- PHẦN IV: SỬ DỤNG THAN -->
+    <div class="space-y-3 pt-4 border-t border-[#1e3a6a]">
+      <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+        <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">IV</span>
+        <span>Sử Dụng Than Trạm Khí Hóa Khí Trong Kỳ</span>
+      </h4>
+      ${s4Html}
+    </div>
+
+    <!-- PHẦN V: NHÂN SỰ -->
+    <div class="space-y-3 pt-4 border-t border-[#1e3a6a]">
+      <div class="flex items-center justify-between">
+        <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+          <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">V</span>
+          <span>Tình Hình Nhân Sự & Biến Động Định Biên</span>
+        </h4>
+        <span class="text-[11px] text-slate-400 italic">Đơn vị tính: Người</span>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+        <table class="table-excel-grid w-full text-[11px] text-left">
+          <thead class="bg-[#091428] text-slate-300 font-bold border-b border-[#1e3a6a]">
+            <tr>
+              <th rowspan="2" class="p-2 text-center align-middle" style="width: 35px;">STT</th>
+              <th rowspan="2" class="p-2 align-middle">Vị Trí / Bộ Phận</th>
+              <th colspan="2" class="p-1.5 text-center">Định Biên</th>
+              <th colspan="2" class="p-1.5 text-center text-emerald-300">Tuyển Mới</th>
+              <th colspan="2" class="p-1.5 text-center text-amber-300">Điều Chuyển</th>
+              <th colspan="2" class="p-1.5 text-center text-rose-300">Nghỉ Việc</th>
+              <th colspan="2" class="p-1.5 text-center text-cyan-300">Tổng Nhân Sự Hiện Tại</th>
+            </tr>
+            <tr>
+              <th class="p-1.5 text-center" style="width: 50px;">DC1</th>
+              <th class="p-1.5 text-center" style="width: 50px;">DC2</th>
+              <th class="p-1.5 text-center text-emerald-300" style="width: 50px;">DC1</th>
+              <th class="p-1.5 text-center text-emerald-300" style="width: 50px;">DC2</th>
+              <th class="p-1.5 text-center text-amber-300" style="width: 50px;">DC1</th>
+              <th class="p-1.5 text-center text-amber-300" style="width: 50px;">DC2</th>
+              <th class="p-1.5 text-center text-rose-300" style="width: 50px;">DC1</th>
+              <th class="p-1.5 text-center text-rose-300" style="width: 50px;">DC2</th>
+              <th class="p-1.5 text-center text-cyan-300 font-bold" style="width: 55px;">DC1</th>
+              <th class="p-1.5 text-center text-cyan-300 font-bold" style="width: 55px;">DC2</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200" id="form-mau-hr-tbody">
+            ${hrRowsHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-3 bg-[#091428] rounded-lg border border-[#1e3a6a]/50 text-[11px] text-slate-300">
+        <b class="text-amber-300 uppercase">* Đánh giá & Kiến nghị nhân sự:</b>
+        <div class="mt-1 whitespace-pre-line" id="form-mau-hr-notes-view">${s5.notes || ''}</div>
+      </div>
+    </div>
+
+    <!-- PHẦN VI: KẾ HOẠCH & PHẦN VII: MỤC TIÊU KỲ TIẾP THEO -->
+    <div class="space-y-4 pt-4 border-t border-[#1e3a6a]">
+      <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+        <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">VI - VII</span>
+        <span>Kế Hoạch & Mục Tiêu Thực Hiện ${s7.next_title || 'Kỳ Tiếp Theo'}</span>
+      </h4>
+
+      <div>
+        <h5 class="font-bold text-slate-200 mb-2 text-xs">Các công việc trọng tâm cần thực hiện để đạt mục tiêu của 5 bộ phận:</h5>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="form-mau-dept-tasks-container">
+          ${deptTasksHtml}
+        </div>
+      </div>
+    </div>
+
+    <!-- PHẦN VIII: ĐÁNH GIÁ TÌNH HÌNH SẢN XUẤT -->
+    <div class="space-y-3 pt-4 border-t border-[#1e3a6a]">
+      <h4 class="font-black text-emerald-400 uppercase tracking-wider text-xs flex items-center gap-2">
+        <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-300 inline-flex items-center justify-center font-black">VIII</span>
+        <span>Đánh Giá Kết Quả Sản Xuất & Ý Kiến Đề Xuất</span>
+      </h4>
+      <div class="p-4 bg-[#091428] rounded-lg border border-[#1e3a6a]/60 text-xs text-slate-300 leading-relaxed whitespace-pre-line" id="form-mau-eval-content">
+        ${s8.content || ''}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('form-mau-content').innerHTML = fullContentHtml;
+
+  // Update Signatures
+  const sigs = s8.signatures || {};
+  if (document.getElementById('sig-title-1')) document.getElementById('sig-title-1').innerText = sigs.signer_1_title || 'NGƯỜI LẬP BIỂU';
+  if (document.getElementById('sig-name-1')) document.getElementById('sig-name-1').innerText = sigs.signer_1_name || '(Ký & ghi rõ họ tên)';
+  if (document.getElementById('sig-title-2')) document.getElementById('sig-title-2').innerText = sigs.signer_2_title || 'TRƯỞNG CA SẢN XUẤT';
+  if (document.getElementById('sig-name-2')) document.getElementById('sig-name-2').innerText = sigs.signer_2_name || '(Ký & ghi rõ họ tên)';
+  if (document.getElementById('sig-title-3')) document.getElementById('sig-title-3').innerText = sigs.signer_3_title || 'QUẢN ĐỐC PHÂN XƯỞNG';
+  if (document.getElementById('sig-name-3')) document.getElementById('sig-name-3').innerText = sigs.signer_3_name || '(Ký & ghi rõ họ tên)';
+  if (document.getElementById('sig-title-4')) document.getElementById('sig-title-4').innerText = sigs.signer_4_title || 'BAN GIÁM ĐỐC PHÊ DUYỆT';
+  if (document.getElementById('sig-name-4')) document.getElementById('sig-name-4').innerText = sigs.signer_4_name || '(Ký & ghi rõ họ tên)';
+
+  if (window.lucide) lucide.createIcons();
+}
+
+// TOGGLE EDIT MODE
+function toggleFormMauEditMode() {
+  isFormMauEditMode = !isFormMauEditMode;
+  const btn = document.getElementById('btn-toggle-edit-form-mau');
+  const btnText = document.getElementById('btn-text-edit-form-mau');
+
+  if (isFormMauEditMode) {
+    if (btn) btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition';
+    if (btnText) btnText.innerText = 'Lưu Thay Đổi';
+
+    // Make HR notes and Eval content editable
+    const hrNotesDiv = document.getElementById('form-mau-hr-notes-view');
+    if (hrNotesDiv) {
+      const currentText = hrNotesDiv.innerText;
+      hrNotesDiv.innerHTML = `<textarea id="edit-form-mau-hr-notes" class="w-full h-24 bg-[#050c18] border border-cyan-500/50 rounded p-2 text-xs text-white focus:outline-none focus:border-cyan-300 font-sans leading-relaxed">${currentText}</textarea>`;
+    }
+
+    const evalDiv = document.getElementById('form-mau-eval-content');
+    if (evalDiv) {
+      const currentText = evalDiv.innerText;
+      evalDiv.innerHTML = `<textarea id="edit-form-mau-eval-text" class="w-full h-32 bg-[#050c18] border border-cyan-500/50 rounded p-2 text-xs text-white focus:outline-none focus:border-cyan-300 font-sans leading-relaxed">${currentText}</textarea>`;
+    }
+  } else {
+    // Save changes
+    saveFormMauCustomEdits();
+  }
+}
+
+async function saveFormMauCustomEdits() {
+  const hrNotesInput = document.getElementById('edit-form-mau-hr-notes');
+  const evalInput = document.getElementById('edit-form-mau-eval-text');
+
+  const hrNotes = hrNotesInput ? hrNotesInput.value : '';
+  const evalText = evalInput ? evalInput.value : '';
+
+  const body = {
+    period_type: formMauPeriodType,
+    period_value: formMauPeriodValue,
+    year: formMauYear,
+    notes_data: { hr_notes: hrNotes },
+    evaluation_data: evalText
+  };
+
+  try {
+    const res = await fetch('/api/report/form-mau/save-custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert('Đã lưu thành công nội dung Form Mẫu!');
+    }
   } catch (err) {
-    console.error("Error rendering form mau preview:", err);
+    console.error('Error saving form mau custom edits:', err);
+  }
+
+  const btn = document.getElementById('btn-toggle-edit-form-mau');
+  const btnText = document.getElementById('btn-text-edit-form-mau');
+  if (btn) btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition';
+  if (btnText) btnText.innerText = 'Chỉnh Sửa Trực Tiếp';
+
+  loadFormMauData();
+}
+
+// UPLOAD MODAL HANDLING
+function openFormMauUploadModal() {
+  const modal = document.getElementById('modal-form-mau-upload');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeFormMauUploadModal() {
+  const modal = document.getElementById('modal-form-mau-upload');
+  if (modal) modal.classList.add('hidden');
+}
+
+function onFormMauFileSelected(input) {
+  if (input.files && input.files[0]) {
+    selectedFormMauFile = input.files[0];
+    const nameEl = document.getElementById('form-mau-file-name');
+    if (nameEl) nameEl.innerText = `Đã chọn: ${selectedFormMauFile.name} (${(selectedFormMauFile.size / 1024).toFixed(1)} KB)`;
+  }
+}
+
+async function executeFormMauUpload() {
+  if (!selectedFormMauFile) {
+    alert('Vui lòng chọn file Excel trước khi bấm Bóc Tách!');
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit-form-mau-upload');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<div class="inline-block animate-spin w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></div> Đang bóc tách...`;
+  }
+
+  const formData = new FormData();
+  formData.append('file', selectedFormMauFile);
+  formData.append('period_type', formMauPeriodType);
+  formData.append('period_value', formMauPeriodValue);
+  formData.append('year', formMauYear);
+
+  try {
+    const res = await fetch('/api/report/form-mau/import-excel', {
+      method: 'POST',
+      body: formData
+    });
+    const json = await res.json();
+    const logBox = document.getElementById('form-mau-upload-log');
+    if (logBox) {
+      logBox.classList.remove('hidden');
+      logBox.innerHTML = (json.logs || []).map(l => `<div>• ${l}</div>`).join('');
+    }
+
+    if (json.success) {
+      setTimeout(() => {
+        closeFormMauUploadModal();
+        loadFormMauData();
+        alert('Trích xuất và nạp dữ liệu Form Mẫu thành công!');
+      }, 1500);
+    } else {
+      alert('Lỗi: ' + (json.error || 'Không trích xuất được file'));
+    }
+  } catch (err) {
+    console.error('Upload err:', err);
+    alert('Lỗi khi tải file: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>Bắt Đầu Bóc Tách</span>`;
+      if (window.lucide) lucide.createIcons();
+    }
   }
 }
 
 function downloadFormMauExcel() {
-  const month = document.getElementById("export-select-month").value || "8";
-  window.location.href = `/api/export/sign-off-report?month=${month}&year=2026`;
+  window.location.href = `/api/export/form-mau-excel?period_type=${formMauPeriodType}&period_value=${formMauPeriodValue}&year=${formMauYear}`;
 }
 
 function quickExportSignOff() {
-  window.location.href = `/api/export/sign-off-report?month=8&year=2026`;
+  downloadFormMauExcel();
 }
+
+// 5. PRINT SIGNOFF REPORT (FORM MẪU TRÌNH KÝ 8 PHẦN A4)
+function printSignOffReport() {
+  const printableDiv = document.getElementById("form-mau-printable");
+  if (!printableDiv) {
+    window.print();
+    return;
+  }
+
+  const title = (currentFormMauData && currentFormMauData.period_info && currentFormMauData.period_info.period_title) 
+    ? `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT ${currentFormMauData.period_info.period_title}` 
+    : `BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG 08/2026 TRÌNH KÝ BAN GIÁM ĐỐC`;
+
+  const contentHtml = printableDiv.innerHTML;
+  const printHtml = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${title} - Phương Nam</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 10px; color: #0f172a; margin: 0; padding: 10px; background: #fff; }
+    .print-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; }
+    .btn-print-action { background: #0284c7; color: white; border: none; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 12px; }
+    th, td { border: 1px solid #475569; padding: 3px 5px; }
+    th { background: #0f2a4a !important; color: white !important; text-align: center; }
+    .table-excel-grid th { background: #0f2a4a !important; color: white !important; }
+    .table-excel-grid td { color: #0f172a !important; }
+    .no-print { display: none !important; }
+    @media print { .print-bar { display: none !important; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
+  </div>
+  ${contentHtml}
+</body>
+</html>
+  `;
+
+  openPrintWindow(printHtml);
+}
+
 
 
 
@@ -5389,51 +6288,7 @@ function printConsumptionReport() {
   openPrintWindow(html);
 }
 
-// 5. PRINT SIGNOFF REPORT (TAB 6)
-function printSignOffReport() {
-  const printableDiv = document.getElementById("form-mau-printable");
-  if (!printableDiv) {
-    window.print();
-    return;
-  }
-
-  const month = document.getElementById("export-select-month")?.value || "8";
-  const title = `BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG ${month.padStart(2, '0')}/2026 TRÌNH KÝ BAN GIÁM ĐỐC`;
-
-  const contentHtml = printableDiv.innerHTML;
-  const printHtml = `
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>${title} - Phương Nam</title>
-  <style>
-    @page {
-      size: A4 portrait;
-      margin: 10mm;
-    }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 10px; background: #fff; }
-    .print-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; }
-    .btn-print-action { background: #0284c7; color: white; border: none; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px; }
-    th, td { border: 1px solid #475569; padding: 4px 6px; }
-    th { background: #0f2a4a; color: white; text-align: center; }
-    .no-print { display: none !important; }
-    @media print { .print-bar { display: none !important; } body { padding: 0; } }
-  </style>
-</head>
-<body>
-  <div class="print-bar">
-    <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
-  </div>
-  ${contentHtml}
-</body>
-</html>
-  `;
-
-  openPrintWindow(printHtml);
-}
+// (printSignOffReport defined in Tab 8 section)
 
 // 6. PRINT NORMS MASTER REPORT (TAB 7)
 function printNormsReport() {

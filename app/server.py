@@ -7,6 +7,9 @@ import os
 import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from form_mau_engine import build_form_mau_payload, save_form_mau_custom_data, parse_form_mau_excel_upload, resolve_period
 
 PORT = 8080
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -64,7 +67,9 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     self.handle_get_norm_versions(params)
                 elif path == "/api/norms/details":
                     self.handle_get_norm_details(params)
-                elif path == "/api/export/sign-off-report":
+                elif path == "/api/report/form-mau":
+                    self.handle_get_form_mau(params)
+                elif path == "/api/export/sign-off-report" or path == "/api/export/form-mau-excel":
                     self.handle_export_sign_off_report(params)
                 elif path == "/api/metadata":
                     self.handle_metadata()
@@ -91,6 +96,9 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 if path == "/api/import/monthly":
                     self.handle_import_monthly_multipart(post_data, content_type)
                     return
+                elif path == "/api/report/form-mau/import-excel":
+                    self.handle_import_form_mau_multipart(post_data, content_type)
+                    return
 
             body = {}
             if post_data:
@@ -105,6 +113,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_save_norm_details(body)
             elif path == "/api/norms/items":
                 self.handle_add_norm_item(body)
+            elif path == "/api/report/form-mau/save-custom":
+                self.handle_save_form_mau_custom(body)
             else:
                 self.send_json_response({"error": "Endpoint not found"}, status=404)
         except Exception as e:
@@ -983,14 +993,84 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             "logs": logs
         })
 
+    def handle_get_form_mau(self, params):
+        period_type = params.get("period_type", ["month"])[0]
+        period_value = params.get("period_value", ["8"])[0]
+        year = int(params.get("year", [2026])[0])
+
+        conn = get_db()
+        data = build_form_mau_payload(conn, period_type=period_type, period_value=period_value, year=year)
+        conn.close()
+        self.send_json_response(data)
+
+    def handle_save_form_mau_custom(self, body):
+        conn = get_db()
+        res = save_form_mau_custom_data(conn, body)
+        conn.close()
+        self.send_json_response(res)
+
+    def handle_import_form_mau_multipart(self, post_data, content_type):
+        boundary = content_type.split("boundary=")[1].encode("utf-8")
+        parts = post_data.split(b"--" + boundary)
+        
+        target_file_bytes = None
+        period_type = "month"
+        period_value = "8"
+        year = 2026
+
+        for part in parts:
+            if b"Content-Disposition" in part and b"filename=" in part:
+                _, file_content = part.split(b"\r\n\r\n", 1)
+                target_file_bytes = file_content.rstrip(b"\r\n")
+            elif b'name="period_type"' in part:
+                _, val = part.split(b"\r\n\r\n", 1)
+                period_type = val.decode("utf-8").strip()
+            elif b'name="period_value"' in part:
+                _, val = part.split(b"\r\n\r\n", 1)
+                period_value = val.decode("utf-8").strip()
+            elif b'name="year"' in part:
+                _, val = part.split(b"\r\n\r\n", 1)
+                try: year = int(val.decode("utf-8").strip())
+                except: pass
+
+        if not target_file_bytes:
+            self.send_json_response({"error": "Không tìm thấy file tải lên"}, status=400)
+            return
+
+        parsed = parse_form_mau_excel_upload(target_file_bytes)
+        
+        # Save parsed data to DB for this period
+        conn = get_db()
+        body_to_save = {
+            "period_type": period_type,
+            "period_value": period_value,
+            "year": year,
+            "hr_data": parsed.get("hr_data"),
+            "notes_data": {"hr_notes": parsed.get("hr_notes")},
+            "goals_data": {"department_tasks": parsed.get("department_tasks")}
+        }
+        if parsed.get("evaluation_text"):
+            body_to_save["evaluation_data"] = parsed.get("evaluation_text")
+            
+        save_form_mau_custom_data(conn, body_to_save)
+        conn.close()
+
+        self.send_json_response({
+            "success": True,
+            "message": f"Đã trích xuất và cập nhật thành công Form Mẫu cho kỳ {period_value}/{year}",
+            "logs": parsed.get("logs", [])
+        })
+
     def handle_export_sign_off_report(self, params):
-        target_month = int(params.get("month", [8])[0])
-        target_year = int(params.get("year", [2026])[0])
+        period_type = params.get("period_type", ["month"])[0]
+        period_value = params.get("period_value", [params.get("month", ["8"])[0]])[0]
+        year = int(params.get("year", [2026])[0])
+        p_info = resolve_period(period_type, period_value, year)
 
         wb_orig = openpyxl.load_workbook(ORIGINAL_EXCEL_PATH, data_only=False)
         wb_out = openpyxl.Workbook()
         ws_out = wb_out.active
-        ws_out.title = f"Báo cáo T{target_month}.{target_year}"
+        ws_out.title = f"Báo cáo Form Mẫu"
 
         ws_template = wb_orig["Form mẫu"]
         for row in ws_template.iter_rows(values_only=False):
@@ -1005,9 +1085,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         out_stream.seek(0)
         file_bytes = out_stream.getvalue()
 
+        clean_filename = f"Bao_Cao_Tong_Hop_KQSX_2DC_{p_info['period_key']}.xlsx"
         self.send_response(200)
         self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        self.send_header("Content-Disposition", f'attachment; filename="Bao_Cao_Trinh_Ky_Thang_{target_month}_{target_year}.xlsx"')
+        self.send_header("Content-Disposition", f'attachment; filename="{clean_filename}"')
         self.send_header("Content-Length", str(len(file_bytes)))
         self.end_headers()
         self.wfile.write(file_bytes)

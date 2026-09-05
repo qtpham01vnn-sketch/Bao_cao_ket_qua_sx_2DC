@@ -1549,72 +1549,160 @@
         </div>
 
 
-        <!-- ================= TAB 8: BÁO CÁO TRÌNH KÝ (FORM MẪU) ================= -->
+        <!-- ================= TAB 8: BÁO CÁO TRÌNH KÝ (FORM MẪU TỔNG HỢP) ================= -->
         <div id="tab-export-report" class="tab-pane hidden space-y-6">
-          <div class="flex items-center justify-between no-print">
-            <div class="flex items-center gap-4">
-              <div class="flex items-center gap-2 bg-[#0f2042] px-3 py-1.5 rounded-lg border border-[#1e3a6a]/60">
-                <span class="text-xs text-slate-400">Kỳ Báo Cáo:</span>
-                <select id="export-select-month" onchange="renderFormMauPreview()" class="bg-transparent text-xs font-bold text-cyan-300 focus:outline-none cursor-pointer">
-                  <option value="1">Tháng 01/2026</option>
-                  <option value="3">Tháng 03/2026</option>
-                  <option value="4">Tháng 04/2026</option>
-                  <option value="5">Tháng 05/2026</option>
-                  <option value="6">Tháng 06/2026</option>
-                  <option value="7">Tháng 07/2026</option>
-                  <option value="8" selected>Tháng 08/2026</option>
-                </select>
-              </div>
-            </div>
+          
+          <!-- Slicers & Action Bar -->
+          <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg no-print">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              
+              <!-- Period Slicers -->
+              <div class="flex flex-wrap items-center gap-3">
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Loại Kỳ Báo Cáo</label>
+                  <div class="flex items-center gap-1 bg-[#091428] p-1 rounded-lg border border-blue-500/30">
+                    <button type="button" onclick="setFormMauPeriodType('month')" id="btn-period-type-month" class="px-2.5 py-1 rounded text-xs font-bold bg-cyan-600 text-white transition shadow">
+                      1 Tháng
+                    </button>
+                    <button type="button" onclick="setFormMauPeriodType('quarter')" id="btn-period-type-quarter" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">
+                      3 Tháng (Quý)
+                    </button>
+                    <button type="button" onclick="setFormMauPeriodType('half_year')" id="btn-period-type-half_year" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">
+                      6 Tháng
+                    </button>
+                    <button type="button" onclick="setFormMauPeriodType('full_year')" id="btn-period-type-full_year" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">
+                      12 Tháng (Năm)
+                    </button>
+                  </div>
+                </div>
 
-            <div class="flex items-center gap-3">
-              <button onclick="printSignOffReport()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow">
-                <i data-lucide="printer" class="w-4 h-4"></i>
-                <span>In Báo Cáo / Xuất PDF</span>
-              </button>
-              <button onclick="downloadFormMauExcel()" class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition shadow-lg">
-                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                <span>Tải File Excel (.xlsx)</span>
-              </button>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ Cụ Thể</label>
+                  <select id="form-mau-select-value" onchange="loadFormMauData()" class="bg-[#091428] border border-blue-500/30 text-xs font-bold text-cyan-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 min-w-[160px]">
+                    <option value="8" selected>Tháng 08/2026</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Năm</label>
+                  <select id="form-mau-select-year" onchange="loadFormMauData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                    <option value="2026" selected>2026</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="toggleFormMauEditMode()" id="btn-toggle-edit-form-mau" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  <span id="btn-text-edit-form-mau">Chỉnh Sửa Trực Tiếp</span>
+                </button>
+                <button onclick="openFormMauUploadModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition">
+                  <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+                  <span>Upload File Bóc Tách</span>
+                </button>
+                <button onclick="downloadFormMauExcel()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                  <span>Xuất Excel</span>
+                </button>
+                <button onclick="printSignOffReport()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition">
+                  <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                  <span>In / PDF</span>
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- FORM MẪU CONTAINER -->
           <div class="p-8 bg-[#0f2042] text-slate-100 rounded-xl shadow-2xl border border-[#1e3a6a] overflow-x-auto print-area" id="form-mau-printable">
-            <!-- Header -->
-            <div class="flex items-center justify-between border-b-2 border-[#1e3a6a] pb-4 mb-6" id="form-mau-head-box">
-              <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</h3>
-                <h4 class="text-[11px] font-semibold text-slate-400">PHÂN XƯỞNG SẢN XUẤT 2 DÂY CHUYỀN</h4>
+            
+            <!-- Header chuẩn Form Mẫu -->
+            <div class="flex items-start justify-between border-b-2 border-[#1e3a6a] pb-4 mb-6" id="form-mau-head-box">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-xl">
+                  PN
+                </div>
+                <div>
+                  <h3 class="text-xs font-black uppercase tracking-wider text-slate-100">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</h3>
+                  <h4 class="text-[11px] font-semibold text-slate-400">Địa chỉ: Cụm CN VLXD Tân An, X. Tân An, H. Vĩnh Cửu, T. Đồng Nai</h4>
+                  <div class="text-[10px] text-slate-500">Điện thoại: 0251 3684039 *** Email: gachmenphuongnam@gmail.com</div>
+                </div>
               </div>
               <div class="text-right">
-                <h2 class="text-sm font-black uppercase text-cyan-300" id="form-mau-header-title">BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG 08/2026</h2>
+                <h2 class="text-sm sm:text-base font-black uppercase text-cyan-300 tracking-wide" id="form-mau-header-title">
+                  BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT THÁNG 08 NĂM 2026 CỦA 2 DÂY CHUYỀN
+                </h2>
                 <div class="text-[11px] text-slate-400 italic">Áp dụng chuẩn Form Mẫu Trình Ký Ban Giám Đốc</div>
               </div>
             </div>
 
-            <!-- Content injected dynamically -->
-            <div id="form-mau-content" class="space-y-6 text-xs leading-relaxed">
+            <!-- Content injected dynamically (All 8 Sections) -->
+            <div id="form-mau-content" class="space-y-8 text-xs leading-relaxed">
+              <div class="p-8 text-center text-slate-400">
+                <div class="inline-block animate-spin w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full mb-2"></div>
+                <div>Đang tải và tổng hợp dữ liệu Form Mẫu...</div>
+              </div>
             </div>
 
-            <!-- Signature block -->
+            <!-- Signature block chuẩn 4 cấp -->
             <div class="grid grid-cols-4 gap-4 mt-12 pt-6 border-t border-[#1e3a6a] text-center text-xs font-semibold" id="form-mau-sig-box">
               <div>
-                <div class="text-slate-400 mb-12">NGƯỜI LẬP BIỂU</div>
-                <div class="font-bold text-slate-200">(Ký & ghi rõ họ tên)</div>
+                <div class="text-slate-400 uppercase text-[11px] mb-14" id="sig-title-1">NGƯỜI LẬP BIỂU</div>
+                <div class="font-bold text-slate-200" id="sig-name-1">(Ký & ghi rõ họ tên)</div>
               </div>
               <div>
-                <div class="text-slate-400 mb-12">TRƯỞNG CA SẢN XUẤT</div>
-                <div class="font-bold text-slate-200">(Ký & ghi rõ họ tên)</div>
+                <div class="text-slate-400 uppercase text-[11px] mb-14" id="sig-title-2">TRƯỞNG CA SẢN XUẤT</div>
+                <div class="font-bold text-slate-200" id="sig-name-2">(Ký & ghi rõ họ tên)</div>
               </div>
               <div>
-                <div class="text-slate-400 mb-12">QUẢN ĐỐC PHÂN XƯỞNG</div>
-                <div class="font-bold text-slate-200">(Ký & ghi rõ họ tên)</div>
+                <div class="text-slate-400 uppercase text-[11px] mb-14" id="sig-title-3">QUẢN ĐỐC PHÂN XƯỞNG</div>
+                <div class="font-bold text-slate-200" id="sig-name-3">(Ký & ghi rõ họ tên)</div>
               </div>
               <div>
-                <div class="text-slate-400 mb-12">BAN GIÁM ĐỐC PHÊ DUYỆT</div>
-                <div class="font-bold text-slate-200">(Ký & ghi rõ họ tên)</div>
+                <div class="text-slate-400 uppercase text-[11px] mb-14" id="sig-title-4">BAN GIÁM ĐỐC PHÊ DUYỆT</div>
+                <div class="font-bold text-slate-200" id="sig-name-4">(Ký & ghi rõ họ tên)</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL UPLOAD BÓC TÁCH NHÂN SỰ & KẾ HOẠCH CHO FORM MẪU -->
+        <div id="modal-form-mau-upload" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="bg-[#0f2042] border border-cyan-500/40 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-[#1e3a6a] pb-3">
+              <div class="flex items-center gap-2 text-cyan-300 font-bold text-sm">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                <span>Tải File Excel Bóc Tách Nhân Sự & Kế Hoạch</span>
+              </div>
+              <button onclick="closeFormMauUploadModal()" class="text-slate-400 hover:text-white transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
+
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Chọn file Excel (.xlsx) chứa sheet <b>Form mẫu</b> hoặc <b>Nhân sự / Kế hoạch</b>. Hệ thống sẽ tự động bóc tách và điền trực tiếp vào Phần V (Nhân sự), Phần VI (Kế hoạch), Phần VII (Mục tiêu) và Phần VIII (Đánh giá).
+            </p>
+
+            <div class="border-2 border-dashed border-cyan-500/40 rounded-xl p-6 text-center hover:border-cyan-400 transition bg-[#091428]">
+              <input type="file" id="form-mau-file-input" accept=".xlsx, .xls" class="hidden" onchange="onFormMauFileSelected(this)" />
+              <label for="form-mau-file-input" class="cursor-pointer flex flex-col items-center gap-2">
+                <i data-lucide="file-spreadsheet" class="w-10 h-10 text-cyan-400"></i>
+                <span class="text-xs font-bold text-slate-200" id="form-mau-file-name">Bấm để chọn file Excel từ máy tính</span>
+                <span class="text-[10px] text-slate-400">Hỗ trợ .xlsx, .xls</span>
+              </label>
+            </div>
+
+            <div id="form-mau-upload-log" class="hidden max-h-32 overflow-y-auto p-3 bg-[#091428] rounded-lg border border-[#1e3a6a] text-[11px] text-slate-300 space-y-1 font-mono">
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <button onclick="closeFormMauUploadModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition">
+                Đóng
+              </button>
+              <button onclick="executeFormMauUpload()" id="btn-submit-form-mau-upload" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-bold text-white transition shadow flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                <span>Bắt Đầu Bóc Tách</span>
+              </button>
             </div>
           </div>
         </div>
