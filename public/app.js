@@ -521,8 +521,10 @@ function initTrialProtection() {
   const badgeText = document.getElementById("trial-timer-text");
   const brandingRemain = document.getElementById("branding-trial-remain-text");
   const brandingDev = document.getElementById("branding-my-device-id");
+  const expiredDevId = document.getElementById("expired-device-id");
 
   if (brandingDev) brandingDev.innerText = devId;
+  if (expiredDevId) expiredDevId.innerText = devId;
 
   // Always keep badge visible in Header so user & admin can see the 25h clock running live
   if (badge) {
@@ -539,8 +541,14 @@ function initTrialProtection() {
       brandingRemain.innerText = `${formatted} (${isAuth ? 'Tài khoản chính thức' : '25 Giờ đếm ngược'})`;
     }
 
+    const loginModal = document.getElementById("modal-login");
+    const isLoginModalOpen = loginModal && !loginModal.classList.contains("hidden");
+
     if (remainSec <= 0 && !isAuth) {
-      openModal("modal-trial-expired");
+      // Only pop trial expired lock if user is NOT currently interacting with modal-login
+      if (!isLoginModalOpen) {
+        openModal("modal-trial-expired");
+      }
     } else if (remainSec > 0 || isAuth) {
       closeModal("modal-trial-expired");
     }
@@ -1055,8 +1063,10 @@ function handleLogout() {
     const errEl = document.getElementById("login-error-msg");
     if (errEl) errEl.classList.add("hidden");
 
-    initTrialProtection();
+    closeModal("modal-trial-expired");
     openModal("modal-login");
+    switchLoginTab("auth");
+    initTrialProtection();
     setTimeout(() => {
       if (uField) uField.focus();
     }, 150);
