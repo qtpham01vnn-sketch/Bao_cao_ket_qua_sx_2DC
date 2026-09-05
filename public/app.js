@@ -2300,47 +2300,49 @@ async function renderFormMauPreview() {
     contentDiv.innerHTML = `
       <!-- Phần I: Tổng Hợp Sản Lượng -->
       <div>
-        <h4 class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-300 pb-1">I. KẾT QUẢ SẢN XUẤT TỔNG HỢP</h4>
-        <table class="w-full border-collapse border border-slate-300 text-center text-[11px]">
-          <thead class="bg-slate-100 font-bold">
-            <tr>
-              <th class="border border-slate-300 p-2">Dây Chuyền</th>
-              <th class="border border-slate-300 p-2">Kích Thước</th>
-              <th class="border border-slate-300 p-2">Dòng Sản Phẩm</th>
-              <th class="border border-slate-300 p-2">Loại Số Liệu</th>
-              <th class="border border-slate-300 p-2 text-right">SL Ép (m²)</th>
-              <th class="border border-slate-300 p-2 text-right">A1 (m²)</th>
-              <th class="border border-slate-300 p-2 text-right">A (m²)</th>
-              <th class="border border-slate-300 p-2 text-right">B (m²)</th>
-              <th class="border border-slate-300 p-2 text-right">Tổng (m²)</th>
-              <th class="border border-slate-300 p-2">Ngày SX</th>
-              <th class="border border-slate-300 p-2">Dừng (p/ng)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => `
+        <h4 class="font-bold text-emerald-400 uppercase mb-2 border-b border-[#1e3a6a] pb-1 tracking-wider text-xs">I. KẾT QUẢ SẢN XUẤT TỔNG HỢP</h4>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+          <table class="table-excel-grid w-full text-center text-[11px]">
+            <thead class="bg-[#0b172a] text-slate-300 font-bold">
               <tr>
-                <td class="border border-slate-300 p-1.5 font-bold">${r.line}</td>
-                <td class="border border-slate-300 p-1.5">${r.size}</td>
-                <td class="border border-slate-300 p-1.5">${r.product_line || 'Phương Nam'}</td>
-                <td class="border border-slate-300 p-1.5 font-semibold ${r.data_type === 'Thực hiện' ? 'text-emerald-700' : 'text-blue-700'}">${r.data_type}</td>
-                <td class="border border-slate-300 p-1.5 text-right">${formatNumber(r.sl_ep, 2)}</td>
-                <td class="border border-slate-300 p-1.5 text-right font-bold text-emerald-800">${formatNumber(r.a1, 2)}</td>
-                <td class="border border-slate-300 p-1.5 text-right">${formatNumber(r.a, 2)}</td>
-                <td class="border border-slate-300 p-1.5 text-right text-amber-800">${formatNumber(r.b, 2)}</td>
-                <td class="border border-slate-300 p-1.5 text-right font-bold">${formatNumber(r.recovery_total, 2)}</td>
-                <td class="border border-slate-300 p-1.5">${formatNumber(r.prod_days, 1)}</td>
-                <td class="border border-slate-300 p-1.5">${formatNumber(r.stop_time_2mf, 0)}</td>
+                <th class="p-2 text-center align-middle">Dây Chuyền</th>
+                <th class="p-2 text-center align-middle">Kích Thước</th>
+                <th class="p-2 text-center align-middle">Dòng Sản Phẩm</th>
+                <th class="p-2 text-center align-middle">Loại Số Liệu</th>
+                <th class="p-2 text-right align-middle">SL Ép (m²)</th>
+                <th class="p-2 text-right align-middle">A1 (m²)</th>
+                <th class="p-2 text-right align-middle">A (m²)</th>
+                <th class="p-2 text-right align-middle">B (m²)</th>
+                <th class="p-2 text-right align-middle">Tổng (m²)</th>
+                <th class="p-2 text-center align-middle">Ngày SX</th>
+                <th class="p-2 text-center align-middle">Dừng (p/ng)</th>
               </tr>
-            `).join("")}
-          </tbody>
-        </table>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              ${rows.map(r => `
+                <tr class="hover:bg-[#13284d]/60">
+                  <td class="p-1.5 font-bold">${r.line}</td>
+                  <td class="p-1.5">${r.size}</td>
+                  <td class="p-1.5">${r.product_line || 'Phương Nam'}</td>
+                  <td class="p-1.5 font-semibold ${r.data_type === 'Thực hiện' ? 'text-emerald-400' : 'text-cyan-400'}">${r.data_type}</td>
+                  <td class="p-1.5 text-right font-mono">${formatNumber(r.sl_ep, 2)}</td>
+                  <td class="p-1.5 text-right font-mono font-bold text-emerald-400">${formatNumber(r.a1, 2)}</td>
+                  <td class="p-1.5 text-right font-mono">${formatNumber(r.a, 2)}</td>
+                  <td class="p-1.5 text-right font-mono text-amber-400">${formatNumber(r.b, 2)}</td>
+                  <td class="p-1.5 text-right font-mono font-bold text-white">${formatNumber(r.recovery_total, 2)}</td>
+                  <td class="p-1.5 font-mono">${formatNumber(r.prod_days, 1)}</td>
+                  <td class="p-1.5 font-mono">${formatNumber(r.stop_time_2mf, 0)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Phần II: Ghi Chú Đánh Giá -->
-      <div>
-        <h4 class="font-bold text-slate-800 uppercase mb-2 border-b border-slate-300 pb-1">II. ĐÁNH GIÁ TÌNH HÌNH SẢN XUẤT</h4>
-        <ul class="list-disc pl-5 space-y-1 text-slate-700">
+      <div class="mt-4">
+        <h4 class="font-bold text-emerald-400 uppercase mb-2 border-b border-[#1e3a6a] pb-1 tracking-wider text-xs">II. ĐÁNH GIÁ TÌNH HÌNH SẢN XUẤT</h4>
+        <ul class="list-disc pl-5 space-y-1.5 text-slate-300">
           <li>Dây chuyền 1 hoạt động ổn định, đạt tỷ lệ A1 vượt kế hoạch đề ra.</li>
           <li>Dây chuyền 2 chạy chuyển đổi các dòng Men bóng, Sugar sân vườn và Panson 40x80 đảm bảo chỉ tiêu chất lượng.</li>
           <li>Thời gian dừng máy do 2 máy phát điện và bảo dưỡng cơ điện được kiểm soát chặt chẽ trong khung cho phép.</li>

@@ -31,6 +31,8 @@ body {
 }
 .table-excel-grid thead th {
   border: 1px solid rgba(40, 75, 130, 0.85) !important;
+  text-align: center !important;
+  vertical-align: middle !important;
 }
 
 /* ========================================================================== */
@@ -394,6 +396,41 @@ html:not(.dark) tfoot tr.bg-\[\#09152b\] td.text-emerald-400 {
   font-weight: 800 !important;
 }
 
+/* 9. BÁO CÁO TRÌNH KÝ (FORM MẪU) THEME INTEGRATION */
+html:not(.dark) #form-mau-printable {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html:not(.dark) #form-mau-head-box {
+  border-bottom-color: #cbd5e1 !important;
+}
+html:not(.dark) #form-mau-head-box h3 {
+  color: #334155 !important;
+}
+html:not(.dark) #form-mau-head-box h4 {
+  color: #64748b !important;
+}
+html:not(.dark) #form-mau-header-title {
+  color: #1e3a8a !important;
+}
+html:not(.dark) #form-mau-content h4 {
+  color: #065f46 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+html:not(.dark) #form-mau-content ul {
+  color: #334155 !important;
+}
+html:not(.dark) #form-mau-sig-box {
+  border-top-color: #cbd5e1 !important;
+}
+html:not(.dark) #form-mau-sig-box .text-slate-400 {
+  color: #64748b !important;
+}
+html:not(.dark) #form-mau-sig-box .text-slate-200 {
+  color: #0f172a !important;
+}
+
 /* Print Styles */
 @media print {
   body {
@@ -407,9 +444,16 @@ html:not(.dark) tfoot tr.bg-\[\#09152b\] td.text-emerald-400 {
     padding: 0 !important;
     overflow: visible !important;
   }
-  .print-area {
+  #form-mau-printable, .print-area {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  #form-mau-printable *, .print-area * {
+    color: #000000 !important;
+    border-color: #94a3b8 !important;
+    background: transparent !important;
   }
 }
