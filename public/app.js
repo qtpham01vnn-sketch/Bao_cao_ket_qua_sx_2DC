@@ -3064,6 +3064,50 @@ async function importNormVersionFromExcel(event) {
   }
 }
 
+// Real-time Excel file reader and preview inside modal
+let modalParsedNormItems = [];
+
+async function onModalNormFileChange(event) {
+  const file = event.target.files[0];
+  const previewBox = document.getElementById("modal-norm-preview-box");
+  const fileNameEl = document.getElementById("modal-norm-preview-filename");
+  const countEl = document.getElementById("modal-norm-preview-count");
+  const itemsEl = document.getElementById("modal-norm-preview-items");
+
+  if (!file) {
+    if (previewBox) previewBox.classList.add("hidden");
+    modalParsedNormItems = [];
+    return;
+  }
+
+  const line = document.getElementById("new-version-line")?.value || "DC1";
+  const size = document.getElementById("new-version-size")?.value || "30x60";
+
+  try {
+    modalParsedNormItems = await parseNormExcelFile(file, line, size);
+    if (previewBox && fileNameEl && countEl && itemsEl) {
+      previewBox.classList.remove("hidden");
+      fileNameEl.innerHTML = `<i data-lucide="file-check" class="w-3.5 h-3.5 inline text-emerald-400 mr-1"></i> File: <b>${file.name}</b>`;
+      countEl.innerText = `${modalParsedNormItems.length} chỉ tiêu vật tư`;
+      
+      const sampleItems = modalParsedNormItems.slice(0, 5).map((it, idx) => 
+        `<div class="flex items-center justify-between text-[11px] py-0.5 border-b border-slate-800">
+           <span>${idx + 1}. ${it.material_name} (${it.unit})</span>
+           <span class="text-cyan-300 font-bold font-mono">${it.norm_value}</span>
+         </div>`
+      ).join("");
+      
+      const moreText = modalParsedNormItems.length > 5 ? `<div class="text-[10px] text-slate-400 italic pt-1">+ ${modalParsedNormItems.length - 5} chỉ tiêu khác...</div>` : '';
+      itemsEl.innerHTML = sampleItems + moreText;
+      if (window.lucide) lucide.createIcons();
+    }
+  } catch (err) {
+    if (previewBox) previewBox.classList.add("hidden");
+    modalParsedNormItems = [];
+    alert("Lỗi khi đọc file Excel: " + err);
+  }
+}
+
 // 8. MODAL DUAL-MODE CONTROLLER
 function openCreateVersionModal() {
   const line = normLineFilter !== 'all' ? normLineFilter : 'DC1';
@@ -3078,6 +3122,16 @@ function openCreateVersionModal() {
   if (sizeSel) sizeSel.value = size;
 
   onModalNormSizeChange();
+
+  // Reset file input & preview
+  const fileInp = document.getElementById("modal-norm-file");
+  if (fileInp) fileInp.value = "";
+  const previewBox = document.getElementById("modal-norm-preview-box");
+  if (previewBox) previewBox.classList.add("hidden");
+  modalParsedNormItems = [];
+
+  const errBox = document.getElementById("new-version-error-msg");
+  if (errBox) errBox.classList.add("hidden");
 
   switchCreateNormMode('excel');
   document.getElementById("modal-create-version").classList.remove("hidden");
@@ -3178,22 +3232,26 @@ async function submitCreateVersion() {
   let items = [];
 
   if (mode === "excel") {
-    const fileInp = document.getElementById("modal-norm-file");
-    const file = fileInp?.files[0];
-    if (!file) {
-      alert("Vui lòng chọn 1 file Excel/CSV định mức để trích xuất tự động!");
-      return;
-    }
-
-    try {
-      items = await parseNormExcelFile(file, line, size);
-      if (!items || items.length === 0) {
-        alert("Không trích xuất được dữ liệu nào từ file Excel!");
+    if (modalParsedNormItems && modalParsedNormItems.length > 0) {
+      items = modalParsedNormItems;
+    } else {
+      const fileInp = document.getElementById("modal-norm-file");
+      const file = fileInp?.files[0];
+      if (!file) {
+        alert("Vui lòng chọn 1 file Excel/CSV định mức để trích xuất tự động!");
         return;
       }
-    } catch (parseErr) {
-      alert("Lỗi đọc file: " + parseErr);
-      return;
+
+      try {
+        items = await parseNormExcelFile(file, line, size);
+        if (!items || items.length === 0) {
+          alert("Không trích xuất được dữ liệu nào từ file Excel!");
+          return;
+        }
+      } catch (parseErr) {
+        alert("Lỗi đọc file: " + parseErr);
+        return;
+      }
     }
   }
 
