@@ -63,10 +63,21 @@ function triggerNativeInstallPrompt() {
   }
 }
 
-// Service Worker Registration
+// Service Worker Registration & Auto-Update
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((reg) => {
+      reg.update();
+      reg.onupdatefound = () => {
+        const installingWorker = reg.installing;
+        if (installingWorker) {
+          installingWorker.onstatechange = () => {
+            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          };
+        }
+      };
       console.log("PWA Service Worker registered with scope:", reg.scope);
     }).catch((err) => {
       console.log("PWA Service Worker registration skipped or failed:", err);
