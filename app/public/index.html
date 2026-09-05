@@ -184,6 +184,12 @@
             <span id="theme-text" class="hidden sm:inline">Tone Sáng</span>
           </button>
 
+          <!-- Global Print / PDF Current Tab Button -->
+          <button onclick="printCurrentActiveTab()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-950/50 transition active:scale-95" title="In hoặc Tải file PDF trang hiện tại">
+            <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
+            <span class="hidden sm:inline">In / Tải PDF</span>
+          </button>
+
           <!-- Export Signoff shortcut -->
           <button onclick="quickExportSignOff()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
@@ -209,10 +215,14 @@
                 <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 31/08/2026</b>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
                 • Tất cả các kỳ (T1 - T8) • Tất cả DC
               </span>
+              <button onclick="printDashboardReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF toàn bộ Báo cáo Tổng Quan">
+                <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
+                <span>In / Tải PDF</span>
+              </button>
               <button onclick="syncAllSectionsToP1()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 border border-emerald-400/50 text-xs font-bold text-white shadow transition" title="Áp dụng bộ lọc Phần I cho toàn bộ Phần II, III, IV">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                 <span>Đồng bộ 4 phần</span>
@@ -1056,11 +1066,15 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5">
                 <span id="summary-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
                   • Tháng 08 / 2026
                 </span>
-                <button onclick="alert('Thêm bản ghi sản lượng')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+                <button onclick="printSummaryReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF Báo Cáo Sản Lượng">
+                  <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
+                  <span>In / Tải PDF</span>
+                </button>
+                <button onclick="alert('Thêm bản ghi sản lượng')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                   <span>Thêm dữ liệu</span>
                 </button>
@@ -1155,10 +1169,14 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5">
                 <span id="brands-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
                   • Tháng 08 / 2026
                 </span>
+                <button onclick="printBrandsReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF Báo Cáo Thương Hiệu">
+                  <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
+                  <span>In / Tải PDF</span>
+                </button>
                 <button onclick="alert('Thêm dữ liệu thương hiệu')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                   <span>Thêm dữ liệu</span>
@@ -1273,10 +1291,14 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5">
                 <span id="consumption-badge-period" class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
                   • Tháng 08 / 2026
                 </span>
+                <button onclick="printConsumptionReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF Báo Cáo Tiêu Hao Vật Tư">
+                  <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
+                  <span>In / Tải PDF</span>
+                </button>
                 <button onclick="alert('Thêm dữ liệu tiêu hao')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                   <span>Thêm dữ liệu</span>
@@ -1547,7 +1569,7 @@
             </div>
 
             <div class="flex items-center gap-3">
-              <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition shadow">
+              <button onclick="printSignOffReport()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow">
                 <i data-lucide="printer" class="w-4 h-4"></i>
                 <span>In Báo Cáo / Xuất PDF</span>
               </button>
@@ -1817,6 +1839,11 @@
                   <button onclick="exportCurrentNormTableExcel()" class="px-3 py-1.5 bg-[#112348] hover:bg-[#183266] text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-lg transition shadow flex items-center gap-1.5" title="Xuất bảng định mức này ra file Excel (.xlsx) chuẩn TCVN">
                     <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
                     <span>Xuất Excel (.xlsx)</span>
+                  </button>
+
+                  <button onclick="printNormsReport()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/40 text-xs font-bold rounded-lg transition shadow flex items-center gap-1.5 active:scale-95" title="In hoặc Tải file PDF Bảng Định Mức này">
+                    <i data-lucide="printer" class="w-4 h-4 text-indigo-200"></i>
+                    <span>In / Tải PDF</span>
                   </button>
 
                   <button id="btn-save-norm-details" onclick="saveNormDetails()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow flex items-center gap-1.5 active:scale-95">

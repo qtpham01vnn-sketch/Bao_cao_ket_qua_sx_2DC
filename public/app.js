@@ -4681,11 +4681,19 @@ function printCoalReport() {
 </html>
   `;
 
-  // Try opening new print window
+  // Open Print Window
+  openPrintWindow(printHtml);
+}
+
+// ==========================================
+// 7. COMPREHENSIVE PRINT & EXPORT PDF ENGINE FOR ALL TABS
+// ==========================================
+
+function openPrintWindow(htmlContent) {
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.open();
-    printWindow.document.write(printHtml);
+    printWindow.document.write(htmlContent);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
@@ -4714,7 +4722,7 @@ function printCoalReport() {
 
   const doc = iframe.contentWindow.document;
   doc.open();
-  doc.write(printHtml);
+  doc.write(htmlContent);
   doc.close();
 
   setTimeout(() => {
@@ -4722,3 +4730,751 @@ function printCoalReport() {
     iframe.contentWindow.print();
   }, 400);
 }
+
+function createPrintDocumentHtml({
+  title,
+  subTitle,
+  periodInfo,
+  kpiCardsHtml = "",
+  tableHtml,
+  orientation = "landscape",
+  signatures = null
+}) {
+  const now = new Date();
+  const dateStr = `Đồng Nai, ngày ${now.getDate()} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
+
+  const defaultSignatures = signatures || [
+    { title: "NGƯỜI LẬP BIỂU", sub: "(Ký, ghi rõ họ tên)" },
+    { title: "PT.BP TỔNG HỢP / THK", sub: "(Ký, ghi rõ họ tên)" },
+    { title: "QUẢN ĐỐC PHÂN XƯỞNG", sub: "(Ký, ghi rõ họ tên)" },
+    { title: "BAN GIÁM ĐỐC DUYỆT", sub: "(Ký, đóng dấu)" }
+  ];
+
+  const sigHtml = `
+    <div class="signature-grid">
+      ${defaultSignatures.map(s => `
+        <div class="sig-col">
+          <div class="sig-title">${s.title}</div>
+          <div class="sig-sub">${s.sub}</div>
+          <div class="sig-space"></div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  return `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${title} - Phương Nam</title>
+  <style>
+    @page {
+      size: A4 ${orientation};
+      margin: 8mm 10mm 8mm 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #0f172a;
+      margin: 0;
+      padding: 10px;
+      background: #fff;
+    }
+    .print-bar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .btn-print-action {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    .header-table td {
+      border: none !important;
+      padding: 0;
+    }
+    .title-box {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .title-box h1 {
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin: 0 0 4px 0;
+      color: #0f172a;
+    }
+    .title-box .sub {
+      font-size: 11px;
+      color: #334155;
+    }
+    .kpi-cards {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .kpi-card {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 10px;
+      text-align: center;
+    }
+    .kpi-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .kpi-val {
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .kpi-sub {
+      font-size: 9.5px;
+      color: #475569;
+      margin-top: 1px;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 15px;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid #475569;
+      padding: 4px 5px;
+      vertical-align: middle;
+    }
+    table.data-table thead th {
+      background: #0f2a4a;
+      color: #ffffff;
+      font-weight: 700;
+      text-align: center;
+      font-size: 10px;
+    }
+    .row-total-main {
+      background: #e6f4ea !important;
+      font-weight: bold;
+      border-top: 2px solid #16a34a !important;
+      border-bottom: 2px solid #16a34a !important;
+    }
+    .signature-grid {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      page-break-inside: avoid;
+      text-align: center;
+    }
+    .sig-col {
+      width: 23%;
+    }
+    .sig-title {
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .sig-sub {
+      font-size: 10px;
+      font-style: italic;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .sig-space {
+      height: 55px;
+    }
+    @media print {
+      .print-bar { display: none !important; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
+  </div>
+
+  <!-- HEADER -->
+  <table class="header-table">
+    <tr>
+      <td style="width: 48%; text-align: center;">
+        <div style="font-weight: 800; font-size: 11.5px; text-transform: uppercase;">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</div>
+        <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #1e3a8a; margin-top: 2px;">PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG</div>
+        <div style="font-size: 9px; margin-top: 1px;">❖❖❖</div>
+      </td>
+      <td style="width: 4%;"></td>
+      <td style="width: 48%; text-align: center;">
+        <div style="font-weight: 800; font-size: 11.5px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+        <div style="font-weight: 700; font-size: 10.5px; text-decoration: underline; margin-top: 2px;">Độc lập - Tự do - Hạnh phúc</div>
+        <div style="font-size: 10px; font-style: italic; margin-top: 3px;">${dateStr}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- TITLE -->
+  <div class="title-box">
+    <h1>${title}</h1>
+    <div class="sub">${subTitle || ''} ${periodInfo ? `&nbsp;|&nbsp; ${periodInfo}` : ''}</div>
+  </div>
+
+  ${kpiCardsHtml}
+
+  <!-- DATA TABLE -->
+  ${tableHtml}
+
+  <!-- SIGNATURES -->
+  ${sigHtml}
+</body>
+</html>
+  `;
+}
+
+// Master Router for Global Top Bar Button
+function printCurrentActiveTab() {
+  switch (currentTab) {
+    case "dashboard":
+      printDashboardReport();
+      break;
+    case "summary":
+      printSummaryReport();
+      break;
+    case "brands":
+      printBrandsReport();
+      break;
+    case "consumption":
+      printConsumptionReport();
+      break;
+    case "coal":
+      printCoalReport();
+      break;
+    case "export-report":
+      printSignOffReport();
+      break;
+    case "master-data":
+      printNormsReport();
+      break;
+    default:
+      printDashboardReport();
+  }
+}
+
+// 1. PRINT DASHBOARD SUMMARY
+function printDashboardReport() {
+  const kpiM2 = document.getElementById("dash-kpi-m2-val")?.innerText || "-";
+  const kpiA1 = document.getElementById("dash-kpi-a1-val")?.innerText || "-";
+  const kpiStop = document.getElementById("dash-kpi-stop-val")?.innerText || "-";
+  const kpiCoal = document.getElementById("dash-kpi-coal-val")?.innerText || "-";
+
+  const kpiHtml = `
+    <div class="kpi-cards">
+      <div class="kpi-card" style="border-left: 3px solid #10b981;">
+        <div class="kpi-title">Tổng sản lượng thu hồi</div>
+        <div class="kpi-val" style="color: #059669;">${kpiM2}</div>
+        <div class="kpi-sub">Kỳ 2026</div>
+      </div>
+      <div class="kpi-card" style="border-left: 3px solid #06b6d4;">
+        <div class="kpi-title">Tỷ lệ A1 bình quân</div>
+        <div class="kpi-val" style="color: #0891b2;">${kpiA1}</div>
+        <div class="kpi-sub">Chất lượng cao</div>
+      </div>
+      <div class="kpi-card" style="border-left: 3px solid #f59e0b;">
+        <div class="kpi-title">Tiêu hao than cục</div>
+        <div class="kpi-val" style="color: #d97706;">${kpiCoal}</div>
+        <div class="kpi-sub">Nung lò</div>
+      </div>
+      <div class="kpi-card" style="border-left: 3px solid #6366f1;">
+        <div class="kpi-title">Thời gian dừng máy</div>
+        <div class="kpi-val" style="color: #4f46e5;">${kpiStop}</div>
+        <div class="kpi-sub">Bảo dưỡng & Sự cố</div>
+      </div>
+    </div>
+  `;
+
+  // Get Summary Section Table Data
+  let summaryRows = "";
+  if (rawSummaryData && rawSummaryData.length > 0) {
+    let sumEp = 0, sumA1 = 0, sumA = 0, sumB = 0, sumTong = 0;
+    rawSummaryData.forEach((r, idx) => {
+      const slEp = Number(r.sl_ep || 0);
+      const a1 = Number(r.a1 || 0);
+      const a = Number(r.a || 0);
+      const b = Number(r.b || 0);
+      const tong = Number(r.recovery_total || (a1 + a + b));
+      sumEp += slEp; sumA1 += a1; sumA += a; sumB += b; sumTong += tong;
+
+      summaryRows += `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
+          <td style="text-align: center;">${r.size || ''}</td>
+          <td>${r.product_line || 'Phương Nam'}</td>
+          <td style="text-align: center;">${r.data_type || 'Thực hiện'}</td>
+          <td style="text-align: right;">${formatNumber(slEp, 2)}</td>
+          <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(a1, 2)}</td>
+          <td style="text-align: right;">${formatNumber(a, 2)}</td>
+          <td style="text-align: right;">${formatNumber(b, 2)}</td>
+          <td style="text-align: right; font-weight: bold;">${formatNumber(tong, 2)}</td>
+          <td style="text-align: right; font-weight: bold; color: #0284c7;">${tong > 0 ? formatNumber(a1 / tong * 100, 2) : '-'}%</td>
+        </tr>
+      `;
+    });
+
+    const pctA1Total = sumTong > 0 ? (sumA1 / sumTong * 100) : 0;
+    summaryRows += `
+      <tr class="row-total-main">
+        <td colspan="5" style="text-align: center; text-transform: uppercase;">TỔNG CỘNG TOÀN NHÀ MÁY</td>
+        <td style="text-align: right;">${formatNumber(sumEp, 2)}</td>
+        <td style="text-align: right; color: #166534;">${formatNumber(sumA1, 2)}</td>
+        <td style="text-align: right;">${formatNumber(sumA, 2)}</td>
+        <td style="text-align: right;">${formatNumber(sumB, 2)}</td>
+        <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(sumTong, 2)}</td>
+        <td style="text-align: right; color: #0284c7; font-size: 11px;">${formatNumber(pctA1Total, 2)}%</td>
+      </tr>
+    `;
+  } else {
+    summaryRows = `<tr><td colspan="11" style="text-align: center; padding: 15px;">Chưa nạp dữ liệu</td></tr>`;
+  }
+
+  const tableHtml = `
+    <div style="font-weight: 800; font-size: 12px; text-transform: uppercase; color: #0f2a4a; margin-bottom: 6px;">
+      I. KẾT QUẢ SẢN XUẤT & THU HỒI TỔNG HỢP (m²)
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 30px;">STT</th>
+          <th style="width: 50px;">Dây Chuyền</th>
+          <th style="width: 55px;">Kích Thước</th>
+          <th>Dòng Sản Phẩm</th>
+          <th style="width: 65px;">Loại Số Liệu</th>
+          <th style="width: 75px;">SL Ép (m²)</th>
+          <th style="width: 75px;">A1 (m²)</th>
+          <th style="width: 70px;">A (m²)</th>
+          <th style="width: 70px;">B (m²)</th>
+          <th style="width: 80px;">Tổng Thu Hồi (m²)</th>
+          <th style="width: 65px;">% A1</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${summaryRows}
+      </tbody>
+    </table>
+  `;
+
+  const html = createPrintDocumentHtml({
+    title: "BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT NĂM 2026",
+    subTitle: "Dây chuyền 1 & Dây chuyền 2 - Công ty CP Gạch Men Phương Nam",
+    periodInfo: "Kỳ báo cáo: 01/01/2026 - 31/08/2026",
+    kpiCardsHtml: kpiHtml,
+    tableHtml: tableHtml,
+    orientation: "landscape"
+  });
+
+  openPrintWindow(html);
+}
+
+// 2. PRINT SUMMARY REPORT (TAB 2)
+function printSummaryReport() {
+  if (!rawSummaryData || rawSummaryData.length === 0) {
+    alert("Không có dữ liệu sản lượng để in! Vui lòng tải lại trang hoặc chọn kỳ khác.");
+    return;
+  }
+
+  const month = document.getElementById("summary-filter-month")?.value || "all";
+  const line = document.getElementById("summary-filter-line")?.value || "all";
+  const size = document.getElementById("summary-filter-size")?.value || "all";
+
+  const monthStr = month === "all" ? "Tất cả các kỳ (T1 - T8)" : `Tháng ${month.padStart(2, '0')}`;
+  const lineStr = line === "all" ? "Toàn bộ DC1 & DC2" : `Dây chuyền ${line}`;
+  const sizeStr = size === "all" ? "Tất cả kích thước" : `Kích thước ${size}`;
+
+  let sumEp = 0, sumA1 = 0, sumA = 0, sumB = 0, sumTong = 0;
+  const rowsHtml = rawSummaryData.map((r, idx) => {
+    const slEp = Number(r.sl_ep || 0);
+    const a1 = Number(r.a1 || 0);
+    const a = Number(r.a || 0);
+    const b = Number(r.b || 0);
+    const tong = Number(r.recovery_total || (a1 + a + b));
+    sumEp += slEp; sumA1 += a1; sumA += a; sumB += b; sumTong += tong;
+
+    const pctA1 = tong > 0 ? (a1 / tong * 100) : 0;
+    const pctA = tong > 0 ? (a / tong * 100) : 0;
+    const pctB = tong > 0 ? (b / tong * 100) : 0;
+
+    return `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="text-align: center; font-weight: bold;">${r.line}</td>
+        <td style="text-align: center;">${r.size}</td>
+        <td>${r.product_line || 'Phương Nam'}</td>
+        <td style="text-align: center;">${r.data_type || 'Thực hiện'}</td>
+        <td style="text-align: right;">${formatNumber(slEp, 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(a1, 2)}</td>
+        <td style="text-align: right;">${formatNumber(a, 2)}</td>
+        <td style="text-align: right;">${formatNumber(b, 2)}</td>
+        <td style="text-align: right; font-weight: bold;">${formatNumber(tong, 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(pctA1, 2)}%</td>
+        <td style="text-align: right;">${formatNumber(pctA, 2)}%</td>
+        <td style="text-align: right; color: #d97706;">${formatNumber(pctB, 2)}%</td>
+        <td style="text-align: center;">${formatNumber(r.prod_days, 1)}</td>
+        <td style="text-align: center;">${formatNumber(r.stop_time_2mf, 0)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const pctA1All = sumTong > 0 ? (sumA1 / sumTong * 100) : 0;
+  const pctAAll = sumTong > 0 ? (sumA / sumTong * 100) : 0;
+  const pctBAll = sumTong > 0 ? (sumB / sumTong * 100) : 0;
+
+  const tableHtml = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width: 25px;">STT</th>
+          <th rowspan="2" style="width: 45px;">DC</th>
+          <th rowspan="2" style="width: 55px;">Kích Thước</th>
+          <th rowspan="2">Dòng Sản Phẩm</th>
+          <th rowspan="2" style="width: 60px;">Loại Số Liệu</th>
+          <th rowspan="2" style="width: 75px;">SL Ép (m²)</th>
+          <th colspan="4">KẾT QUẢ THU HỒI (m²)</th>
+          <th colspan="3">TỶ LỆ THU HỒI (%)</th>
+          <th rowspan="2" style="width: 50px;">Ngày SX</th>
+          <th rowspan="2" style="width: 50px;">Dừng (p/ng)</th>
+        </tr>
+        <tr>
+          <th style="width: 70px;">A1</th>
+          <th style="width: 65px;">A</th>
+          <th style="width: 65px;">B</th>
+          <th style="width: 75px;">Tổng (m²)</th>
+          <th style="width: 50px;">% A1</th>
+          <th style="width: 50px;">% A</th>
+          <th style="width: 50px;">% B</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+      <tfoot>
+        <tr class="row-total-main">
+          <td colspan="5" style="text-align: center; text-transform: uppercase;">TỔNG CỘNG</td>
+          <td style="text-align: right;">${formatNumber(sumEp, 2)}</td>
+          <td style="text-align: right; color: #166534;">${formatNumber(sumA1, 2)}</td>
+          <td style="text-align: right;">${formatNumber(sumA, 2)}</td>
+          <td style="text-align: right;">${formatNumber(sumB, 2)}</td>
+          <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(sumTong, 2)}</td>
+          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(pctA1All, 2)}%</td>
+          <td style="text-align: right;">${formatNumber(pctAAll, 2)}%</td>
+          <td style="text-align: right; color: #b45309;">${formatNumber(pctBAll, 2)}%</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+
+  const html = createPrintDocumentHtml({
+    title: "BÁO CÁO KẾT QUẢ SẢN XUẤT & TỶ LỆ THU HỒI",
+    subTitle: "Phân xưởng sản xuất 2 Dây chuyền",
+    periodInfo: `Kỳ: <b>${monthStr}</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>`,
+    tableHtml: tableHtml,
+    orientation: "landscape"
+  });
+
+  openPrintWindow(html);
+}
+
+// 3. PRINT BRANDS REPORT (TAB 3)
+function printBrandsReport() {
+  if (!rawBrandsData || rawBrandsData.length === 0) {
+    alert("Không có dữ liệu thương hiệu để in!");
+    return;
+  }
+
+  const month = document.getElementById("brands-filter-month")?.value || "8";
+  const line = document.getElementById("brands-filter-line")?.value || "all";
+  const size = document.getElementById("brands-filter-size")?.value || "all";
+
+  const monthStr = month === "all" ? "Tất cả kỳ" : `Tháng ${month.padStart(2, '0')}`;
+  const lineStr = line === "all" ? "Toàn bộ DC1 & DC2" : `Dây chuyền ${line}`;
+  const sizeStr = size === "all" ? "Tất cả kích thước" : `Kích thước ${size}`;
+
+  let sumPlan = 0, sumActual = 0, sumA1 = 0, sumA = 0, sumB = 0;
+  const rowsHtml = rawBrandsData.map((r, idx) => {
+    const plan = Number(r.plan_m2 || 0);
+    const actual = Number(r.actual_m2 || 0);
+    const a1 = Number(r.a1_m2 || 0);
+    const a = Number(r.a_m2 || 0);
+    const b = Number(r.b_m2 || 0);
+    sumPlan += plan; sumActual += actual; sumA1 += a1; sumA += a; sumB += b;
+
+    const pctA1 = actual > 0 ? (a1 / actual * 100) : 0;
+    const pctRate = plan > 0 ? (actual / plan * 100) : 0;
+
+    return `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="text-align: center; font-weight: bold;">${r.line}</td>
+        <td style="text-align: center;">${r.size}</td>
+        <td style="font-weight: 600;">${r.brand_name}</td>
+        <td>${r.glaze_type || ''}</td>
+        <td style="text-align: right;">${formatNumber(plan, 2)}</td>
+        <td style="text-align: right; font-weight: bold;">${formatNumber(actual, 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(a1, 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(pctA1, 2)}%</td>
+        <td style="text-align: right;">${formatNumber(a, 2)}</td>
+        <td style="text-align: right;">${formatNumber(b, 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: ${pctRate >= 100 ? '#16a34a' : '#d97706'};">${formatNumber(pctRate, 2)}%</td>
+      </tr>
+    `;
+  }).join("");
+
+  const pctA1Total = sumActual > 0 ? (sumA1 / sumActual * 100) : 0;
+  const pctRateTotal = sumPlan > 0 ? (sumActual / sumPlan * 100) : 0;
+
+  const tableHtml = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25px;">STT</th>
+          <th style="width: 45px;">DC</th>
+          <th style="width: 55px;">Kích Thước</th>
+          <th>Tên Thương Hiệu / Nhãn Hàng</th>
+          <th style="width: 80px;">Loại Men</th>
+          <th style="width: 80px;">Kế Hoạch (m²)</th>
+          <th style="width: 80px;">Thực Hiện (m²)</th>
+          <th style="width: 75px;">A1 (m²)</th>
+          <th style="width: 55px;">% A1</th>
+          <th style="width: 70px;">A (m²)</th>
+          <th style="width: 70px;">B (m²)</th>
+          <th style="width: 65px;">% Đạt KH</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+      <tfoot>
+        <tr class="row-total-main">
+          <td colspan="5" style="text-align: center; text-transform: uppercase;">TỔNG CỘNG SẢN LƯỢNG THƯƠNG HIỆU</td>
+          <td style="text-align: right;">${formatNumber(sumPlan, 2)}</td>
+          <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(sumActual, 2)}</td>
+          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(sumA1, 2)}</td>
+          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(pctA1Total, 2)}%</td>
+          <td style="text-align: right;">${formatNumber(sumA, 2)}</td>
+          <td style="text-align: right;">${formatNumber(sumB, 2)}</td>
+          <td style="text-align: right; color: #0284c7; font-size: 11px;">${formatNumber(pctRateTotal, 2)}%</td>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+
+  const html = createPrintDocumentHtml({
+    title: "BÁO CÁO SẢN LƯỢNG THEO DÒNG SẢN PHẨM & NHÃN HIỆU",
+    subTitle: "Chi tiết cơ cấu thương hiệu sản xuất",
+    periodInfo: `Kỳ: <b>${monthStr}</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>`,
+    tableHtml: tableHtml,
+    orientation: "landscape"
+  });
+
+  openPrintWindow(html);
+}
+
+// 4. PRINT CONSUMPTION REPORT (TAB 4)
+function printConsumptionReport() {
+  if (!rawConsumptionData || rawConsumptionData.length === 0) {
+    alert("Không có dữ liệu tiêu hao vật tư để in!");
+    return;
+  }
+
+  const month = document.getElementById("consumption-filter-month")?.value || "8";
+  const line = document.getElementById("consumption-filter-line")?.value || "all";
+  const size = document.getElementById("consumption-filter-size")?.value || "all";
+
+  const monthStr = month === "all" ? "Tất cả kỳ" : `Tháng ${month.padStart(2, '0')}`;
+  const lineStr = line === "all" ? "Toàn bộ DC1 & DC2" : `Dây chuyền ${line}`;
+  const sizeStr = size === "all" ? "Tất cả kích thước" : `Kích thước ${size}`;
+
+  const rowsHtml = rawConsumptionData.map((r, idx) => {
+    const norm = Number(r.norm_value || 0);
+    const actual = Number(r.actual_rate || 0);
+    const diff = norm > 0 ? ((actual - norm) / norm * 100) : 0;
+    const isSave = actual <= norm;
+
+    return `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="font-weight: 600;">${r.material_name}</td>
+        <td style="text-align: center;">${r.unit || 'Kg'}</td>
+        <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
+        <td style="text-align: center;">${r.size || ''}</td>
+        <td style="text-align: right; font-mono font-bold;">${formatNumber(norm, 4)}</td>
+        <td style="text-align: right; font-mono font-bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${formatNumber(actual, 4)}</td>
+        <td style="text-align: right;">${formatNumber(Number(r.used_qty || 0), 2)}</td>
+        <td style="text-align: right;">${formatNumber(Number(r.calculated_m2 || 0), 2)}</td>
+        <td style="text-align: right; font-weight: bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${diff > 0 ? '+' : ''}${formatNumber(diff, 2)}%</td>
+        <td style="text-align: center; font-weight: bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${isSave ? 'Đạt tiêu chuẩn ✓' : 'Vượt định mức ✗'}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const tableHtml = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 25px;">STT</th>
+          <th>Tên Nguyên Liệu / Vật Tư</th>
+          <th style="width: 45px;">ĐVT</th>
+          <th style="width: 45px;">DC</th>
+          <th style="width: 55px;">Kích Thước</th>
+          <th style="width: 80px;">Định Mức Quy Định</th>
+          <th style="width: 80px;">Tiêu Hao Thực Tế</th>
+          <th style="width: 80px;">Lượng Sử Dụng</th>
+          <th style="width: 80px;">Sản Lượng (m²)</th>
+          <th style="width: 65px;">Chênh Lệch</th>
+          <th style="width: 90px;">Đánh Giá</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  `;
+
+  const html = createPrintDocumentHtml({
+    title: "BÁO CÁO TIÊU HAO NGUYÊN VẬT TƯ SẢN XUẤT",
+    subTitle: "Phân xưởng sản xuất Men & Xương",
+    periodInfo: `Kỳ: <b>${monthStr}</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>`,
+    tableHtml: tableHtml,
+    orientation: "landscape"
+  });
+
+  openPrintWindow(html);
+}
+
+// 5. PRINT SIGNOFF REPORT (TAB 6)
+function printSignOffReport() {
+  const printableDiv = document.getElementById("form-mau-printable");
+  if (!printableDiv) {
+    window.print();
+    return;
+  }
+
+  const month = document.getElementById("export-select-month")?.value || "8";
+  const title = `BÁO CÁO KẾT QUẢ SẢN XUẤT THÁNG ${month.padStart(2, '0')}/2026 TRÌNH KÝ BAN GIÁM ĐỐC`;
+
+  const contentHtml = printableDiv.innerHTML;
+  const printHtml = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>${title} - Phương Nam</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; color: #0f172a; margin: 0; padding: 10px; background: #fff; }
+    .print-bar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; }
+    .btn-print-action { background: #0284c7; color: white; border: none; padding: 8px 16px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px; }
+    th, td { border: 1px solid #475569; padding: 4px 6px; }
+    th { background: #0f2a4a; color: white; text-align: center; }
+    .no-print { display: none !important; }
+    @media print { .print-bar { display: none !important; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
+  </div>
+  ${contentHtml}
+</body>
+</html>
+  `;
+
+  openPrintWindow(printHtml);
+}
+
+// 6. PRINT NORMS MASTER REPORT (TAB 7)
+function printNormsReport() {
+  if (!currentNormDetailsList || currentNormDetailsList.length === 0) {
+    alert("Không có dữ liệu định mức để in! Vui lòng chọn phiên bản khác.");
+    return;
+  }
+
+  const verCode = currentNormInfo.version_code || "DM";
+  const verName = currentNormInfo.version_name || "Định mức tiêu hao";
+  const m = currentNormInfo.effective_from_month || 1;
+  const y = currentNormInfo.effective_from_year || 2026;
+  const lineLabel = currentNormInfo.line || normLineFilter || "Chung";
+  const sizeLabel = currentNormInfo.size || normSizeFilter || "Đa KT";
+
+  const rowsHtml = currentNormDetailsList.map((d, idx) => {
+    const val = formatSmartDecimal(d.norm_value);
+    return `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="font-weight: 600;">${d.material_name}</td>
+        <td style="text-align: center; font-weight: bold;">${d.line}</td>
+        <td style="text-align: center;">${d.size}</td>
+        <td style="text-align: center;">${d.unit}</td>
+        <td style="text-align: right; font-weight: bold; color: #0284c7; font-size: 11px;">${val}</td>
+        <td>${d.description || ''}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const tableHtml = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 30px;">STT</th>
+          <th>Tên Nguyên Liệu / Vật Tư</th>
+          <th style="width: 60px;">Dây Chuyền</th>
+          <th style="width: 65px;">Kích Thước</th>
+          <th style="width: 55px;">ĐVT</th>
+          <th style="width: 110px;">Định Mức Quy Định (Kg/m²)</th>
+          <th style="width: 140px;">Ghi Chú</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  `;
+
+  const html = createPrintDocumentHtml({
+    title: "BẢNG ĐỊNH MỨC TIÊU HAO NGUYÊN LIỆU, MEN, XƯƠNG VÀ VẬT TƯ",
+    subTitle: `Phiên bản: <b>${verCode}</b> - ${verName}`,
+    periodInfo: `Dây chuyền: <b>${lineLabel}</b> &nbsp;|&nbsp; Kích thước: <b>${sizeLabel}</b> &nbsp;|&nbsp; Hiệu lực: <b>Tháng ${m}/${y}</b>`,
+    tableHtml: tableHtml,
+    orientation: "portrait"
+  });
+
+  openPrintWindow(html);
+}
+
