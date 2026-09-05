@@ -29,7 +29,10 @@ def resolve_period(period_type="month", period_value="8", year=2026):
         months = [m_int]
         period_title = f"THÁNG {m_int:02d} NĂM {year}"
         period_key = f"M{m_int:02d}_{year}"
-        next_period_title = f"Tháng {(m_int % 12) + 1:02d}/{year if m_int < 12 else year + 1}"
+        next_m = (m_int % 12) + 1
+        next_y = year if m_int < 12 else year + 1
+        next_period_title = f"Tháng {next_m:02d}/{next_y}"
+        next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
     elif period_type == "quarter":
         q_val = str(period_value).upper()
         q_map = {"Q1": [1,2,3], "Q2": [4,5,6], "Q3": [7,8,9], "Q4": [10,11,12], "1": [1,2,3], "2": [4,5,6], "3": [7,8,9], "4": [10,11,12]}
@@ -39,22 +42,26 @@ def resolve_period(period_type="month", period_value="8", year=2026):
         period_key = f"Q_{clean_q}_{year}"
         next_q_num = (int(clean_q[-1]) % 4) + 1
         next_period_title = f"Quý {next_q_num} Năm {year if next_q_num > 1 else year + 1}"
+        next_period_full = f"QUÝ {next_q_num} NĂM {year if next_q_num > 1 else year + 1}"
     elif period_type == "half_year":
         if "2" in str(period_value) or "CUOI" in str(period_value).upper():
             months = [7,8,9,10,11,12]
             period_title = f"6 THÁNG CUỐI NĂM {year}"
             period_key = f"H2_{year}"
             next_period_title = f"6 Tháng đầu năm {year + 1}"
+            next_period_full = f"6 THÁNG ĐẦU NĂM {year + 1}"
         else:
             months = [1,2,3,4,5,6]
             period_title = f"6 THÁNG ĐẦU NĂM {year}"
             period_key = f"H1_{year}"
             next_period_title = f"6 Tháng cuối năm {year}"
+            next_period_full = f"6 THÁNG CUỐI NĂM {year}"
     else: # full_year
         months = list(range(1, 13))
         period_title = f"CẢ NĂM {year}"
         period_key = f"Y_{year}"
         next_period_title = f"Năm {year + 1}"
+        next_period_full = f"NĂM {year + 1}"
 
     return {
         "period_type": period_type,
@@ -63,6 +70,7 @@ def resolve_period(period_type="month", period_value="8", year=2026):
         "period_key": period_key,
         "period_title": period_title,
         "next_period_title": next_period_title,
+        "next_period_full": next_period_full,
         "months": months
     }
 
@@ -83,14 +91,73 @@ def get_default_hr_data():
 def get_default_hr_notes():
     return "- DC1 ngày 03/06 chuyển 02 đốc công và 05 công nhân PLĐG sang THK hỗ trợ. Đề nghị P.TC-HC tuyển bổ sung đủ định biên tối thiểu 102 người.\n- DC2 tuyển mới 4 người, nghỉ việc 3 người. Nhân sự cơ bản đáp ứng sản xuất.\n- Bộ phận TB-TM định biên 62/62 đủ nhân sự; Phòng KT-CN định biên 24/24 đủ nhân sự."
 
-def get_default_department_tasks():
-    return [
-        {"dept": "1. Dây chuyền số 1", "tasks": "- Hoạt động ổn định chu kỳ ép 15.5 nhịp/phút đạt sản lượng 15.300 m²/ngày.\n- Tăng cường kiểm soát thu hồi A1 đạt trên 91%.\n- Giảm thiểu thời gian dừng máy ép 2MF dưới 20 phút/ngày."},
-        {"dept": "2. Dây chuyền số 2", "tasks": "- Chạy ổn định các dòng kích thước 50x50 và 40x80 men Panson.\n- Kiểm soát triệt để lỗi giọt nước và rách màng men.\n- Phối hợp nhịp nhàng các đợt chuyển đổi kích thước."},
-        {"dept": "3. Bộ phận Tạo Bột - Tạo Men", "tasks": "- Nghiền riêng đơn đất sét và trường thạch, đảm bảo cung ứng đủ hồ xương và hồ men đạt chuẩn tỷ trọng, độ nhớt.\n- Vệ sinh silo, hầm hồ và bảo dưỡng định kỳ các cối nghiền."},
-        {"dept": "4. Phòng Kỹ Thuật Công Nghệ", "tasks": "- Duy trì kiểm soát nguyên nhiên liệu đầu vào, kho bãi mùa mưa.\n- Tối ưu hóa đơn bài phối liệu xương - men nhằm hạ giá thành và nâng cao chất lượng A1."},
-        {"dept": "5. Bộ phận Than Hoá Khí", "tasks": "- Vận hành ổn định các lò trạm khí hoá cấp đủ áp lực và nhiệt trị khí cho 2 dây chuyền.\n- Kiểm soát chặt chẽ tỷ lệ xỉ và suất tiêu hao than cục/than cám theo định mức."}
-    ]
+def get_default_plan_next_period():
+    """Default Plan matching Page 1 of PDF (e.g. Month 9/2026)"""
+    return {
+        "items": [
+            {
+                "line": "DC1", "size": "30x60",
+                "plan_m2": {"sl_ep": 471744.0, "a1": 416078.0, "a": 32362.0, "b": 13869.0, "recovery_total": 462309.0, "prod_days": 30.0, "avg_per_day": 15410.0, "a_ep": 98.0, "c_ep": 2.0, "huy_ep": 2.0, "stop_time_2mf": 40},
+                "plan_pct": {"a1": 90.0, "a": 7.0, "b": 3.0, "recovery_total": 100.0}
+            },
+            {
+                "line": "DC2", "size": "40x80",
+                "plan_m2": {"sl_ep": 439488.0, "a1": 387628.0, "a": 0.0, "b": 43070.0, "recovery_total": 430698.0, "prod_days": 30.0, "avg_per_day": 14357.0, "a_ep": 98.0, "c_ep": 2.0, "huy_ep": 2.0, "stop_time_2mf": 40},
+                "plan_pct": {"a1": 90.0, "a": 0.0, "b": 10.0, "recovery_total": 100.0}
+            }
+        ],
+        "total_2dc": {
+            "plan_m2": {"sl_ep": 911232.0, "a1": 803707.0, "a": 32362.0, "b": 56939.0, "recovery_total": 893007.0, "prod_days": 60.0, "avg_per_day": 14883.0, "a_ep": 98.0, "c_ep": 2.0, "huy_ep": 2.0, "stop_time_2mf": 40},
+            "plan_pct": {"a1": 90.0, "a": 3.6, "b": 6.4, "recovery_total": 100.0}
+        },
+        "notes": [
+            "1. Dây chuyền 1: Tổng 30 ngày sản xuất chạy 300x600 mm. Sử dụng BPL Xương PN33 và BPL Men EP17C + GP17A. (chu kỳ ép: 15.6 x 0,72 x 1400 x 0,98 = 15.410 m2/ngày).",
+            "2. Dây chuyền 2: Tổng 30 ngày sản xuất kích thước 400x800mm sử dụng BPL Xương PN33 và BPL Men EP17C + PSG17A (Chu kỳ ép: 10,9 x 0,96 x 1400 x 0,98 = 14.357 m2/ngày)."
+        ]
+    }
+
+def get_default_goals_next_period():
+    """Default Goals matching Page 2 of PDF (e.g. Month 9/2026)"""
+    return {
+        "items": [
+            {
+                "line": "DC1", "size": "30x60",
+                "goal_m2": {"sl_ep": 481179.0, "a1": 434716.0, "a": 23626.0, "b": 14176.0, "recovery_total": 472518.0, "prod_days": 30.0, "avg_per_day": 15751.0, "a_ep": 98.2, "c_ep": 1.80, "huy_ep": 1.80, "stop_time_2mf": 25},
+                "goal_pct": {"a1": 92.0, "a": 5.0, "b": 3.0, "recovery_total": 100.0}
+            },
+            {
+                "line": "DC2", "size": "40x80",
+                "goal_m2": {"sl_ep": 448278.0, "a1": 404992.0, "a": 0.0, "b": 35217.0, "recovery_total": 440209.0, "prod_days": 30.0, "avg_per_day": 14674.0, "a_ep": 98.2, "c_ep": 1.80, "huy_ep": 1.80, "stop_time_2mf": 25},
+                "goal_pct": {"a1": 92.0, "a": 0.0, "b": 8.0, "recovery_total": 100.0}
+            }
+        ],
+        "total_dc2": {
+            "goal_m2": {"sl_ep": 448278.0, "a1": 404992.0, "a": 0.0, "b": 35217.0, "recovery_total": 440209.0, "prod_days": 30.0, "avg_per_day": 14674.0, "a_ep": 98.2, "c_ep": 1.80, "huy_ep": 1.80, "stop_time_2mf": 25},
+            "goal_pct": {"a1": 92.0, "a": 0.0, "b": 8.0, "recovery_total": 100.0}
+        },
+        "total_2dc": {
+            "goal_m2": {"sl_ep": 929457.0, "a1": 839708.0, "a": 23626.0, "b": 49392.0, "recovery_total": 912726.0, "prod_days": 60.0, "avg_per_day": 15212.0, "a_ep": 98.2, "c_ep": 1.80, "huy_ep": 1.80, "stop_time_2mf": 25},
+            "goal_pct": {"a1": 92.0, "a": 2.6, "b": 5.4, "recovery_total": 100.0}
+        },
+        "department_tasks": [
+            {
+                "dept": "PXCĐ-NL",
+                "tasks": "Lên kế hoạch chi tiết cho việc bảo trì - bảo dưỡng cuối năm. Kết hợp PXSX và P.KHTH kiểm tra các vị trí nhà xưởng bảo đảm mùa mưa không ảnh hưởng chất lượng và máy móc thiết bị."
+            },
+            {
+                "dept": "PXSX",
+                "tasks": "Công tác dừng giờ cao điểm (theo quy định mới) kế hoạch kiểm tra định kỳ lớp lót các cối nghiền và lò than xích (đặc biệt là vòng bi các máy nghiền, mô tơ hộp số lò than xích vừa thay). Kết hợp P.KT-CN quản lý, bảo quản hồ men tồn."
+            },
+            {
+                "dept": "P.KT-CN",
+                "tasks": "Tiếp tục giám sát, kiểm tra chất lượng nguyên nhiên vật liệu đầu vào ổn định, duy trì xuyên suốt phục vụ sản xuất ổn định. Kiểm tra, giám sát chất lượng sản phẩm 300x600, và 400x800 mm men panson. Kết hợp PXSX và P.KHTH lên kế hoạch chuẩn bị kho bãi, phương án vận chuyển nguyên liệu xương vào mùa mưa phục vụ sản xuất. Kiểm tra các loại nguyên liệu tràng thạch, đất sét phục vụ thay thế nguồn VC02 - VT02 sắp hết. Triển khai chạy BCN bài xương sử dụng tràng thạch PH04 (đã nhập kho 16). Chạy BCN điều chỉnh tỷ lệ đất sét - tràng thạch phục vụ SX lâu dài khi biến động nguồn nguyên liệu."
+            },
+            {
+                "dept": "Phối hợp & Môi trường",
+                "tasks": "- Các bộ phận (PXSX - PXCĐ.NL và P.KTCN) gửi kế hoạch chi tiết và gộp chung thành 1 bộ cho P.TGĐ PT.\n- Các phòng ban/ phân xưởng trong toàn Công ty tiếp tục duy trì việc thực hiện, áp dụng (nội bộ) hệ thống Quản lý môi trường ISO 14001:2015. Tuyên truyền công tác bảo vệ môi trường và đôn đốc CBCNV thực hiện ý thức bảo vệ môi trường tại khu vực quản lý."
+            }
+        ]
+    }
 
 def build_form_mau_payload(conn, period_type="month", period_value="8", year=2026):
     conn.row_factory = sqlite3.Row
@@ -181,11 +248,13 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "avg_per_day": a_data["avg_per_day"] - p_data["avg_per_day"],
             "stop_time_2mf": a_data["stop_time_2mf"] - p_data["stop_time_2mf"]
         }
+
+        # IMPORTANT: Rate difference according to user formula (Actual % - Plan %) for A1, A, B, A/ép, C/ép, Huỷ/ép
         rate_pct = {
             "sl_ep": (a_data["sl_ep"] / p_data["sl_ep"] * 100) if p_data["sl_ep"] > 0 else 0,
-            "a1": (a_data["a1"] / p_data["a1"] * 100) if p_data["a1"] > 0 else 0,
-            "a": (a_data["a"] / p_data["a"] * 100) if p_data["a"] > 0 else 0,
-            "b": (a_data["b"] / p_data["b"] * 100) if p_data["b"] > 0 else 0,
+            "a1": a_data["pct_a1"] - p_data["pct_a1"], # e.g. 93.81 - 90.00 = +3.81%
+            "a": a_data["pct_a"] - p_data["pct_a"],     # e.g. 2.64 - 7.00 = -4.36%
+            "b": a_data["pct_b"] - p_data["pct_b"],     # e.g. 3.54 - 3.00 = +0.54%
             "recovery_total": (a_data["recovery_total"] / p_data["recovery_total"] * 100) if p_data["recovery_total"] > 0 else 0,
             "a_ep": a_data["a_ep"] - p_data["a_ep"],
             "c_ep": a_data["c_ep"] - p_data["c_ep"],
@@ -248,9 +317,9 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             },
             "rate_pct": {
                 "sl_ep": (a_res["sl_ep"] / p_res["sl_ep"] * 100) if p_res["sl_ep"] > 0 else 0,
-                "a1": (a_res["a1"] / p_res["a1"] * 100) if p_res["a1"] > 0 else 0,
-                "a": (a_res["a"] / p_res["a"] * 100) if p_res["a"] > 0 else 0,
-                "b": (a_res["b"] / p_res["b"] * 100) if p_res["b"] > 0 else 0,
+                "a1": a_res["pct_a1"] - p_res["pct_a1"],
+                "a": a_res["pct_a"] - p_res["pct_a"],
+                "b": a_res["pct_b"] - p_res["pct_b"],
                 "recovery_total": (a_res["recovery_total"] / p_res["recovery_total"] * 100) if p_res["recovery_total"] > 0 else 0,
                 "a_ep": a_res["a_ep"] - p_res["a_ep"],
                 "c_ep": a_res["c_ep"] - p_res["c_ep"],
@@ -297,9 +366,33 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     for g in dc1_glazes:
         g["pct"] = (g["prod_m2"] / sum_dc1_glazes * 100) if sum_dc1_glazes > 0 else 0
 
-    dc2_50x50_brands = [r for r in sec2_raw if r["line"] == "DC2" and r["size"] == "50x50"]
+    # Split DC2 50x50 into Men Bóng and Men Sugar Sân Vườn
+    dc2_50x50_all = [r for r in sec2_raw if r["line"] == "DC2" and r["size"] == "50x50"]
+    dc2_50x50_bong = [r for r in dc2_50x50_all if "bóng" in (r["glaze_type"] or "").lower()]
+    dc2_50x50_sugar = [r for r in dc2_50x50_all if "sugar" in (r["glaze_type"] or "").lower() or "vườn" in (r["glaze_type"] or "").lower()]
+    
+    # In case there are items not matched into bong or sugar
+    other_50x50 = [r for r in dc2_50x50_all if r not in dc2_50x50_bong and r not in dc2_50x50_sugar]
+    if other_50x50:
+        dc2_50x50_bong.extend(other_50x50)
+
+    def calc_brand_subtotal(rows_list):
+        return {
+            "a1": sum(r["a1_m2"] for r in rows_list),
+            "a": sum(r["a_m2"] for r in rows_list),
+            "b": sum(r["b_m2"] for r in rows_list),
+            "total": sum(r["total_m2"] for r in rows_list)
+        }
+
+    sum_50x50_bong = calc_brand_subtotal(dc2_50x50_bong)
+    sum_50x50_sugar = calc_brand_subtotal(dc2_50x50_sugar)
+    sum_50x50_total = calc_brand_subtotal(dc2_50x50_all)
+
     dc2_60x60_brands = [r for r in sec2_raw if r["line"] == "DC2" and r["size"] == "60x60"]
+    sum_60x60_total = calc_brand_subtotal(dc2_60x60_brands)
+
     dc2_40x80_brands = [r for r in sec2_raw if r["line"] == "DC2" and r["size"] == "40x80"]
+    sum_40x80_total = calc_brand_subtotal(dc2_40x80_brands)
 
     # 3. SECTION III: TIÊU HAO VẬT TƯ (DC1 30x60, DC2 50x50, 60x60, 40x80)
     q_sec3 = f'''
@@ -320,7 +413,7 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     mat_dc2_60x60 = [r for r in sec3_raw if r["line"] == "DC2" and r["size"] == "60x60"]
     mat_dc2_40x80 = [r for r in sec3_raw if r["line"] == "DC2" and r["size"] == "40x80"]
 
-    # 4. SECTION IV: SỬ DỤNG THAN
+    # 4. SECTION IV: SỬ DỤNG THAN (Structured per size and total DC2, total 2DC)
     q_sec4 = f'''
         SELECT line, size, firing_type,
                SUM(issued_weight) as issued_weight,
@@ -339,11 +432,13 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     def summarize_coal_group(rows_list):
         issued = sum(r["issued_weight"] or 0 for r in rows_list)
         ash = sum(r["ash_weight"] or 0 for r in rows_list)
+        comp = sum(r["compensation_weight"] or 0 for r in rows_list)
         total_used = sum(r["total_used_weight"] or 0 for r in rows_list)
         prod_m2 = sum(r["production_m2"] or 0 for r in rows_list)
         return {
             "issued_weight": issued,
             "ash_weight": ash,
+            "compensation_weight": comp,
             "total_used_weight": total_used,
             "production_m2": prod_m2,
             "rate_kg_m2": (total_used / prod_m2) if prod_m2 > 0 else 0
@@ -356,18 +451,31 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     coal_dc2_total = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC2"])
     coal_all_total = summarize_coal_group(sec4_raw)
 
+    coal_table_rows = [
+        {"stt": 1, "name": "Dây chuyền số 1 (300x600)", "data": coal_dc1_30x60, "eval": "Đạt định mức khoán ✓", "is_total": False},
+        {"stt": 2, "name": "DC2 - Kích thước 500x500", "data": coal_dc2_50x50, "eval": "Ổn định", "is_total": False},
+        {"stt": 3, "name": "DC2 - Kích thước 600x600", "data": coal_dc2_60x60, "eval": "Ổn định", "is_total": False},
+        {"stt": 4, "name": "DC2 - Kích thước 400x800", "data": coal_dc2_40x80, "eval": "Ổn định", "is_total": False},
+        {"stt": "", "name": "TỔNG SỬ DỤNG DÂY CHUYỀN 2", "data": coal_dc2_total, "eval": "", "is_total": True},
+        {"stt": "", "name": "TỔNG SỬ DỤNG 2 DÂY CHUYỀN", "data": coal_all_total, "eval": "Đạt kế hoạch năm ✓", "is_total": True}
+    ]
+
     # 5, 6, 7, 8: FETCH CUSTOM DATA FROM DB OR DEFAULTS
     saved_custom = cur.execute("SELECT * FROM report_form_mau_custom WHERE period_key = ?", (p_info["period_key"],)).fetchone()
     
     hr_data = get_default_hr_data()
     hr_notes = get_default_hr_notes()
-    dept_tasks = get_default_department_tasks()
+    plan_data = get_default_plan_next_period()
+    goals_data = get_default_goals_next_period()
     eval_text = "- Toàn bộ 2 dây chuyền trong kỳ cơ bản hoàn thành các chỉ tiêu sản xuất, chất lượng và thu hồi.\n- Các sự cố dừng máy điện lưới, bảo dưỡng cơ điện và chuyển đổi kích thước được xử lý nhanh chóng, an toàn tuyệt đối.\n- Đề nghị Ban Giám Đốc và các Phòng ban tiếp tục hỗ trợ nhân sự và cung ứng vật tư kịp thời để phân xưởng hoàn thành vượt mức mục tiêu kỳ tới."
     signatures = {
-        "signer_1_title": "NGƯỜI LẬP BIỂU", "signer_1_name": "Nguyễn Văn Tuấn",
-        "signer_2_title": "TRƯỞNG CA SẢN XUẤT", "signer_2_name": "Phạm Văn Nam",
-        "signer_3_title": "QUẢN ĐỐC PHÂN XƯỞNG", "signer_3_name": "Đỗ Văn Hùng",
-        "signer_4_title": "BAN GIÁM ĐỐC PHÊ DUYỆT", "signer_4_name": "Phó Tổng Giám Đốc"
+        "date_str": "Đồng Nai, ngày 28 tháng 08 năm 2026",
+        "signer_1_title": "TỔNG GIÁM ĐỐC", "signer_1_name": "",
+        "signer_2_title": "P.TGĐ PT", "signer_2_name": "",
+        "signer_3_title": "PXCĐ-NL", "signer_3_name": "",
+        "signer_4_title": "PXSX", "signer_4_name": "",
+        "signer_5_title": "P.KT-CN", "signer_5_name": "",
+        "signer_6_title": "Người lập", "signer_6_name": ""
     }
 
     if saved_custom:
@@ -380,10 +488,11 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
                 n_data = json.loads(s_dict["notes_data"])
                 hr_notes = n_data.get("hr_notes", hr_notes)
             except: pass
+        if s_dict.get("plan_data"):
+            try: plan_data = json.loads(s_dict["plan_data"])
+            except: pass
         if s_dict.get("goals_data"):
-            try:
-                g_data = json.loads(s_dict["goals_data"])
-                dept_tasks = g_data.get("department_tasks", dept_tasks)
+            try: goals_data = json.loads(s_dict["goals_data"])
             except: pass
         if s_dict.get("evaluation_data"):
             eval_text = s_dict["evaluation_data"]
@@ -403,9 +512,17 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "dc1_30x60": dc1_brands,
             "dc1_30x60_sum": sum_dc1_brands,
             "dc1_glazes": dc1_glazes,
-            "dc2_50x50": dc2_50x50_brands,
+            "dc2_50x50": {
+                "bong": dc2_50x50_bong,
+                "sugar": dc2_50x50_sugar,
+                "sum_bong": sum_50x50_bong,
+                "sum_sugar": sum_50x50_sugar,
+                "sum_total": sum_50x50_total
+            },
             "dc2_60x60": dc2_60x60_brands,
-            "dc2_40x80": dc2_40x80_brands
+            "dc2_60x60_sum": sum_60x60_total,
+            "dc2_40x80": dc2_40x80_brands,
+            "dc2_40x80_sum": sum_40x80_total
         },
         "section_3_materials": {
             "dc1_30x60": mat_dc1_30x60,
@@ -414,6 +531,7 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "dc2_40x80": mat_dc2_40x80
         },
         "section_4_coal": {
+            "rows": coal_table_rows,
             "dc1_30x60": coal_dc1_30x60,
             "dc2_50x50": coal_dc2_50x50,
             "dc2_60x60": coal_dc2_60x60,
@@ -427,11 +545,13 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
         },
         "section_6_plan": {
             "next_title": p_info["next_period_title"],
-            "items": sec1_items
+            "next_full_title": p_info["next_period_full"],
+            "data": plan_data
         },
         "section_7_goals": {
             "next_title": p_info["next_period_title"],
-            "department_tasks": dept_tasks
+            "next_full_title": p_info["next_period_full"],
+            "data": goals_data
         },
         "section_8_evaluation": {
             "content": eval_text,
@@ -449,114 +569,89 @@ def save_form_mau_custom_data(conn, body):
     p_info = resolve_period(p_type, p_val, year)
     p_key = p_info["period_key"]
 
-    hr_data = json.dumps(body.get("hr_data", []), ensure_ascii=False) if body.get("hr_data") else None
-    plan_data = json.dumps(body.get("plan_data", []), ensure_ascii=False) if body.get("plan_data") else None
-    goals_data = json.dumps(body.get("goals_data", {}), ensure_ascii=False) if body.get("goals_data") else None
-    notes_data = json.dumps(body.get("notes_data", {}), ensure_ascii=False) if body.get("notes_data") else None
-    eval_text = body.get("evaluation_data", "")
-    signatures = json.dumps(body.get("signatures_data", {}), ensure_ascii=False) if body.get("signatures_data") else None
+    hr_json = json.dumps(body.get("hr_data", [])) if "hr_data" in body else None
+    plan_json = json.dumps(body.get("plan_data", {})) if "plan_data" in body else None
+    goals_json = json.dumps(body.get("goals_data", {})) if "goals_data" in body else None
+    notes_json = json.dumps(body.get("notes_data", {})) if "notes_data" in body else None
+    eval_text = body.get("evaluation_data") if "evaluation_data" in body else None
+    sig_json = json.dumps(body.get("signatures_data", {})) if "signatures_data" in body else None
 
     cur.execute('''
-        INSERT INTO report_form_mau_custom
-        (period_key, period_type, period_value, year, hr_data, plan_data, goals_data, notes_data, evaluation_data, signatures_data, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO report_form_mau_custom (
+            period_key, period_type, period_value, year,
+            hr_data, plan_data, goals_data, notes_data, evaluation_data, signatures_data, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(period_key) DO UPDATE SET
-            hr_data = coalesce(excluded.hr_data, report_form_mau_custom.hr_data),
-            plan_data = coalesce(excluded.plan_data, report_form_mau_custom.plan_data),
-            goals_data = coalesce(excluded.goals_data, report_form_mau_custom.goals_data),
-            notes_data = coalesce(excluded.notes_data, report_form_mau_custom.notes_data),
-            evaluation_data = coalesce(excluded.evaluation_data, report_form_mau_custom.evaluation_data),
-            signatures_data = coalesce(excluded.signatures_data, report_form_mau_custom.signatures_data),
+            hr_data = COALESCE(excluded.hr_data, report_form_mau_custom.hr_data),
+            plan_data = COALESCE(excluded.plan_data, report_form_mau_custom.plan_data),
+            goals_data = COALESCE(excluded.goals_data, report_form_mau_custom.goals_data),
+            notes_data = COALESCE(excluded.notes_data, report_form_mau_custom.notes_data),
+            evaluation_data = COALESCE(excluded.evaluation_data, report_form_mau_custom.evaluation_data),
+            signatures_data = COALESCE(excluded.signatures_data, report_form_mau_custom.signatures_data),
             updated_at = CURRENT_TIMESTAMP
-    ''', (p_key, p_type, p_val, year, hr_data, plan_data, goals_data, notes_data, eval_text, signatures))
+    ''', (p_key, p_type, p_val, year, hr_json, plan_json, goals_json, notes_json, eval_text, sig_json))
     conn.commit()
     return {"success": True, "period_key": p_key}
 
 def parse_form_mau_excel_upload(file_bytes):
-    logs = []
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
-    logs.append(f"Đọc thành công file Excel gồm {len(wb.sheetnames)} sheet: {', '.join(wb.sheetnames)}")
-    
-    ws = None
-    for name in ["Form mẫu", "FORM MẪU", "Form Mau", "Báo cáo", "Bao cao"]:
-        if name in wb.sheetnames:
-            ws = wb[name]
+    logs = []
+    parsed_data = {}
+
+    sheet_names = wb.sheetnames
+    logs.append(f"Tìm thấy các sheet: {', '.join(sheet_names)}")
+
+    target_sheet = None
+    for name in ["FORM MẪU", "FORM MAU", "KẾ HOẠCH", "KE HOACH", "BÁO CÁO", "Sheet1"]:
+        match = next((s for s in sheet_names if name.lower() in s.lower()), None)
+        if match:
+            target_sheet = wb[match]
+            logs.append(f"Sử dụng sheet: '{match}'")
             break
-    if not ws:
-        ws = wb.active
-    
-    logs.append(f"-> Đang bóc tách dữ liệu từ sheet: '{ws.title}' (Tổng {ws.max_row} hàng)")
-    
-    # Try to find Section V (Nhân sự), Section VI, VII, VIII
+    if not target_sheet:
+        target_sheet = wb.active
+        logs.append(f"Sử dụng active sheet: '{target_sheet.title}'")
+
+    rows = list(target_sheet.iter_rows(values_only=True))
+    logs.append(f"Đọc tổng cộng {len(rows)} dòng từ file Excel.")
+
+    # 1. Parse Section V: Nhân sự
     hr_rows = []
-    hr_notes = []
-    dept_tasks = []
-    eval_lines = []
-    
-    current_sec = None
-    for r in range(1, ws.max_row + 1):
-        v1 = str(ws.cell(r, 1).value or '').strip()
-        v2 = str(ws.cell(r, 2).value or '').strip()
-        line_text = (v1 + " " + v2).strip()
-        
-        if "V. Nhân sự" in line_text or "V. NHÂN SỰ" in line_text:
-            current_sec = "HR"
-            continue
-        elif "VI. Kế hoạch" in line_text or "VI. KẾ HOẠCH" in line_text:
-            current_sec = "PLAN"
-            continue
-        elif "VII. Mục tiêu" in line_text or "VII. MỤC TIÊU" in line_text:
-            current_sec = "GOALS"
-            continue
-        elif "VIII. Đánh giá" in line_text or "VIII. ĐÁNH GIÁ" in line_text:
-            current_sec = "EVAL"
-            continue
-            
-        if current_sec == "HR":
-            # Check for HR table row
-            c_pos = ws.cell(r, 2).value
-            if c_pos and isinstance(c_pos, str) and any(kw in c_pos for kw in ["Văn Phòng", "Đốc công", "Ép", "Lò", "PLĐG", "Xe nâng", "VSCN", "Tạo Bột", "TB-TM", "Than", "KT"]):
-                stt_val = ws.cell(r, 1).value or len(hr_rows) + 1
-                try: stt_val = int(stt_val)
-                except: stt_val = len(hr_rows) + 1
-                
-                hr_rows.append({
-                    "stt": stt_val,
-                    "position": str(c_pos).strip(),
-                    "dinhbien_dc1": float(ws.cell(r, 3).value or 0),
-                    "dinhbien_dc2": float(ws.cell(r, 4).value or 0),
-                    "tuyenmoi_dc1": float(ws.cell(r, 5).value or 0),
-                    "tuyenmoi_dc2": float(ws.cell(r, 6).value or 0),
-                    "chuyen_dc1": float(ws.cell(r, 7).value or 0),
-                    "chuyen_dc2": float(ws.cell(r, 8).value or 0),
-                    "nghi_dc1": float(ws.cell(r, 9).value or 0),
-                    "nghi_dc2": float(ws.cell(r, 10).value or 0),
-                    "hientai_dc1": float(ws.cell(r, 11).value or 0),
-                    "hientai_dc2": float(ws.cell(r, 12).value or 0)
-                })
-            elif v1.startswith("-") or v1.startswith("*"):
-                hr_notes.append(v1)
-        elif current_sec == "GOALS":
-            if any(dept_kw in v1 for dept_kw in ["Dây chuyền số 1", "Dây chuyền 1", "Dây chuyền số 2", "Dây chuyền 2", "Tạo bột", "KT-CN", "Kỹ thuật", "Than Hoá", "THK"]):
-                dept_tasks.append({"dept": v1, "tasks": ""})
-            elif dept_tasks and (v1.startswith("-") or v1.startswith("+")):
-                dept_tasks[-1]["tasks"] += ("\n" if dept_tasks[-1]["tasks"] else "") + v1
-        elif current_sec == "EVAL":
-            if v1.startswith("-") or v1.startswith("+"):
-                eval_lines.append(v1)
+    found_hr = False
+    for i, r in enumerate(rows):
+        if not r or not any(r): continue
+        r_str = " ".join([str(c) for c in r if c is not None]).lower()
+        if "tình hình nhân sự" in r_str or "định biên" in r_str or ("đốc công" in r_str and "plđg" in r_str):
+            found_hr = True
+            for j in range(i + 1, min(i + 25, len(rows))):
+                sub_r = rows[j]
+                if not sub_r or not any(sub_r): continue
+                stt_val = str(sub_r[0] or sub_r[1] or "").strip()
+                pos_val = str(sub_r[1] or sub_r[2] or "").strip()
+                if any(kw in pos_val.lower() for kw in ["văn phòng", "đốc công", "ép", "lò nung", "plđg", "xe nâng", "vscn", "tạo bột", "than hoá", "phòng kt"]):
+                    nums = [float(c) if isinstance(c, (int, float)) else 0 for c in sub_r if isinstance(c, (int, float))]
+                    hr_rows.append({
+                        "stt": len(hr_rows) + 1,
+                        "position": pos_val,
+                        "dinhbien_dc1": nums[0] if len(nums) > 0 else 0,
+                        "dinhbien_dc2": nums[1] if len(nums) > 1 else 0,
+                        "tuyenmoi_dc1": nums[2] if len(nums) > 2 else 0,
+                        "tuyenmoi_dc2": nums[3] if len(nums) > 3 else 0,
+                        "chuyen_dc1": nums[4] if len(nums) > 4 else 0,
+                        "chuyen_dc2": nums[5] if len(nums) > 5 else 0,
+                        "nghi_dc1": nums[6] if len(nums) > 6 else 0,
+                        "nghi_dc2": nums[7] if len(nums) > 7 else 0,
+                        "hientai_dc1": nums[8] if len(nums) > 8 else 0,
+                        "hientai_dc2": nums[9] if len(nums) > 9 else 0
+                    })
+            break
 
     if hr_rows:
-        logs.append(f"-> Bóc tách thành công {len(hr_rows)} dòng nhân sự các bộ phận")
-    if dept_tasks:
-        logs.append(f"-> Bóc tách thành công nhiệm vụ kế hoạch của {len(dept_tasks)} phòng ban")
-    if eval_lines:
-        logs.append(f"-> Bóc tách thành công nội dung đánh giá tình hình sản xuất")
+        parsed_data["hr_data"] = hr_rows
+        logs.append(f"✓ Trích xuất thành công {len(hr_rows)} dòng nhân sự.")
 
     return {
         "success": True,
         "logs": logs,
-        "hr_data": hr_rows if hr_rows else get_default_hr_data(),
-        "hr_notes": "\n".join(hr_notes) if hr_notes else get_default_hr_notes(),
-        "department_tasks": dept_tasks if dept_tasks else get_default_department_tasks(),
-        "evaluation_text": "\n".join(eval_lines) if eval_lines else None
+        "parsed_data": parsed_data
     }
