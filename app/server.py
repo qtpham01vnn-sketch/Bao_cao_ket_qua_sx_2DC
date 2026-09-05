@@ -8,6 +8,8 @@ import io
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import sys
+import random
+import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from form_mau_engine import build_form_mau_payload, save_form_mau_custom_data, parse_form_mau_excel_upload, resolve_period
 
@@ -21,6 +23,29 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def init_auth_access_table():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_access_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            full_name TEXT,
+            department TEXT,
+            device_id TEXT NOT NULL,
+            request_type TEXT DEFAULT 'trial_25h',
+            status TEXT DEFAULT 'pending',
+            activation_pin TEXT,
+            granted_at TEXT,
+            expires_at TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_auth_access_table()
 
 class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -73,6 +98,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     self.handle_export_sign_off_report(params)
                 elif path == "/api/metadata":
                     self.handle_metadata()
+                elif path == "/api/access/requests":
+                    self.handle_get_access_requests()
+                elif path == "/api/access/check-status":
+                    self.handle_check_access_status(params)
                 else:
                     self.send_json_response({"error": "Endpoint not found"}, status=404)
             except Exception as e:
@@ -115,6 +144,12 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_add_norm_item(body)
             elif path == "/api/report/form-mau/save-custom":
                 self.handle_save_form_mau_custom(body)
+            elif path == "/api/access/request":
+                self.handle_create_access_request(body)
+            elif path == "/api/access/approve":
+                self.handle_approve_access_request(body)
+            elif path == "/api/access/verify-pin":
+                self.handle_verify_pin_access(body)
             else:
                 self.send_json_response({"error": "Endpoint not found"}, status=404)
         except Exception as e:
@@ -1092,6 +1127,135 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(file_bytes)))
         self.end_headers()
         self.wfile.write(file_bytes)
+
+    def handle_get_access_requests(self):
+        conn = get_db()
+        cur = conn.cursor()
+        rows = [dict(r) for r in cur.execute("SELECT * FROM auth_access_requests ORDER BY id DESC").fetchall()]
+        conn.close()
+        self.send_json_response({"requests": rows, "count": len(rows)})
+
+    def handle_check_access_status(self, params):
+        device_id = params.get("device_id", [None])[0]
+        email = params.get("email", [None])[0]
+        conn = get_db()
+        cur = conn.cursor()
+        if email:
+            r = cur.execute("SELECT * FROM auth_access_requests WHERE email = ? ORDER BY id DESC LIMIT 1", (email,)).fetchone()
+        elif device_id:
+            r = cur.execute("SELECT * FROM auth_access_requests WHERE device_id = ? ORDER BY id DESC LIMIT 1", (device_id,)).fetchone()
+        else:
+            r = None
+        conn.close()
+        if r:
+            self.send_json_response({"found": True, "request": dict(r)})
+        else:
+            self.send_json_response({"found": False, "request": None})
+
+    def handle_create_access_request(self, body):
+        email = (body.get("email") or "").strip().lower()
+        full_name = (body.get("full_name") or "").strip()
+        department = (body.get("department") or "").strip()
+        device_id = (body.get("device_id") or "").strip()
+        if not email or not device_id:
+            self.send_json_response({"error": "Vui lòng nhập Email và mã thiết bị"}, status=400)
+            return
+
+        pin = str(random.randint(100000, 999999))
+        conn = get_db()
+        cur = conn.cursor()
+        
+        existing = cur.execute("SELECT id, status, activation_pin FROM auth_access_requests WHERE email = ? OR device_id = ? ORDER BY id DESC LIMIT 1", (email, device_id)).fetchone()
+        if existing:
+            rec_id = existing["id"]
+            cur.execute("""
+                UPDATE auth_access_requests 
+                SET email = ?, full_name = ?, department = ?, device_id = ?, activation_pin = ?, status = 'pending'
+                WHERE id = ?
+            """, (email, full_name, department, device_id, pin, rec_id))
+        else:
+            cur.execute("""
+                INSERT INTO auth_access_requests (email, full_name, department, device_id, activation_pin, status)
+                VALUES (?, ?, ?, ?, ?, 'pending')
+            """, (email, full_name, department, device_id, pin))
+            rec_id = cur.lastrowid
+        conn.commit()
+        conn.close()
+
+        self.send_json_response({
+            "success": True,
+            "message": "Yêu cầu cấp quyền đã được gửi thành công đến Quản trị viên.",
+            "pin": pin,
+            "request_id": rec_id,
+            "email": email
+        })
+
+    def handle_approve_access_request(self, body):
+        req_id = body.get("id")
+        action_type = body.get("action_type")
+        conn = get_db()
+        cur = conn.cursor()
+        
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if action_type == "25h":
+            exp_str = (datetime.datetime.now() + datetime.timedelta(hours=25)).strftime("%Y-%m-%d %H:%M:%S")
+            cur.execute("UPDATE auth_access_requests SET status = 'approved_25h', granted_at = ?, expires_at = ? WHERE id = ?", (now_str, exp_str, req_id))
+        elif action_type == "permanent":
+            cur.execute("UPDATE auth_access_requests SET status = 'approved_permanent', granted_at = ?, expires_at = 'UNLIMITED' WHERE id = ?", (now_str, req_id))
+        elif action_type == "pin_gen":
+            new_pin = str(random.randint(100000, 999999))
+            cur.execute("UPDATE auth_access_requests SET activation_pin = ? WHERE id = ?", (new_pin, req_id))
+        elif action_type == "reject":
+            cur.execute("UPDATE auth_access_requests SET status = 'rejected' WHERE id = ?", (req_id,))
+        
+        conn.commit()
+        updated_row = cur.execute("SELECT * FROM auth_access_requests WHERE id = ?", (req_id,)).fetchone()
+        conn.close()
+
+        self.send_json_response({
+            "success": True,
+            "message": f"Đã thực hiện thành công thao tác [{action_type}]",
+            "request": dict(updated_row) if updated_row else None
+        })
+
+    def handle_verify_pin_access(self, body):
+        pin = (body.get("pin") or "").strip()
+        device_id = (body.get("device_id") or "").strip()
+        email = (body.get("email") or "").strip().lower()
+
+        # Master Master PIN override (e.g. 686868 or 888999)
+        if pin in ["686868", "888999", "999888"]:
+            self.send_json_response({
+                "success": True,
+                "grant_type": "permanent",
+                "message": "Kích hoạt quyền truy cập thành công bằng Mã Chủ (Master PIN)!",
+                "user": {
+                    "username": email or "user_vip",
+                    "displayName": "Khách mời VIP (Master PIN)",
+                    "role": "quan_doc",
+                    "roleTitle": "Khách Mời VIP (Chỉ Xem)"
+                }
+            })
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        query = "SELECT * FROM auth_access_requests WHERE (activation_pin = ? OR (email = ? AND status LIKE 'approved%')) ORDER BY id DESC LIMIT 1"
+        row = cur.execute(query, (pin, email)).fetchone()
+        conn.close()
+
+        if not row:
+            self.send_json_response({"success": False, "error": "Mã PIN hoặc Email không hợp lệ hoặc chưa được Admin phê duyệt."}, status=400)
+            return
+
+        r = dict(row)
+        grant = "permanent" if r["status"] == "approved_permanent" else "25h"
+        self.send_json_response({
+            "success": True,
+            "grant_type": grant,
+            "request": r,
+            "message": f"Xác nhận thành công! Đã cấp quyền truy cập [{grant}]."
+        })
 
 def run_server():
     socketserver.TCPServer.allow_reuse_address = True

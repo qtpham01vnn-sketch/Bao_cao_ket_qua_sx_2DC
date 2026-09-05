@@ -661,6 +661,8 @@ function renderBrandingSettings() {
   const devEl = document.getElementById("branding-my-device-id");
   if (devEl) devEl.innerText = getDeviceFingerprint();
 
+  loadAccessRequests();
+
   if (window.lucide && lucide.createIcons) lucide.createIcons();
 }
 
@@ -675,6 +677,364 @@ function terminateRemoteSession(username) {
       alert(`Đã ngắt phiên làm việc của [${username}] thành công.`);
     }
   }
+}
+
+// ==========================================
+// EMAIL ACCESS REQUESTS & PIN ACTIVATION (ADMIN HUB)
+// ==========================================
+function switchLoginTab(tab) {
+  const tabs = ['auth', 'request', 'pin'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-login-btn-${t}`);
+    const pane = document.getElementById(`pane-login-${t}`);
+    if (t === tab) {
+      if (btn) {
+        btn.className = "py-1.5 rounded-lg bg-blue-600 text-white shadow transition flex items-center justify-center gap-1";
+      }
+      if (pane) pane.classList.remove("hidden");
+    } else {
+      if (btn) {
+        btn.className = "py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1";
+      }
+      if (pane) pane.classList.add("hidden");
+    }
+  });
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
+function openLoginModalWithTab(tab) {
+  closeModal("modal-trial-expired");
+  openModal("modal-login");
+  switchLoginTab(tab);
+}
+
+async function submitEmailAccessRequest() {
+  const emailInput = document.getElementById("req-email");
+  const nameInput = document.getElementById("req-fullname");
+  const deptInput = document.getElementById("req-department");
+  const msgEl = document.getElementById("req-status-msg");
+
+  const email = (emailInput ? emailInput.value : "").trim();
+  const fullName = (nameInput ? nameInput.value : "").trim();
+  const dept = (deptInput ? deptInput.value : "").trim();
+  const deviceId = getDeviceFingerprint();
+
+  if (!email || !email.includes("@")) {
+    if (msgEl) {
+      msgEl.className = "p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center";
+      msgEl.innerText = "Vui lòng nhập địa chỉ Email hợp lệ.";
+      msgEl.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (!fullName) {
+    if (msgEl) {
+      msgEl.className = "p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center";
+      msgEl.innerText = "Vui lòng nhập Họ và Tên của bạn.";
+      msgEl.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (msgEl) {
+    msgEl.className = "p-2.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-cyan-300 text-xs font-semibold text-center";
+    msgEl.innerText = "Đang gửi yêu cầu đến Quản trị viên...";
+    msgEl.classList.remove("hidden");
+  }
+
+  try {
+    let result = null;
+    try {
+      const res = await fetch("/api/access/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, full_name: fullName, department: dept, device_id: deviceId })
+      });
+      if (res.ok) {
+        result = await res.json();
+      }
+    } catch(err) {
+      console.warn("Backend /api/access/request unreachable, saving locally", err);
+    }
+
+    // Local fallback persistence
+    const pin = result && result.pin ? result.pin : Math.floor(100000 + Math.random() * 900000).toString();
+    const reqObj = {
+      id: Date.now(),
+      email,
+      full_name: fullName,
+      department: dept,
+      device_id: deviceId,
+      activation_pin: pin,
+      status: "pending",
+      created_at: new Date().toLocaleString("vi-VN")
+    };
+    
+    let localReqs = JSON.parse(localStorage.getItem("px_local_access_requests") || "[]");
+    localReqs = [reqObj, ...localReqs.filter(r => r.email !== email && r.device_id !== deviceId)];
+    localStorage.setItem("px_local_access_requests", JSON.stringify(localReqs));
+    localStorage.setItem("px_my_pending_email", email);
+
+    if (msgEl) {
+      msgEl.className = "p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs space-y-1.5 text-left";
+      msgEl.innerHTML = `
+        <div class="font-bold text-white flex items-center gap-1.5">
+          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+          <span>Gửi yêu cầu thành công!</span>
+        </div>
+        <p class="text-slate-300">Yêu cầu cấp 25h cho Email <b>${email}</b> đã được gửi đến Admin.</p>
+        <div class="p-2 rounded bg-[#091428] border border-amber-500/40 text-amber-300 font-mono text-center font-bold">
+          Mã PIN của bạn: <span class="text-base tracking-widest text-white">${pin}</span>
+        </div>
+        <p class="text-[10.5px] text-slate-400 text-center">Bạn có thể gửi mã PIN này cho Admin qua Zalo để được duyệt nhanh.</p>
+      `;
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+  } catch(e) {
+    console.error("submitEmailAccessRequest err:", e);
+  }
+}
+
+async function submitPinActivation() {
+  const pinInput = document.getElementById("pin-input-val");
+  const errEl = document.getElementById("pin-error-msg");
+  const pin = (pinInput ? pinInput.value : "").trim();
+  const deviceId = getDeviceFingerprint();
+  const myEmail = localStorage.getItem("px_my_pending_email") || "";
+
+  if (!pin) {
+    if (errEl) {
+      errEl.innerText = "Vui lòng nhập mã PIN kích hoạt 6 số.";
+      errEl.classList.remove("hidden");
+    }
+    return;
+  }
+
+  // Master VIP Code Check (686868, 888999, 999888)
+  if (["686868", "888999", "999888"].includes(pin)) {
+    localStorage.removeItem("px_trial_start_ts");
+    resetCurrentDeviceTrial();
+    closeModal("modal-login");
+    closeModal("modal-trial-expired");
+    alert("🎉 XÁC NHẬN THÀNH CÔNG! Chào mừng Quý khách VIP. Bạn đã được cấp quyền truy cập toàn bộ hệ thống.");
+    return;
+  }
+
+  let verified = false;
+  let grantType = "25h";
+
+  try {
+    const res = await fetch("/api/access/verify-pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin, device_id: deviceId, email: myEmail })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        verified = true;
+        grantType = data.grant_type || "25h";
+      }
+    }
+  } catch(e) {
+    console.warn("verify pin via api error, checking local requests fallback", e);
+  }
+
+  if (!verified) {
+    const localReqs = JSON.parse(localStorage.getItem("px_local_access_requests") || "[]");
+    const matched = localReqs.find(r => r.activation_pin === pin || (r.email === myEmail && r.status && r.status.startsWith("approved")));
+    if (matched) {
+      verified = true;
+      grantType = matched.status === "approved_permanent" ? "permanent" : "25h";
+    }
+  }
+
+  if (verified) {
+    if (errEl) errEl.classList.add("hidden");
+    if (grantType === "25h") {
+      resetCurrentDeviceTrial();
+      closeModal("modal-login");
+      closeModal("modal-trial-expired");
+      alert(`🎉 CHÚC MỪNG! Mã PIN hợp lệ. Bạn đã được kích hoạt ${TRIAL_TOTAL_HOURS} Giờ trải nghiệm miễn phí trên thiết bị này.`);
+    } else {
+      const users = getUsersDb();
+      let user = users.find(u => u.username === "quanly" || u.role === "ptgd");
+      if (!user) user = { username: myEmail || "vip_guest", fullname: "Khách Mời VIP", role: "ptgd" };
+      
+      localStorage.setItem("px_auth_session", user.username);
+      localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
+      localStorage.setItem("user_role", user.role);
+      currentRole = user.role;
+      currentAuthUser = user;
+      
+      closeModal("modal-login");
+      closeModal("modal-trial-expired");
+      initTrialProtection();
+      alert("🎉 CHÚC MỪNG! Bạn đã được kích hoạt Quyền Truy Cập Chính Thức (Không giới hạn thời gian).");
+    }
+  } else {
+    if (errEl) {
+      errEl.innerText = "Mã PIN không đúng hoặc yêu cầu của bạn chưa được Quản trị viên phê duyệt. Vui lòng liên hệ Admin.";
+      errEl.classList.remove("hidden");
+    }
+  }
+}
+
+async function loadAccessRequests() {
+  let requests = [];
+  try {
+    const res = await fetch("/api/access/requests");
+    if (res.ok) {
+      const data = await res.json();
+      requests = data.requests || [];
+    }
+  } catch(e) {
+    console.warn("Cannot load requests from API, using localStorage", e);
+  }
+
+  // Merge with localStorage requests
+  const localReqs = JSON.parse(localStorage.getItem("px_local_access_requests") || "[]");
+  const existingEmails = new Set(requests.map(r => r.email));
+  localReqs.forEach(lr => {
+    if (!existingEmails.has(lr.email)) {
+      requests.push(lr);
+    }
+  });
+
+  // Calculate statistics
+  const total = requests.length;
+  const pending = requests.filter(r => r.status === "pending").length;
+  const count25h = requests.filter(r => r.status === "approved_25h").length;
+  const countPerm = requests.filter(r => r.status === "approved_permanent").length;
+
+  const totalEl = document.getElementById("stat-req-total");
+  const pendingEl = document.getElementById("stat-req-pending");
+  const h25El = document.getElementById("stat-req-25h");
+  const permEl = document.getElementById("stat-req-perm");
+
+  if (totalEl) totalEl.innerText = total;
+  if (pendingEl) pendingEl.innerText = pending;
+  if (h25El) h25El.innerText = count25h;
+  if (permEl) permEl.innerText = countPerm;
+
+  // Header notification bell badge
+  const bell = document.getElementById("admin-pending-bell");
+  const bellCount = document.getElementById("admin-pending-count");
+  const tabBadge = document.getElementById("tab-pending-badge");
+
+  const isAdmin = currentAuthUser && currentAuthUser.role === "admin";
+  if (bell) {
+    if (isAdmin && pending > 0) {
+      bell.classList.remove("hidden");
+      bell.classList.add("flex");
+      if (bellCount) bellCount.innerText = pending;
+    } else {
+      bell.classList.add("hidden");
+      bell.classList.remove("flex");
+    }
+  }
+  if (tabBadge) {
+    if (pending > 0) {
+      tabBadge.innerText = pending;
+      tabBadge.classList.remove("hidden");
+    } else {
+      tabBadge.classList.add("hidden");
+    }
+  }
+
+  // Render Table
+  const tbody = document.getElementById("access-requests-table-body");
+  if (!tbody) return;
+
+  if (requests.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="p-4 text-center text-slate-500 italic">
+          Chưa có yêu cầu cấp quyền nào từ người dùng qua Email.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = requests.map(r => {
+    let statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Chờ Duyệt</span>`;
+    if (r.status === "approved_25h") {
+      statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">Đã Cấp 25h</span>`;
+    } else if (r.status === "approved_permanent") {
+      statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Đã Cấp Vĩnh Viễn</span>`;
+    } else if (r.status === "rejected") {
+      statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">Đã Từ Chối</span>`;
+    }
+
+    return `
+      <tr class="hover:bg-[#13284d]/50 transition">
+        <td class="p-2.5 font-bold text-cyan-300 border border-[#1e3a6a]/40">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span>${r.email}</span>
+          </div>
+        </td>
+        <td class="p-2.5 text-white font-medium border border-[#1e3a6a]/40">
+          <div>${r.full_name || '-'}</div>
+          <div class="text-[10px] text-slate-400">${r.department || 'Khách mời'}</div>
+        </td>
+        <td class="p-2.5 font-mono text-[10.5px] text-slate-400 border border-[#1e3a6a]/40">${r.device_id || '-'}</td>
+        <td class="p-2.5 text-center font-mono font-black text-amber-300 border border-[#1e3a6a]/40">
+          <span onclick="navigator.clipboard.writeText('${r.activation_pin}'); alert('Đã sao chép mã PIN ${r.activation_pin} vào bộ nhớ tạm!');" class="px-2 py-1 rounded bg-[#071124] border border-amber-500/30 cursor-pointer hover:border-amber-400 hover:text-white" title="Bấm để sao chép mã PIN gửi Zalo">
+            ${r.activation_pin || '------'}
+          </span>
+        </td>
+        <td class="p-2.5 text-center border border-[#1e3a6a]/40">${statusBadge}</td>
+        <td class="p-2.5 text-center text-slate-400 text-[10.5px] border border-[#1e3a6a]/40">${r.created_at || '-'}</td>
+        <td class="p-2.5 text-center border border-[#1e3a6a]/40">
+          <div class="flex items-center justify-center gap-1 flex-wrap">
+            <button onclick="approveAccessRequest(${r.id}, '25h', '${r.email}')" class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold text-[10px] shadow transition flex items-center gap-1" title="Cấp 25 giờ dùng thử">
+              <i data-lucide="zap" class="w-3 h-3"></i> 25h Free
+            </button>
+            <button onclick="approveAccessRequest(${r.id}, 'permanent', '${r.email}')" class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] shadow transition flex items-center gap-1" title="Cấp quyền xem vĩnh viễn">
+              <i data-lucide="gem" class="w-3 h-3"></i> Vĩnh Viễn
+            </button>
+            <button onclick="approveAccessRequest(${r.id}, 'pin_gen', '${r.email}')" class="px-1.5 py-1 rounded bg-blue-700 hover:bg-blue-600 text-white font-bold text-[10px] transition" title="Sinh mã PIN mới">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+            <button onclick="approveAccessRequest(${r.id}, 'reject', '${r.email}')" class="px-1.5 py-1 rounded bg-rose-950/40 hover:bg-rose-900 border border-rose-500/40 text-rose-300 font-bold text-[10px] transition" title="Từ chối yêu cầu">
+              <i data-lucide="ban" class="w-3 h-3"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
+async function approveAccessRequest(reqId, actionType, email) {
+  try {
+    await fetch("/api/access/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: reqId, action_type: actionType })
+    });
+  } catch(e) {
+    console.warn("Backend approve api error, updating local storage", e);
+  }
+
+  // Update localStorage
+  let localReqs = JSON.parse(localStorage.getItem("px_local_access_requests") || "[]");
+  const idx = localReqs.findIndex(r => r.id === reqId || r.email === email);
+  if (idx !== -1) {
+    if (actionType === "25h") localReqs[idx].status = "approved_25h";
+    else if (actionType === "permanent") localReqs[idx].status = "approved_permanent";
+    else if (actionType === "reject") localReqs[idx].status = "rejected";
+    else if (actionType === "pin_gen") localReqs[idx].activation_pin = Math.floor(100000 + Math.random() * 900000).toString();
+    localStorage.setItem("px_local_access_requests", JSON.stringify(localReqs));
+  }
+
+  loadAccessRequests();
+  alert(`Đã thực hiện thành công thao tác [${actionType}] cho Email [${email}]!`);
 }
 
 // ==========================================
@@ -1228,6 +1588,7 @@ document.addEventListener("DOMContentLoaded", () => {
   try { enforceSingleDeviceSession(); } catch(e) { console.error("enforceSingleDeviceSession err:", e); }
 
   renderAccountsTable();
+  try { loadAccessRequests(); } catch(e) { console.error("loadAccessRequests err:", e); }
   try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }
   try { loadSummaryData(); } catch(e) { console.error("loadSummaryData err:", e); }
   try { loadBrandsData(); } catch(e) { console.error("loadBrandsData err:", e); }
@@ -1235,6 +1596,47 @@ document.addEventListener("DOMContentLoaded", () => {
   try { loadConsumptionData(); } catch(e) { console.error("loadConsumptionData err:", e); }
   try { loadCoalData(); } catch(e) { console.error("loadCoalData err:", e); }
   try { populateFormMauPeriodSelect(); loadFormMauData(); } catch(e) { console.error("loadFormMauData err:", e); }
+
+  // Background polling for real-time Admin notifications & Guest instant unlock
+  setInterval(async () => {
+    const user = getActiveUser();
+    if (user && user.role === "admin") {
+      try { loadAccessRequests(); } catch(e) {}
+    } else {
+      const devId = getDeviceFingerprint();
+      const myEmail = localStorage.getItem("px_my_pending_email") || "";
+      try {
+        const res = await fetch(`/api/access/check-status?device_id=${encodeURIComponent(devId)}&email=${encodeURIComponent(myEmail)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.found && data.request) {
+            const req = data.request;
+            if (req.status === "approved_25h") {
+              if (getTrialRemainingSeconds() <= 0) {
+                resetCurrentDeviceTrial();
+                closeModal("modal-login");
+                closeModal("modal-trial-expired");
+              }
+            } else if (req.status === "approved_permanent") {
+              if (!getActiveUser()) {
+                const users = getUsersDb();
+                let u = users.find(x => x.username === "quanly" || x.role === "ptgd");
+                if (!u) u = { username: req.email, fullname: req.full_name || "Khách Mời VIP", role: "ptgd" };
+                localStorage.setItem("px_auth_session", u.username);
+                localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
+                localStorage.setItem("user_role", u.role);
+                currentRole = u.role;
+                currentAuthUser = u;
+                closeModal("modal-login");
+                closeModal("modal-trial-expired");
+                initTrialProtection();
+              }
+            }
+          }
+        }
+      } catch(e) {}
+    }
+  }, 8000);
 });
 
 // Vietnamese Number Formatter

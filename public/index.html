@@ -166,6 +166,13 @@
 
         <!-- Right Quick Controls -->
         <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Admin Pending Email Approval Notification Bell -->
+          <button id="admin-pending-bell" onclick="switchTab('master-data'); switchMasterSubTab('branding');" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/50 text-rose-300 text-xs font-bold transition shadow animate-pulse hover:bg-rose-500/30 cursor-pointer" title="Có yêu cầu truy cập Email mới cần phê duyệt!">
+            <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-rose-400"></i>
+            <span class="hidden lg:inline text-[11px]">Duyệt Email:</span>
+            <span id="admin-pending-count" class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono text-[10px] font-black">0</span>
+          </button>
+
           <!-- Trial 25h Countdown Badge (Shows live timer & clickable to branding/trial settings) -->
           <div id="trial-timer-badge" onclick="switchTab('master-data'); switchMasterSubTab('branding');" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow cursor-pointer hover:bg-amber-500/25" title="Đồng hồ đếm ngược 25 giờ dùng thử (Bấm để xem chi tiết / Cài đặt)">
             <i data-lucide="timer" class="w-3.5 h-3.5 text-amber-400 animate-pulse"></i>
@@ -1762,7 +1769,8 @@
             </button>
             <button onclick="switchMasterSubTab('branding')" id="btn-sub-branding" class="master-sub-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-300 hover:bg-[#112348] hover:text-white">
               <i data-lucide="shield-alert" class="w-4 h-4 text-purple-400"></i>
-              <span>Logo & Bản Quyền & Thiết Bị</span>
+              <span>Logo & Bản Quyền & Phê Duyệt Email</span>
+              <span id="tab-pending-badge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono text-[9.5px]">0</span>
             </button>
           </div>
 
@@ -2220,9 +2228,72 @@
 
           </div>
 
-          <!-- ================= SUB-PANE 5: LOGO THƯƠNG HIỆU & BẢN QUYỀN 25H & THIẾT BỊ ================= -->
+          <!-- ================= SUB-PANE 5: LOGO THƯƠNG HIỆU & BẢN QUYỀN 25H & PHÊ DUYỆT EMAIL ================= -->
           <div id="sub-master-branding" class="master-sub-pane hidden space-y-6">
             
+            <!-- SECTION 0: HỘP THƯ PHÊ DUYỆT YÊU CẦU TRUY CẬP EMAIL & CẤP MÃ PIN (ADMIN ACCESS HUB) -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-rose-500/40 shadow-xl space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+                <div>
+                  <h3 class="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="inbox" class="w-4 h-4 text-rose-400"></i>
+                    HỘP THƯ PHÊ DUYỆT TRUY CẬP EMAIL & CẤP MÃ PIN (ADMIN ACCESS CONTROL)
+                  </h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Danh sách các yêu cầu cấp quyền từ người dùng qua Email. Admin có thể bấm Duyệt 25 Giờ Free, Duyệt Vĩnh Viễn hoặc Sinh Mã PIN 6 số gửi qua Zalo.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="loadAccessRequests()" class="px-3 py-1.5 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/40 text-xs font-bold text-cyan-300 transition flex items-center gap-1.5" title="Làm mới danh sách">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Làm Mới</span>
+                  </button>
+                  <div class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5" title="Mã VIP mở khóa nhanh cho khách">
+                    <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                    <span>Mã VIP Dùng Nhanh: <b class="font-mono text-amber-200">686868</b></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stat Summary Cards -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="p-3 bg-[#091428] rounded-lg border border-blue-500/30 text-center">
+                  <div class="text-[11px] text-slate-400">Tổng Yêu Cầu</div>
+                  <div id="stat-req-total" class="text-lg font-black text-white mt-0.5">0</div>
+                </div>
+                <div class="p-3 bg-[#091428] rounded-lg border border-rose-500/40 text-center">
+                  <div class="text-[11px] text-rose-300 font-bold">Đang Chờ Duyệt</div>
+                  <div id="stat-req-pending" class="text-lg font-black text-rose-400 mt-0.5">0</div>
+                </div>
+                <div class="p-3 bg-[#091428] rounded-lg border border-amber-500/30 text-center">
+                  <div class="text-[11px] text-amber-300">Đã Cấp 25h Free</div>
+                  <div id="stat-req-25h" class="text-lg font-black text-amber-400 mt-0.5">0</div>
+                </div>
+                <div class="p-3 bg-[#091428] rounded-lg border border-emerald-500/30 text-center">
+                  <div class="text-[11px] text-emerald-300">Đã Cấp Vĩnh Viễn</div>
+                  <div id="stat-req-perm" class="text-lg font-black text-emerald-400 mt-0.5">0</div>
+                </div>
+              </div>
+
+              <!-- Requests Table -->
+              <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px]">
+                    <tr>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Email</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Họ & Tên / Đơn Vị</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 font-mono">Mã Thiết Bị (Device ID)</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center">Mã PIN Kích Hoạt</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center">Trạng Thái</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center">Thời Gian Gửi</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center w-52">Thao Tác Duyệt Của Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody id="access-requests-table-body" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                    <!-- Injected by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <!-- SECTION 1: 3 MẪU LOGO NHẬN DIỆN THƯƠNG HIỆU -->
             <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
               <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
@@ -2338,23 +2409,40 @@
 
   </div>
 
-  <!-- ================= MODAL 1: ĐĂNG NHẬP HỆ THỐNG ================= -->
+  <!-- ================= MODAL 1: ĐĂNG NHẬP & TRUY CẬP EMAIL & MÃ PIN ================= -->
   <div id="modal-login" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-fade-in relative">
-      <div class="text-center space-y-1.5 border-b border-[#1e3a6a]/60 pb-4">
+    <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-fade-in relative">
+      <div class="text-center space-y-1.5 border-b border-[#1e3a6a]/60 pb-3">
         <div id="login-logo-container" class="w-14 h-14 rounded-2xl bg-[#071124] border border-[#1e3a6a] flex items-center justify-center text-white mx-auto shadow-xl p-2">
           <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="g1_login" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#B45309"/></linearGradient><linearGradient id="g2_login" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><rect x="18" y="10" width="34" height="34" rx="6" transform="rotate(45 35 27)" fill="#0b172a" stroke="url(#g2_login)" stroke-width="2.5"/><rect x="18" y="20" width="34" height="34" rx="6" transform="rotate(45 35 37)" fill="url(#g1_login)"/><path d="M26 34L44 16" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/><text x="35" y="41" font-family="Arial, sans-serif" font-weight="900" font-size="13" fill="#091428" text-anchor="middle" dominant-baseline="central">PN</text></svg>
         </div>
-        <h3 class="text-base font-black text-white uppercase tracking-wide">ĐĂNG NHẬP HỆ THỐNG ĐIỀU HÀNH</h3>
+        <h3 class="text-base font-black text-white uppercase tracking-wide">HỆ THỐNG ĐIỀU HÀNH SẢN XUẤT 2026</h3>
         <p class="text-xs text-slate-400">Phân Xưởng Sản Xuất 2 Dây Chuyền · Gạch Men Phương Nam</p>
       </div>
 
-      <div class="space-y-3.5">
+      <!-- Segmented Tab Controls -->
+      <div class="grid grid-cols-3 gap-1 p-1 bg-[#091428] rounded-xl border border-blue-500/30 text-[11px] font-bold">
+        <button id="tab-login-btn-auth" onclick="switchLoginTab('auth')" class="py-1.5 rounded-lg bg-blue-600 text-white shadow transition flex items-center justify-center gap-1">
+          <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+          <span>Tài Khoản</span>
+        </button>
+        <button id="tab-login-btn-request" onclick="switchLoginTab('request')" class="py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1">
+          <i data-lucide="mail" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>Xin Quyền 25h</span>
+        </button>
+        <button id="tab-login-btn-pin" onclick="switchLoginTab('pin')" class="py-1.5 rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <span>Nhập Mã PIN</span>
+        </button>
+      </div>
+
+      <!-- PANE 1: Standard Account Login -->
+      <div id="pane-login-auth" class="space-y-3.5">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Tên đăng nhập (Username):</label>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Tên đăng nhập / Email:</label>
           <div class="relative">
             <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-            <input type="text" id="login-username" placeholder="Nhập tên đăng nhập được cấp..." onkeydown="if(event.key==='Enter') handleManualLogin()" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400 transition" autocomplete="username" />
+            <input type="text" id="login-username" placeholder="Nhập username hoặc email..." onkeydown="if(event.key==='Enter') handleManualLogin()" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400 transition" autocomplete="username" />
           </div>
         </div>
 
@@ -2378,15 +2466,98 @@
         </button>
       </div>
 
+      <!-- PANE 2: Email 25h Trial Access Request -->
+      <div id="pane-login-request" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Địa chỉ Email nhận quyền (*):</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-amber-400 absolute left-3 top-3"></i>
+            <input type="email" id="req-email" placeholder="ví dụ: yourname@gmail.com" class="w-full bg-[#091428] border border-amber-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-amber-400" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Họ và Tên (*):</label>
+          <div class="relative">
+            <i data-lucide="user-check" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+            <input type="text" id="req-fullname" placeholder="ví dụ: Nguyễn Văn A" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Đơn vị / Chức vụ / Bộ phận:</label>
+          <div class="relative">
+            <i data-lucide="building" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+            <input type="text" id="req-department" placeholder="ví dụ: Khách mời / P. Kỹ Thuật" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400" />
+          </div>
+        </div>
+
+        <div id="req-status-msg" class="hidden p-2.5 rounded-lg text-xs font-semibold text-center"></div>
+
+        <button onclick="submitEmailAccessRequest()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-900 font-bold text-xs shadow-lg shadow-amber-950/50 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Gửi Yêu Cầu Xin Cấp 25h Free Đến Admin</span>
+        </button>
+      </div>
+
+      <!-- PANE 3: PIN / Master OTP Activation -->
+      <div id="pane-login-pin" class="space-y-3.5 hidden">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Mã PIN Kích Hoạt 6 Số (hoặc Mã VIP):</label>
+          <div class="relative">
+            <i data-lucide="key" class="w-4 h-4 text-cyan-400 absolute left-3 top-3.5"></i>
+            <input type="text" id="pin-input-val" maxlength="10" placeholder="Nhập 6 số (ví dụ: 686868)..." onkeydown="if(event.key==='Enter') submitPinActivation()" class="w-full bg-[#091428] border border-cyan-500/40 text-base font-mono font-black text-cyan-300 rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-300 tracking-widest text-center" />
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">Mã PIN 6 số do Quản trị viên cấp qua Zalo/Email hoặc mã Master PIN.</p>
+        </div>
+
+        <div id="pin-error-msg" class="hidden p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center"></div>
+
+        <button onclick="submitPinActivation()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-950/50 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-yellow-300"></i>
+          <span>Kích Hoạt & Vào Ngay Hệ Thống</span>
+        </button>
+      </div>
+
       <!-- Security Guidance Notice -->
-      <div class="pt-3 border-t border-[#1e3a6a]/60 space-y-1.5 text-center">
+      <div class="pt-2.5 border-t border-[#1e3a6a]/60 space-y-1 text-center">
         <div class="text-[11px] text-slate-300 flex items-center justify-center gap-1.5">
           <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400 shrink-0"></i>
-          <span>Vui lòng đăng nhập đúng tài khoản do Quản trị viên cấp.</span>
+          <span>Bảo mật 1 thiết bị độc quyền · Phê duyệt bởi Admin.</span>
         </div>
-        <p class="text-[10px] text-slate-400 leading-relaxed">
-          Sau khi đăng nhập lần đầu, bạn có thể bấm nút <b class="text-amber-300">"Đổi MK"</b> ở góc trái để đổi sang mật khẩu riêng.
-        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: THÔNG BÁO HẾT 25H TRẢI NGHIỆM ================= -->
+  <div id="modal-trial-expired" class="fixed inset-0 bg-black/90 backdrop-blur-lg z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0f2042] border-2 border-amber-500/60 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-center animate-fade-in">
+      <div class="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 mx-auto shadow-lg">
+        <i data-lucide="timer-off" class="w-8 h-8"></i>
+      </div>
+      <div class="space-y-1">
+        <h3 class="text-base font-black text-amber-300 uppercase tracking-wide">HẾT THỜI GIAN TRẢI NGHIỆM 25 GIỜ</h3>
+        <p class="text-xs text-slate-300">Thiết bị của bạn đã sử dụng hết 25 giờ dùng thử miễn phí.</p>
+      </div>
+
+      <div class="p-3 rounded-xl bg-[#091428] border border-blue-500/30 text-left space-y-2 text-xs">
+        <div class="text-slate-400">Mã thiết bị của bạn: <b id="expired-device-id" class="text-cyan-300 font-mono break-all"></b></div>
+        <div class="text-slate-400">Để tiếp tục sử dụng, vui lòng chọn một trong các cách sau:</div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="openLoginModalWithTab('request')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 text-slate-900 font-bold text-xs shadow flex items-center justify-center gap-2">
+          <i data-lucide="mail" class="w-4 h-4"></i>
+          <span>Gửi Email Xin Admin Cấp Thêm 25h</span>
+        </button>
+        <button onclick="openLoginModalWithTab('pin')" class="w-full py-2 rounded-xl bg-[#112348] hover:bg-[#1a356b] border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center justify-center gap-2">
+          <i data-lucide="key" class="w-4 h-4"></i>
+          <span>Nhập Mã PIN 6 Số Mở Khóa</span>
+        </button>
+        <button onclick="openLoginModalWithTab('auth')" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5">
+          <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+          <span>Đăng Nhập Bằng Tài Khoản Chính Thức</span>
+        </button>
       </div>
     </div>
   </div>
@@ -2826,6 +2997,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260905_branding_clock_v2"></script>
+  <script src="app.js?v=20260905_email_hub_v1"></script>
 </body>
 </html>
