@@ -524,18 +524,7 @@ function initTrialProtection() {
 
   if (brandingDev) brandingDev.innerText = devId;
 
-  if (isAuth) {
-    // Official user logged in -> hide trial limits
-    if (badge) {
-      badge.classList.add("hidden");
-      badge.classList.remove("flex");
-    }
-    closeModal("modal-trial-expired");
-    if (brandingRemain) brandingRemain.innerText = "Không giới hạn (Tài khoản chính thức)";
-    return;
-  }
-
-  // Not logged in -> run countdown
+  // Always keep badge visible in Header so user & admin can see the 25h clock running live
   if (badge) {
     badge.classList.remove("hidden");
     badge.classList.add("flex");
@@ -546,11 +535,13 @@ function initTrialProtection() {
     const formatted = formatTrialTime(remainSec);
 
     if (badgeText) badgeText.innerText = formatted;
-    if (brandingRemain) brandingRemain.innerText = formatted;
+    if (brandingRemain) {
+      brandingRemain.innerText = `${formatted} (${isAuth ? 'Tài khoản chính thức' : '25 Giờ đếm ngược'})`;
+    }
 
-    if (remainSec <= 0) {
+    if (remainSec <= 0 && !isAuth) {
       openModal("modal-trial-expired");
-    } else {
+    } else if (remainSec > 0 || isAuth) {
       closeModal("modal-trial-expired");
     }
   };
@@ -564,6 +555,13 @@ function resetCurrentDeviceTrial() {
   localStorage.setItem("px_trial_start_ts", Date.now().toString());
   initTrialProtection();
   alert(`Đã cấp mới thành công ${TRIAL_TOTAL_HOURS} giờ trải nghiệm cho thiết bị này!`);
+}
+
+function simulateTrialExpired() {
+  const expiredTs = Date.now() - (TRIAL_TOTAL_HOURS + 1) * 3600 * 1000;
+  localStorage.setItem("px_trial_start_ts", expiredTs.toString());
+  initTrialProtection();
+  openModal("modal-trial-expired");
 }
 
 // ------------------------------------------

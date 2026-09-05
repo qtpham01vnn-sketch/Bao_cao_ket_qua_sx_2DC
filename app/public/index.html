@@ -39,7 +39,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- SheetJS (xlsx) for full Excel import/export support -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260905_pwa_master_v10" />
+  <link rel="stylesheet" href="style.css?v=20260905_branding_clock_v2" />
 </head>
 <body class="bg-[#091428] text-slate-100 transition-colors duration-300 font-sans antialiased overflow-hidden">
   
@@ -58,7 +58,7 @@
         <div class="p-3.5 border-b border-[#1e3a6a]/40 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-2.5">
             <div id="app-sidebar-logo-icon" class="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden">
-              <!-- Dynamically populated by JS renderAppLogo() -->
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#B45309"/></linearGradient><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><rect x="18" y="10" width="34" height="34" rx="6" transform="rotate(45 35 27)" fill="#0b172a" stroke="url(#g2)" stroke-width="2.5"/><rect x="18" y="20" width="34" height="34" rx="6" transform="rotate(45 35 37)" fill="url(#g1)"/><path d="M26 34L44 16" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/><text x="35" y="41" font-family="Arial, sans-serif" font-weight="900" font-size="13" fill="#091428" text-anchor="middle" dominant-baseline="central">PN</text></svg>
             </div>
             <div>
               <h1 class="text-xs font-black text-white tracking-wider uppercase leading-tight">PXSX PHƯƠNG NAM</h1>
@@ -166,11 +166,11 @@
 
         <!-- Right Quick Controls -->
         <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Trial 25h Countdown Badge (Shows when trial mode is active) -->
-          <div id="trial-timer-badge" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow" title="Thời gian trải nghiệm app còn lại trên thiết bị này">
+          <!-- Trial 25h Countdown Badge (Shows live timer & clickable to branding/trial settings) -->
+          <div id="trial-timer-badge" onclick="switchTab('master-data'); switchMasterSubTab('branding');" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow cursor-pointer hover:bg-amber-500/25" title="Đồng hồ đếm ngược 25 giờ dùng thử (Bấm để xem chi tiết / Cài đặt)">
             <i data-lucide="timer" class="w-3.5 h-3.5 text-amber-400 animate-pulse"></i>
-            <span class="hidden md:inline text-[11px] text-amber-400/90 font-medium">Dùng thử:</span>
-            <span id="trial-timer-text" class="font-mono font-black text-amber-300">25:00:00</span>
+            <span class="hidden md:inline text-[11px] text-amber-400/90 font-medium">Đồng hồ 25h:</span>
+            <span id="trial-timer-text" class="font-mono font-black text-amber-300">24:59:59</span>
           </div>
 
           <!-- Role Switcher -->
@@ -2276,13 +2276,19 @@
                   <div class="text-[10px] text-slate-500">Đồng hồ đếm lùi liên tục đến khi hết 25 giờ.</div>
                 </div>
 
-                <div class="p-4 rounded-xl bg-[#091428] border border-purple-500/30 space-y-2.5">
+                <div class="p-4 rounded-xl bg-[#091428] border border-purple-500/30 space-y-2">
                   <div class="text-xs text-slate-400 font-medium">Thao tác Quản trị viên (Admin):</div>
-                  <button onclick="resetCurrentDeviceTrial()" class="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-900 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                    <span>Reset 25 Giờ Dùng Thử Cho Máy Này</span>
-                  </button>
-                  <div class="text-[10px] text-slate-500 text-center">Cho phép cấp lại 25 giờ test mới khi cần.</div>
+                  <div class="flex flex-col gap-1.5">
+                    <button onclick="resetCurrentDeviceTrial()" class="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-900 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
+                      <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                      <span>Reset 25 Giờ Dùng Thử</span>
+                    </button>
+                    <button onclick="simulateTrialExpired()" class="w-full py-1.5 px-3 rounded-lg bg-[#112348] hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 font-bold text-xs transition flex items-center justify-center gap-1.5">
+                      <i data-lucide="lock" class="w-3.5 h-3.5 text-rose-400"></i>
+                      <span>Mô Phỏng Hết Giờ (00:00) Test Khóa</span>
+                    </button>
+                  </div>
+                  <div class="text-[10px] text-slate-500 text-center">Cho phép cấp mới hoặc kiểm thử màn hình khóa.</div>
                 </div>
               </div>
             </div>
@@ -2336,8 +2342,8 @@
   <div id="modal-login" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-fade-in relative">
       <div class="text-center space-y-1.5 border-b border-[#1e3a6a]/60 pb-4">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-900/40">
-          <i data-lucide="factory" class="w-6 h-6"></i>
+        <div id="login-logo-container" class="w-14 h-14 rounded-2xl bg-[#071124] border border-[#1e3a6a] flex items-center justify-center text-white mx-auto shadow-xl p-2">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="g1_login" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#B45309"/></linearGradient><linearGradient id="g2_login" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><rect x="18" y="10" width="34" height="34" rx="6" transform="rotate(45 35 27)" fill="#0b172a" stroke="url(#g2_login)" stroke-width="2.5"/><rect x="18" y="20" width="34" height="34" rx="6" transform="rotate(45 35 37)" fill="url(#g1_login)"/><path d="M26 34L44 16" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/><text x="35" y="41" font-family="Arial, sans-serif" font-weight="900" font-size="13" fill="#091428" text-anchor="middle" dominant-baseline="central">PN</text></svg>
         </div>
         <h3 class="text-base font-black text-white uppercase tracking-wide">ĐĂNG NHẬP HỆ THỐNG ĐIỀU HÀNH</h3>
         <p class="text-xs text-slate-400">Phân Xưởng Sản Xuất 2 Dây Chuyền · Gạch Men Phương Nam</p>
@@ -2820,6 +2826,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260905_norm_smart_slicer_v12"></script>
+  <script src="app.js?v=20260905_branding_clock_v2"></script>
 </body>
 </html>
