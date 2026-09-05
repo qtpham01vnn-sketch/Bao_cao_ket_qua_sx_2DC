@@ -1898,7 +1898,7 @@ function renderDashboardMaterialTable(materials) {
   if (!tbody) return;
 
   if (!materials || materials.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500">Không có dữ liệu tiêu hao vật tư phù hợp</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500">Không có dữ liệu tiêu hao vật tư phù hợp</td></tr>`;
     if (tfoot) tfoot.innerHTML = "";
     return;
   }
@@ -1919,9 +1919,16 @@ function renderDashboardMaterialTable(materials) {
       statusBadge = `<span class="px-1.5 py-0.5 rounded text-[9.5px] bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">Tiết kiệm</span>`;
     }
 
+    const monthLabel = m.month ? `Tháng ${m.month}` : (m.period ? `Tháng ${m.period}` : '-');
+
     return `
       <tr class="hover:bg-[#13284d]/50 text-slate-200 transition">
         <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
+        <td class="p-2 text-center border border-[#1e3a6a]/40">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-cyan-300 border border-blue-500/40 whitespace-nowrap">
+            ${monthLabel}
+          </span>
+        </td>
         <td class="p-2 font-bold text-white border border-[#1e3a6a]/40">
           <div>${m.material_name}</div>
           <div class="text-[10px] text-slate-400 font-normal">DC: ${m.line || '-'} • KT: ${m.size || '-'}</div>
@@ -1940,7 +1947,7 @@ function renderDashboardMaterialTable(materials) {
   if (tfoot) {
     tfoot.innerHTML = `
       <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
-        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TIÊU HAO VẬT TƯ</td>
+        <td colspan="6" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TIÊU HAO VẬT TƯ</td>
         <td class="p-2 text-right text-white font-mono text-xs">${formatNumber(sumUsed, 2)}</td>
         <td class="p-2 text-right text-emerald-400 font-mono text-xs">${formatNumber(sumReduced, 2)}</td>
         <td class="p-2 text-right text-amber-400 font-mono text-xs">${formatNumber(sumOver, 2)}</td>
