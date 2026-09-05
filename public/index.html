@@ -1351,7 +1351,7 @@
                 </div>
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dây chuyền</label>
-                  <select id="coal-filter-line" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                  <select id="coal-filter-line" onchange="onCoalLineChange()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
                     <option value="all">Tất cả dây chuyền</option>
                     <option value="DC1" selected>DC1</option>
                     <option value="DC2">DC2</option>
@@ -1360,10 +1360,8 @@
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kích thước</label>
                   <select id="coal-filter-size" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả kích thước</option>
-                    <option value="30x60">30x60</option>
-                    <option value="50x50">50x50</option>
-                    <option value="40x80">40x80</option>
+                    <option value="all">Tất cả kích thước (DC1)</option>
+                    <option value="30x60" selected>30x60</option>
                   </select>
                 </div>
                 <div>
@@ -1738,6 +1736,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260904_multisection_slicers_v3"></script>
+  <script src="app.js?v=20260905_coal_tab_fix_v5"></script>
 </body>
 </html>

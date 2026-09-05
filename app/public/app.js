@@ -1902,20 +1902,63 @@ function renderConsumptionTable(rows) {
 // ----------------------------------------------------
 let coalSummaryData = null;
 
+function onCoalLineChange() {
+  const lineEl = document.getElementById("coal-filter-line");
+  const sizeEl = document.getElementById("coal-filter-size");
+  if (!lineEl || !sizeEl) return;
+  const line = lineEl.value;
+  const prevSize = sizeEl.value;
+
+  if (line === "DC1") {
+    sizeEl.innerHTML = `
+      <option value="all">Tất cả kích thước (DC1)</option>
+      <option value="30x60">30x60</option>
+    `;
+    if (prevSize === "30x60") sizeEl.value = "30x60";
+    else sizeEl.value = "all";
+  } else if (line === "DC2") {
+    sizeEl.innerHTML = `
+      <option value="all">Tất cả kích thước (DC2)</option>
+      <option value="50x50">50x50</option>
+      <option value="40x80">40x80</option>
+      <option value="60x60">60x60</option>
+    `;
+    if (["50x50", "40x80", "60x60"].includes(prevSize)) sizeEl.value = prevSize;
+    else sizeEl.value = "all";
+  } else {
+    sizeEl.innerHTML = `
+      <option value="all">Tất cả kích thước</option>
+      <option value="30x60">30x60</option>
+      <option value="50x50">50x50</option>
+      <option value="40x80">40x80</option>
+      <option value="60x60">60x60</option>
+    `;
+    if (["30x60", "50x50", "40x80", "60x60"].includes(prevSize)) sizeEl.value = prevSize;
+    else sizeEl.value = "all";
+  }
+
+  loadCoalData();
+}
+
 async function loadCoalData() {
-  const month = document.getElementById("coal-filter-month").value;
-  const line = document.getElementById("coal-filter-line").value;
-  const size = document.getElementById("coal-filter-size").value;
-  const firing = document.getElementById("coal-filter-firing").value;
+  const monthEl = document.getElementById("coal-filter-month");
+  const lineEl = document.getElementById("coal-filter-line");
+  const sizeEl = document.getElementById("coal-filter-size");
+  const firingEl = document.getElementById("coal-filter-firing");
+
+  const month = monthEl ? monthEl.value : "8";
+  const line = lineEl ? lineEl.value : "all";
+  const size = sizeEl ? sizeEl.value : "all";
+  const firing = firingEl ? firingEl.value : "all";
 
   const badge = document.getElementById("coal-badge-period");
   const monthStr = month === "all" ? "Tất cả kỳ" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
   const lineStr = line === "all" ? "Tất cả DC" : line;
   const sizeStr = size === "all" ? "" : ` (${size})`;
-  badge.innerText = `• ${monthStr} / 2026 - ${lineStr}${sizeStr}`;
+  if (badge) badge.innerText = `• ${monthStr} / 2026 - ${lineStr}${sizeStr}`;
 
   try {
-    const res = await fetch(`/api/data/coal?month=${month}&line=${line}&size=${size}&firing_type=${firing}`);
+    const res = await fetch(`/api/data/coal?month=${encodeURIComponent(month)}&line=${encodeURIComponent(line)}&size=${encodeURIComponent(size)}&firing_type=${encodeURIComponent(firing)}`);
     const json = await res.json();
     rawCoalData = json.data || [];
     coalSummaryData = json.summary || {};
@@ -1926,8 +1969,9 @@ async function loadCoalData() {
 }
 
 function filterCoalClient() {
-  const term = document.getElementById("coal-search-input").value.toLowerCase();
-  const filtered = rawCoalData.filter(r => 
+  const inputEl = document.getElementById("coal-search-input");
+  const term = inputEl ? inputEl.value.toLowerCase().trim() : "";
+  const filtered = (rawCoalData || []).filter(r => 
     (r.coal_supplier && r.coal_supplier.toLowerCase().includes(term)) ||
     (r.firing_type && r.firing_type.toLowerCase().includes(term)) ||
     (r.line && r.line.toLowerCase().includes(term)) ||
@@ -1939,11 +1983,14 @@ function filterCoalClient() {
 function renderCoalTable(rows, summary) {
   const tbody = document.getElementById("coal-table-body");
   const tfoot = document.getElementById("coal-table-foot");
-  document.getElementById("coal-row-count").innerText = `${rows.length} dòng dữ liệu`;
+  const rowCountEl = document.getElementById("coal-row-count");
+  if (rowCountEl) rowCountEl.innerText = `${(rows || []).length} dòng dữ liệu`;
+
+  if (!tbody) return;
 
   if (!rows || rows.length === 0) {
     tbody.innerHTML = `<tr><td colspan="17" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu tiêu hao than</td></tr>`;
-    tfoot.innerHTML = "";
+    if (tfoot) tfoot.innerHTML = "";
     updateCoalKPIs({
       rate_lump: 0,
       rate_lump_all: 0,
@@ -2027,7 +2074,7 @@ function renderCoalTable(rows, summary) {
     production_m2: sumM2Firing,
     total_used_weight: sumUsedFiring,
     total_used_all: totalUsedAll
-  }, firingMode);
+  });
 
   // Render Table Body (Exactly 17 columns matching Image 2)
   tbody.innerHTML = rows.map(r => {
@@ -2047,7 +2094,7 @@ function renderCoalTable(rows, summary) {
       return `
         <tr class="bg-[#0b172a]/70 text-slate-400 italic">
           <td class="p-2 text-center text-slate-500 font-mono">${r.stt || ''}</td>
-          <td class="p-2 text-slate-500"></td>
+          <td class="p-2 text-slate-500">${r.coal_supplier || ''}</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right text-slate-500">-</td>
           <td class="p-2 text-right text-slate-500">-</td>
@@ -2070,7 +2117,7 @@ function renderCoalTable(rows, summary) {
     return `
       <tr class="hover:bg-[#13284d]/50 transition text-slate-200">
         <td class="p-2 text-center font-bold font-mono text-cyan-300">${r.stt || ''}</td>
-        <td class="p-2 font-bold text-white">${r.coal_supplier}</td>
+        <td class="p-2 font-bold text-white">${r.coal_supplier || ''}</td>
         <td class="p-2 text-right font-medium text-slate-300">${r.heat_value > 0 ? formatNumber(r.heat_value, 0) : '-'}</td>
         <td class="p-2 text-right font-bold text-cyan-300">${r.ash_rate > 0 ? formatNumber(r.ash_rate, 2, true) : '-'}</td>
         <td class="p-2 text-right text-slate-400">${r.std_ash_rate > 0 ? formatNumber(r.std_ash_rate, 1) : '15,0'}</td>
