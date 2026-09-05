@@ -203,10 +203,15 @@ const DEFAULT_USERS_DB = [
   }
 ];
 
+const DB_USERS_KEY = "px_users_db_v4";
+
 function getUsersDb() {
   try {
-    const raw = localStorage.getItem("px_users_db_v3");
-    if (raw) return JSON.parse(raw);
+    const raw = localStorage.getItem(DB_USERS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
   } catch (e) {
     console.error("Error reading users db:", e);
   }
@@ -216,7 +221,7 @@ function getUsersDb() {
 
 function saveUsersDb(users) {
   try {
-    localStorage.setItem("px_users_db_v3", JSON.stringify(users));
+    localStorage.setItem(DB_USERS_KEY, JSON.stringify(users));
   } catch (e) {
     console.error("Error saving users db:", e);
   }
@@ -224,13 +229,14 @@ function saveUsersDb(users) {
 
 function getActiveUser() {
   const users = getUsersDb();
-  const sessionUsername = localStorage.getItem("px_auth_session") || "admin";
-  const user = users.find(u => u.username === sessionUsername) || users[0];
-  return user;
+  const sessionUsername = localStorage.getItem("px_auth_session");
+  if (!sessionUsername) return null;
+  const user = users.find(u => u.username.toLowerCase() === sessionUsername.toLowerCase());
+  return user || null;
 }
 
 let currentAuthUser = getActiveUser();
-let currentRole = currentAuthUser ? currentAuthUser.role : "admin";
+let currentRole = currentAuthUser ? currentAuthUser.role : "operator";
 
 const ROLES_INFO = {
   admin: {
@@ -290,16 +296,46 @@ function changeUserRole(roleKey) {
   currentRole = roleKey;
   localStorage.setItem("user_role", roleKey);
   
-  // Update current user role temporarily for test
   if (currentAuthUser) {
     currentAuthUser.role = roleKey;
   }
   applyRolePermissions();
 }
 
+function checkAndEnforceAuth() {
+  const user = getActiveUser();
+  const loginModal = document.getElementById("modal-login");
+  
+  if (!user) {
+    if (loginModal) {
+      loginModal.classList.remove("hidden");
+      setTimeout(() => {
+        const uInp = document.getElementById("login-username");
+        if (uInp) uInp.focus();
+      }, 150);
+    }
+    return false;
+  }
+  
+  if (loginModal) {
+    loginModal.classList.add("hidden");
+  }
+  currentAuthUser = user;
+  currentRole = user.role || "operator";
+  applyRolePermissions();
+  return true;
+}
+
 function applyRolePermissions() {
   currentAuthUser = getActiveUser();
-  const role = ROLES_INFO[currentRole] || ROLES_INFO.admin;
+  if (!currentAuthUser) {
+    const loginModal = document.getElementById("modal-login");
+    if (loginModal) loginModal.classList.remove("hidden");
+    return;
+  }
+
+  currentRole = currentAuthUser.role || "operator";
+  const role = ROLES_INFO[currentRole] || ROLES_INFO.operator;
 
   // Sync role dropdowns
   const topSel = document.getElementById("user-role-select");
@@ -309,15 +345,15 @@ function applyRolePermissions() {
   if (adminSel && adminSel.value !== currentRole) adminSel.value = currentRole;
 
   // Update Sidebar User Profile Card
-  const userNameEl = document.getElementById("auth-user-name");
+  const userNameEl = document.getElementById("auth-display-name") || document.getElementById("auth-user-name");
   const userAvatarEl = document.getElementById("auth-user-avatar");
   const roleBadgeEl = document.getElementById("auth-role-badge");
   const roleTextEl = document.getElementById("auth-role-text");
 
   if (userNameEl && currentAuthUser) userNameEl.innerText = currentAuthUser.fullname;
   if (userAvatarEl && currentAuthUser) {
-    userAvatarEl.innerText = currentAuthUser.avatar || "AD";
-    userAvatarEl.className = `w-7 h-7 rounded-full ${currentAuthUser.avatarBg || 'bg-rose-700'} text-white flex items-center justify-center text-xs font-black shadow shrink-0`;
+    userAvatarEl.innerText = currentAuthUser.avatar || "NV";
+    userAvatarEl.className = `w-7 h-7 rounded-full ${currentAuthUser.avatarBg || 'bg-blue-700'} text-white flex items-center justify-center text-xs font-black shadow shrink-0`;
   }
   if (roleBadgeEl && currentAuthUser) {
     roleBadgeEl.className = `px-2 py-0.5 rounded text-[9.5px] font-bold border flex items-center gap-1 truncate ${currentAuthUser.roleBadgeClass || role.badgeClass}`;
@@ -374,13 +410,42 @@ function applyRolePermissions() {
   }
 }
 
+// Helper: Toggle Password Visibility
+function togglePasswordVisibility(inputId, iconId) {
+  const inp = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
+  if (!inp) return;
+  if (inp.type === "password") {
+    inp.type = "text";
+    if (icon) icon.setAttribute("data-lucide", "eye-off");
+  } else {
+    inp.type = "password";
+    if (icon) icon.setAttribute("data-lucide", "eye");
+  }
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
 // ==========================================
 // AUTHENTICATION MODAL & LOGOUT CONTROLLER
 // ==========================================
 function handleLogout() {
   if (confirm("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?")) {
     localStorage.removeItem("px_auth_session");
+    currentAuthUser = null;
+    currentRole = "operator";
+
+    // Clear login inputs
+    const uField = document.getElementById("login-username");
+    const pField = document.getElementById("login-password");
+    if (uField) uField.value = "";
+    if (pField) pField.value = "";
+    const errEl = document.getElementById("login-error-msg");
+    if (errEl) errEl.classList.add("hidden");
+
     openModal("modal-login");
+    setTimeout(() => {
+      if (uField) uField.focus();
+    }, 150);
   }
 }
 
@@ -423,10 +488,14 @@ function handleManualLogin() {
   currentRole = user.role;
   currentAuthUser = user;
   
+  // Clear password input for security
+  const pInp = document.getElementById("login-password");
+  if (pInp) pInp.value = "";
+
   closeModal("modal-login");
   applyRolePermissions();
   renderAccountsTable();
-  alert(`Đăng nhập thành công! Chào mừng ${user.fullname} (${user.roleName || user.title}).`);
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
 }
 
 function quickLogin(username, pin) {
@@ -437,12 +506,23 @@ function quickLogin(username, pin) {
 
 function openChangePasswordModal() {
   const user = getActiveUser();
+  if (!user) {
+    openModal("modal-login");
+    return;
+  }
+  const displayEl = document.getElementById("cp-user-display");
+  if (displayEl) displayEl.innerText = `${user.fullname} (${user.username})`;
+
   document.getElementById("cp-old-pass").value = "";
   document.getElementById("cp-new-pass").value = "";
   document.getElementById("cp-confirm-pass").value = "";
   const errEl = document.getElementById("cp-error-msg");
   if (errEl) errEl.classList.add("hidden");
   openModal("modal-change-password");
+  setTimeout(() => {
+    const el = document.getElementById("cp-old-pass");
+    if (el) el.focus();
+  }, 100);
 }
 
 function submitChangePassword() {
@@ -497,7 +577,7 @@ function submitChangePassword() {
   if (errEl) errEl.classList.add("hidden");
   closeModal("modal-change-password");
   renderAccountsTable();
-  alert("Chúc mừng! Bạn đã đổi mật khẩu thành công.");
+  alert("Chúc mừng! Bạn đã đổi mật khẩu thành công. Hãy ghi nhớ mật khẩu mới để đăng nhập cho các lần tiếp theo.");
 }
 
 // ==========================================
@@ -836,10 +916,14 @@ function importUsersFromExcel(event) {
 function openModal(modalId) {
   const m = document.getElementById(modalId);
   if (m) m.classList.remove("hidden");
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
 }
 
 function closeModal(modalId) {
+  if (modalId === "modal-login") {
+    // Cannot close login modal if user is not authenticated
+    if (!getActiveUser()) return;
+  }
   const m = document.getElementById(modalId);
   if (m) m.classList.add("hidden");
 }
@@ -865,7 +949,10 @@ function toggleMobileSidebar(show) {
 // Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
   if (window.lucide && lucide.createIcons) lucide.createIcons();
-  applyRolePermissions();
+
+  // Strict Authentication Guard
+  const isAuth = checkAndEnforceAuth();
+
   renderAccountsTable();
   try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }
   try { loadSummaryData(); } catch(e) { console.error("loadSummaryData err:", e); }

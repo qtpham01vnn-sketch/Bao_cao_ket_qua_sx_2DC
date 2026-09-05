@@ -2216,10 +2216,10 @@
   </div>
 
   <!-- ================= MODAL 1: ĐĂNG NHẬP HỆ THỐNG ================= -->
-  <div id="modal-login" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-fade-in">
+  <div id="modal-login" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl animate-fade-in relative">
       <div class="text-center space-y-1.5 border-b border-[#1e3a6a]/60 pb-4">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white mx-auto shadow-lg">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white mx-auto shadow-lg shadow-emerald-900/40">
           <i data-lucide="factory" class="w-6 h-6"></i>
         </div>
         <h3 class="text-base font-black text-white uppercase tracking-wide">ĐĂNG NHẬP HỆ THỐNG ĐIỀU HÀNH</h3>
@@ -2231,7 +2231,7 @@
           <label class="block text-xs font-semibold text-slate-300 mb-1">Tên đăng nhập (Username):</label>
           <div class="relative">
             <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-            <input type="text" id="login-username" placeholder="Ví dụ: admin hoặc ptgd" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400" />
+            <input type="text" id="login-username" placeholder="Nhập tên đăng nhập được cấp..." onkeydown="if(event.key==='Enter') handleManualLogin()" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400 transition" autocomplete="username" />
           </div>
         </div>
 
@@ -2239,57 +2239,31 @@
           <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu / Mã PIN:</label>
           <div class="relative">
             <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-            <input type="password" id="login-password" placeholder="Nhập mật khẩu..." class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-400" />
+            <input type="password" id="login-password" placeholder="Nhập mật khẩu..." onkeydown="if(event.key==='Enter') handleManualLogin()" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-9 pr-10 py-2.5 focus:outline-none focus:border-cyan-400 transition" autocomplete="current-password" />
+            <button type="button" onclick="togglePasswordVisibility('login-password', 'toggle-login-pass-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-cyan-300 focus:outline-none">
+              <i id="toggle-login-pass-icon" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
           </div>
         </div>
 
         <div id="login-error-msg" class="hidden p-2.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center">
         </div>
 
-        <button onclick="handleManualLogin()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/50 transition transform active:scale-95">
-          Đăng Nhập Vào Hệ Thống
+        <button onclick="handleManualLogin()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/50 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          <span>Đăng Nhập Vào Hệ Thống</span>
         </button>
       </div>
 
-      <!-- Quick Login For Demo -->
-      <div class="pt-3 border-t border-[#1e3a6a]/60 space-y-2">
-        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
-          <span>Đăng nhập nhanh 1 chạm (Test):</span>
-          <span class="text-[10px] text-cyan-400">Chọn vai trò</span>
+      <!-- Security Guidance Notice -->
+      <div class="pt-3 border-t border-[#1e3a6a]/60 space-y-1.5 text-center">
+        <div class="text-[11px] text-slate-300 flex items-center justify-center gap-1.5">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400 shrink-0"></i>
+          <span>Vui lòng đăng nhập đúng tài khoản do Quản trị viên cấp.</span>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="quickLogin('admin', 'admin1111')" class="p-2 rounded-lg bg-[#091428] hover:bg-[#13284d] border border-emerald-500/30 text-left transition flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-            <div class="truncate">
-              <div class="text-[11px] font-bold text-white truncate">Admin</div>
-              <div class="text-[9.5px] text-slate-400 font-mono">admin1111</div>
-            </div>
-          </button>
-
-          <button onclick="quickLogin('quanly', 'ptgd2222')" class="p-2 rounded-lg bg-[#091428] hover:bg-[#13284d] border border-purple-500/30 text-left transition flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-purple-400 shrink-0"></span>
-            <div class="truncate">
-              <div class="text-[11px] font-bold text-white truncate">Phó TGĐ</div>
-              <div class="text-[9.5px] text-slate-400 font-mono">ptgd2222</div>
-            </div>
-          </button>
-
-          <button onclick="quickLogin('tp_ktkh', 'tp3333')" class="p-2 rounded-lg bg-[#091428] hover:bg-[#13284d] border border-blue-500/30 text-left transition flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 shrink-0"></span>
-            <div class="truncate">
-              <div class="text-[11px] font-bold text-white truncate">Trưởng Phòng</div>
-              <div class="text-[9.5px] text-slate-400 font-mono">tp3333</div>
-            </div>
-          </button>
-
-          <button onclick="quickLogin('quandoc', 'qd4444')" class="p-2 rounded-lg bg-[#091428] hover:bg-[#13284d] border border-amber-500/30 text-left transition flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-            <div class="truncate">
-              <div class="text-[11px] font-bold text-white truncate">Quản Đốc</div>
-              <div class="text-[9.5px] text-slate-400 font-mono">qd4444</div>
-            </div>
-          </button>
-        </div>
+        <p class="text-[10px] text-slate-400 leading-relaxed">
+          Sau khi đăng nhập lần đầu, bạn có thể bấm nút <b class="text-amber-300">"Đổi MK"</b> ở góc trái để đổi sang mật khẩu riêng.
+        </p>
       </div>
     </div>
   </div>
@@ -2298,10 +2272,13 @@
   <div id="modal-change-password" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-[#0f2042] border border-[#1e3a6a] rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-[#1e3a6a]/60 pb-3">
-        <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <i data-lucide="key-round" class="w-4 h-4 text-cyan-400"></i>
-          <span>Đổi Mật Khẩu Cá Nhân</span>
-        </h3>
+        <div>
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="key-round" class="w-4 h-4 text-cyan-400"></i>
+            <span>Đổi Mật Khẩu Cá Nhân</span>
+          </h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Tài khoản: <span id="cp-user-display" class="text-cyan-300 font-bold font-mono"></span></p>
+        </div>
         <button onclick="closeModal('modal-change-password')" class="text-slate-400 hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -2310,17 +2287,32 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu hiện tại:</label>
-          <input type="password" id="cp-old-pass" placeholder="Nhập mật khẩu hiện tại" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none focus:border-cyan-400" />
+          <div class="relative">
+            <input type="password" id="cp-old-pass" placeholder="Nhập mật khẩu hiện tại" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-cyan-400" />
+            <button type="button" onclick="togglePasswordVisibility('cp-old-pass', 'toggle-cp-old-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-cyan-300 focus:outline-none">
+              <i id="toggle-cp-old-icon" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Mật khẩu mới:</label>
-          <input type="password" id="cp-new-pass" placeholder="Nhập mật khẩu mới" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none focus:border-cyan-400" />
+          <div class="relative">
+            <input type="password" id="cp-new-pass" placeholder="Nhập mật khẩu mới (ít nhất 4 ký tự)" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-cyan-400" />
+            <button type="button" onclick="togglePasswordVisibility('cp-new-pass', 'toggle-cp-new-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-cyan-300 focus:outline-none">
+              <i id="toggle-cp-new-icon" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Xác nhận mật khẩu mới:</label>
-          <input type="password" id="cp-confirm-pass" placeholder="Nhập lại mật khẩu mới" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2.5 focus:outline-none focus:border-cyan-400" />
+          <div class="relative">
+            <input type="password" id="cp-confirm-pass" placeholder="Nhập lại mật khẩu mới" onkeydown="if(event.key==='Enter') submitChangePassword()" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg pl-3 pr-10 py-2.5 focus:outline-none focus:border-cyan-400" />
+            <button type="button" onclick="togglePasswordVisibility('cp-confirm-pass', 'toggle-cp-confirm-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-cyan-300 focus:outline-none">
+              <i id="toggle-cp-confirm-icon" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
         <div id="cp-error-msg" class="hidden p-2 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center">
@@ -2329,7 +2321,10 @@
 
       <div class="flex items-center justify-end gap-3 pt-3 border-t border-[#1e3a6a]/60">
         <button onclick="closeModal('modal-change-password')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold">Hủy</button>
-        <button onclick="submitChangePassword()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow">Lưu Mật Khẩu Mới</button>
+        <button onclick="submitChangePassword()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Lưu Mật Khẩu Mới</span>
+        </button>
       </div>
     </div>
   </div>
