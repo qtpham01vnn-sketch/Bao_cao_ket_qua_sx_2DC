@@ -61,7 +61,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 elif path == "/api/data/coal":
                     self.handle_get_coal(params)
                 elif path == "/api/norms/versions":
-                    self.handle_get_norm_versions()
+                    self.handle_get_norm_versions(params)
                 elif path == "/api/norms/details":
                     self.handle_get_norm_details(params)
                 elif path == "/api/export/sign-off-report":
@@ -103,6 +103,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_create_norm_version(body)
             elif path == "/api/norms/details":
                 self.handle_save_norm_details(body)
+            elif path == "/api/norms/items":
+                self.handle_add_norm_item(body)
             else:
                 self.send_json_response({"error": "Endpoint not found"}, status=404)
         except Exception as e:
@@ -133,6 +135,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/norms/versions":
             cur.execute("DELETE FROM master_norms_detail WHERE version_id = ?", (item_id,))
             cur.execute("DELETE FROM master_norms_version WHERE id = ?", (item_id,))
+        elif path == "/api/norms/items":
+            cur.execute("DELETE FROM master_norms_detail WHERE id = ?", (item_id,))
         conn.commit()
         conn.close()
         self.send_json_response({"success": True, "message": "Đã xóa bản ghi thành công"})
@@ -761,22 +765,73 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             }
         })
 
-    def handle_get_norm_versions(self):
+    def handle_get_norm_versions(self, params=None):
+        params = params or {}
+        line_filter = params.get("line", ["all"])[0]
+        size_filter = params.get("size", ["all"])[0]
+
         conn = get_db()
         cur = conn.cursor()
-        rows = [dict(r) for r in cur.execute("SELECT v.*, COUNT(d.id) as item_count FROM master_norms_version v LEFT JOIN master_norms_detail d ON v.id = d.version_id GROUP BY v.id ORDER BY v.effective_from_year DESC, v.effective_from_month DESC, v.id DESC").fetchall()]
+        
+        # Query all versions
+        v_rows = [dict(r) for r in cur.execute("""
+            SELECT v.*, 
+                   COUNT(d.id) as item_count,
+                   GROUP_CONCAT(DISTINCT d.line) as lines_covered,
+                   GROUP_CONCAT(DISTINCT d.size) as sizes_covered
+            FROM master_norms_version v 
+            LEFT JOIN master_norms_detail d ON v.id = d.version_id 
+            GROUP BY v.id 
+            ORDER BY v.effective_from_year DESC, v.effective_from_month DESC, v.id DESC
+        """).fetchall()]
+
+        # Filter and augment matching item counts
+        result = []
+        for r in v_rows:
+            v_id = r["id"]
+            where_sub = ["version_id = ?"]
+            vals_sub = [v_id]
+            if line_filter != "all":
+                where_sub.append("line = ?")
+                vals_sub.append(line_filter)
+            if size_filter != "all":
+                where_sub.append("size = ?")
+                vals_sub.append(size_filter)
+            
+            sub_count = cur.execute(f"SELECT COUNT(*) FROM master_norms_detail WHERE {' AND '.join(where_sub)}", vals_sub).fetchone()[0]
+            r["filtered_item_count"] = sub_count
+            
+            if line_filter != "all" or size_filter != "all":
+                if sub_count > 0 or (r.get("line") in (line_filter, "all") and r.get("size") in (size_filter, "all")):
+                    result.append(r)
+            else:
+                result.append(r)
+
         conn.close()
-        self.send_json_response({"data": rows})
+        self.send_json_response({"data": result})
 
     def handle_get_norm_details(self, params):
         version_id = params.get("version_id", [None])[0]
+        line_filter = params.get("line", ["all"])[0]
+        size_filter = params.get("size", ["all"])[0]
+
         if not version_id:
             self.send_json_response({"error": "version_id required"}, status=400)
             return
         conn = get_db()
         cur = conn.cursor()
         v_info = dict(cur.execute("SELECT * FROM master_norms_version WHERE id = ?", (version_id,)).fetchone() or {})
-        rows = [dict(r) for r in cur.execute("SELECT * FROM master_norms_detail WHERE version_id = ? ORDER BY line, size, material_name", (version_id,)).fetchall()]
+        
+        where = ["version_id = ?"]
+        vals = [version_id]
+        if line_filter != "all":
+            where.append("line = ?")
+            vals.append(line_filter)
+        if size_filter != "all":
+            where.append("size = ?")
+            vals.append(size_filter)
+
+        rows = [dict(r) for r in cur.execute(f"SELECT * FROM master_norms_detail WHERE {' AND '.join(where)} ORDER BY line, size, material_name", vals).fetchall()]
         conn.close()
         self.send_json_response({"version": v_info, "details": rows})
 
@@ -786,7 +841,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         from_m = int(body.get("effective_from_month", 1))
         from_y = int(body.get("effective_from_year", 2026))
         desc = body.get("description", "")
+        line = body.get("line", "all")
+        size = body.get("size", "all")
         copy_from_id = body.get("copy_from_version_id")
+        items = body.get("items", [])
 
         if not code or not name:
             self.send_json_response({"error": "Mã và Tên phiên bản là bắt buộc"}, status=400)
@@ -795,11 +853,39 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         conn = get_db()
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO master_norms_version (version_code, version_name, effective_from_month, effective_from_year, description, is_active) VALUES (?, ?, ?, ?, ?, 1)", (code, name, from_m, from_y, desc))
+            cur.execute("""
+                INSERT INTO master_norms_version 
+                (version_code, version_name, effective_from_month, effective_from_year, description, is_active, line, size) 
+                VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+            """, (code, name, from_m, from_y, desc, line, size))
             new_v_id = cur.lastrowid
 
-            if copy_from_id:
-                cur.execute("INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value) SELECT ?, material_name, line, size, unit, norm_value FROM master_norms_detail WHERE version_id = ?", (new_v_id, copy_from_id))
+            if items and len(items) > 0:
+                for item in items:
+                    m_name = item.get("material_name", "").strip()
+                    m_line = item.get("line", line)
+                    m_size = item.get("size", size)
+                    m_unit = item.get("unit", "Kg")
+                    m_val = float(item.get("norm_value", 0))
+                    if m_name:
+                        cur.execute("""
+                            INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (new_v_id, m_name, m_line, m_size, m_unit, m_val))
+            elif copy_from_id:
+                if line != "all" or size != "all":
+                    where_cp = ["version_id = ?"]
+                    vals_cp = [new_v_id, copy_from_id]
+                    if line != "all":
+                        where_cp.append("line = ?")
+                        vals_cp.append(line)
+                    if size != "all":
+                        where_cp.append("size = ?")
+                        vals_cp.append(size)
+                    q = f"INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value) SELECT ?, material_name, line, size, unit, norm_value FROM master_norms_detail WHERE {' AND '.join(where_cp)}"
+                    cur.execute(q, vals_cp)
+                else:
+                    cur.execute("INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value) SELECT ?, material_name, line, size, unit, norm_value FROM master_norms_detail WHERE version_id = ?", (new_v_id, copy_from_id))
 
             conn.commit()
             conn.close()
@@ -825,6 +911,29 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         conn.commit()
         conn.close()
         self.send_json_response({"success": True, "message": "Đã cập nhật định mức thành công"})
+
+    def handle_add_norm_item(self, body):
+        version_id = body.get("version_id")
+        name = body.get("material_name", "").strip()
+        line = body.get("line", "DC1")
+        size = body.get("size", "30x60")
+        unit = body.get("unit", "Kg")
+        val = float(body.get("norm_value", 0))
+
+        if not version_id or not name:
+            self.send_json_response({"error": "Thiếu version_id hoặc Tên vật tư"}, status=400)
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO master_norms_detail (version_id, material_name, line, size, unit, norm_value)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (version_id, name, line, size, unit, val))
+        conn.commit()
+        conn.close()
+        self.send_json_response({"success": True, "message": "Đã thêm chỉ tiêu định mức thành công"})
+
 
     def handle_import_monthly_multipart(self, post_data, content_type):
         boundary = content_type.split("boundary=")[1].encode("utf-8")

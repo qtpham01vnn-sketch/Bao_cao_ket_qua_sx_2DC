@@ -2529,22 +2529,114 @@ function renderBrandsTable(rows) {
 }
 
 // ----------------------------------------------------
-// TAB 4: ĐỊNH MỨC PHIÊN BẢN (VERSIONED NORMS)
+// TAB 4: ĐỊNH MỨC PHIÊN BẢN (VERSIONED NORMS - THEO DÒNG KT)
 // ----------------------------------------------------
+let normLineFilter = 'all'; // 'all', 'DC1', 'DC2'
+let normSizeFilter = 'all'; // 'all', '30x60', '40x80', '50x50', '60x60'
+let currentNormVersionsList = [];
+let currentNormDetailsList = [];
+let currentNormInfo = {};
+
+// 1. SMART SLICERS LOGIC
+function setNormLineFilter(line) {
+  normLineFilter = line;
+  
+  // Update line slicer buttons UI
+  ['all', 'DC1', 'DC2'].forEach(l => {
+    const btn = document.getElementById(`btn-norm-line-${l}`);
+    if (btn) {
+      if (l === line) {
+        btn.className = "norm-slicer-btn px-2.5 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition shadow";
+      } else {
+        btn.className = "norm-slicer-btn px-2.5 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition";
+      }
+    }
+  });
+
+  // Re-render Size buttons container based on Line
+  const sizeContainer = document.getElementById("norm-size-buttons-container");
+  if (sizeContainer) {
+    if (line === 'DC1') {
+      normSizeFilter = '30x60';
+      sizeContainer.innerHTML = `
+        <button onclick="setNormSizeFilter('all')" id="btn-norm-size-all" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">Tất cả KT (DC1)</button>
+        <button onclick="setNormSizeFilter('30x60')" id="btn-norm-size-30x60" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition shadow">30x60 (300*600)</button>
+      `;
+    } else if (line === 'DC2') {
+      if (normSizeFilter === '30x60') normSizeFilter = 'all';
+      sizeContainer.innerHTML = `
+        <button onclick="setNormSizeFilter('all')" id="btn-norm-size-all" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === 'all' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">Tất cả KT DC2</button>
+        <button onclick="setNormSizeFilter('40x80')" id="btn-norm-size-40x80" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '40x80' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">40x80</button>
+        <button onclick="setNormSizeFilter('50x50')" id="btn-norm-size-50x50" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '50x50' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">50x50</button>
+        <button onclick="setNormSizeFilter('60x60')" id="btn-norm-size-60x60" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '60x60' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">60x60</button>
+      `;
+    } else {
+      sizeContainer.innerHTML = `
+        <button onclick="setNormSizeFilter('all')" id="btn-norm-size-all" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === 'all' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">Tất cả KT</button>
+        <button onclick="setNormSizeFilter('30x60')" id="btn-norm-size-30x60" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '30x60' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">30x60</button>
+        <button onclick="setNormSizeFilter('40x80')" id="btn-norm-size-40x80" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '40x80' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">40x80</button>
+        <button onclick="setNormSizeFilter('50x50')" id="btn-norm-size-50x50" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '50x50' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">50x50</button>
+        <button onclick="setNormSizeFilter('60x60')" id="btn-norm-size-60x60" class="norm-size-btn px-2.5 py-1 rounded text-xs font-bold ${normSizeFilter === '60x60' ? 'bg-emerald-600 text-white shadow' : 'bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400'} transition">60x60</button>
+      `;
+    }
+  }
+
+  updateNormFilterBadge();
+  loadNormVersions();
+}
+
+function setNormSizeFilter(size) {
+  normSizeFilter = size;
+  
+  // Update button active classes
+  const buttons = document.querySelectorAll(".norm-size-btn");
+  buttons.forEach(btn => {
+    btn.className = "norm-size-btn px-2.5 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition";
+  });
+  const activeBtn = document.getElementById(`btn-norm-size-${size}`);
+  if (activeBtn) {
+    activeBtn.className = "norm-size-btn px-2.5 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition shadow";
+  }
+
+  updateNormFilterBadge();
+  loadNormVersions();
+}
+
+function updateNormFilterBadge() {
+  const badge = document.getElementById("norm-filter-badge");
+  if (!badge) return;
+
+  const lineText = normLineFilter === 'all' ? 'Tất cả DC' : normLineFilter;
+  const sizeText = normSizeFilter === 'all' ? 'Tất cả Kích Thước' : `KT ${normSizeFilter}`;
+  badge.innerHTML = `<i data-lucide="filter" class="w-3.5 h-3.5 inline mr-1 text-cyan-400"></i> Lọc: <b>${lineText}</b> • <b>${sizeText}</b>`;
+  if (window.lucide) lucide.createIcons();
+}
+
+// 2. LOAD & RENDER NORM VERSIONS GRID
 async function loadNormVersions() {
   try {
-    const res = await fetch("/api/norms/versions");
+    const res = await fetch(`/api/norms/versions?line=${normLineFilter}&size=${normSizeFilter}`);
     const json = await res.json();
-    const versions = json.data || [];
-    renderNormVersionsGrid(versions);
+    currentNormVersionsList = json.data || [];
+    
+    renderNormVersionsGrid(currentNormVersionsList);
 
+    // Populate copy-from select in modal
     const sel = document.getElementById("new-version-copy-from");
     if (sel) {
-      sel.innerHTML = versions.map(v => `<option value="${v.id}">${v.version_code} - ${v.version_name}</option>`).join("");
+      sel.innerHTML = currentNormVersionsList.map(v => 
+        `<option value="${v.id}">${v.version_code} - ${v.version_name} (${v.line || 'all'}/${v.size || 'all'})</option>`
+      ).join("");
     }
 
-    if (versions.length > 0) {
-      loadNormDetails(currentNormVersionId || versions[0].id);
+    if (currentNormVersionsList.length > 0) {
+      const matchCurrent = currentNormVersionsList.find(v => v.id === currentNormVersionId);
+      const targetId = matchCurrent ? matchCurrent.id : currentNormVersionsList[0].id;
+      loadNormDetails(targetId);
+    } else {
+      const tbody = document.getElementById("norm-details-body");
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Không có phiên bản định mức nào phù hợp với bộ lọc hiện tại. Hãy bấm <b>+ Tạo Phiên Bản Mới</b> hoặc <b>Nhập Excel Trích Xuất Bản Mới</b>.</td></tr>`;
+      document.getElementById("current-norm-title").innerText = "Chưa chọn phiên bản định mức";
     }
   } catch (err) {
     console.error("Error loading norm versions:", err);
@@ -2555,58 +2647,139 @@ function renderNormVersionsGrid(versions) {
   const grid = document.getElementById("norm-versions-grid");
   if (!grid) return;
 
-  grid.innerHTML = versions.map(v => `
-    <div onclick="loadNormDetails(${v.id})" class="p-4 rounded-xl border cursor-pointer transition ${v.id === currentNormVersionId ? 'bg-blue-600/20 border-blue-500 shadow-lg' : 'bg-[#0f2042] border-[#1e3a6a]/60 hover:border-blue-400/50'}">
-      <div class="flex items-center justify-between mb-2">
-        <span class="px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 font-mono text-xs font-bold">${v.version_code}</span>
-        <span class="text-[11px] text-emerald-400 font-semibold">Hiệu lực: T${v.effective_from_month}/${v.effective_from_year}</span>
+  if (versions.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full p-6 text-center rounded-xl bg-[#091428] border border-dashed border-slate-700 text-slate-400 text-xs">
+        Chưa có phiên bản định mức nào cho tiêu chí đang chọn (${normLineFilter} / ${normSizeFilter}).
       </div>
-      <h4 class="text-xs font-bold text-white mb-1">${v.version_name}</h4>
-      <p class="text-[11px] text-slate-400 line-clamp-2">${v.description || 'Không có ghi chú'}</p>
-      <div class="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] text-slate-400">
-        <span>${v.item_count || 0} hạng mục định mức</span>
-        <span class="text-cyan-400 font-medium">Bảo toàn lịch sử ✓</span>
+    `;
+    return;
+  }
+
+  grid.innerHTML = versions.map(v => {
+    const isSelected = v.id === currentNormVersionId;
+    const lineLabel = v.line && v.line !== 'all' ? v.line : 'Chung 2 DC';
+    const sizeLabel = v.size && v.size !== 'all' ? v.size : (v.line === 'DC1' ? '30x60' : 'Đa KT');
+    const itemsCount = v.filtered_item_count !== undefined ? v.filtered_item_count : (v.item_count || 0);
+
+    return `
+      <div onclick="loadNormDetails(${v.id})" class="p-4 rounded-xl border cursor-pointer transition transform hover:-translate-y-0.5 ${isSelected ? 'bg-gradient-to-br from-blue-900/40 to-[#0f2042] border-blue-400 shadow-xl ring-1 ring-blue-500/50' : 'bg-[#0f2042] border-[#1e3a6a]/60 hover:border-blue-400/50 shadow-md'}">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 font-mono text-xs font-black border border-blue-400/30">${v.version_code}</span>
+            <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${v.line === 'DC1' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800' : (v.line === 'DC2' ? 'bg-amber-950/80 text-amber-300 border border-amber-800' : 'bg-slate-800 text-slate-300')}">${lineLabel} • ${sizeLabel}</span>
+          </div>
+          <span class="text-[11px] text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/40">T${v.effective_from_month}/${v.effective_from_year}</span>
+        </div>
+        <h4 class="text-xs font-bold text-white mb-1 leading-snug">${v.version_name}</h4>
+        <p class="text-[11px] text-slate-400 line-clamp-2">${v.description || 'Không có ghi chú'}</p>
+        <div class="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] text-slate-400">
+          <span class="font-semibold text-slate-300"><i data-lucide="list" class="w-3.5 h-3.5 inline mr-1 text-cyan-400"></i> ${itemsCount} chỉ tiêu</span>
+          <span class="${isSelected ? 'text-emerald-300 font-bold' : 'text-slate-400'}">${isSelected ? 'Đang chọn xem ✓' : 'Xem chi tiết →'}</span>
+        </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
+
+  if (window.lucide) lucide.createIcons();
 }
 
+// 3. LOAD & RENDER NORM DETAILS TABLE
 async function loadNormDetails(versionId) {
   currentNormVersionId = versionId;
   try {
-    const res = await fetch(`/api/norms/details?version_id=${versionId}`);
+    const res = await fetch(`/api/norms/details?version_id=${versionId}&line=${normLineFilter}&size=${normSizeFilter}`);
     const json = await res.json();
-    const ver = json.version || {};
-    const details = json.details || [];
+    currentNormInfo = json.version || {};
+    currentNormDetailsList = json.details || [];
 
-    document.getElementById("current-norm-title").innerText = `Chi tiết định mức: ${ver.version_code || 'V1'} - ${ver.version_name || ''}`;
-    const tbody = document.getElementById("norm-details-body");
-    tbody.innerHTML = details.map(d => `
-      <tr class="hover:bg-[#13284d]/50">
-        <td class="p-3 font-semibold text-white">${d.material_name}</td>
-        <td class="p-3 font-bold text-cyan-400">${d.line}</td>
-        <td class="p-3">${d.size}</td>
-        <td class="p-3 text-slate-400">${d.unit}</td>
-        <td class="p-3 text-right">
-          <input type="number" step="0.001" value="${d.norm_value}" data-item-id="${d.id}" class="norm-input-field w-28 bg-[#091428] border border-blue-500/30 text-xs font-bold text-cyan-300 px-2 py-1 rounded text-right focus:outline-none focus:border-emerald-400" />
-        </td>
-      </tr>
-    `).join("");
-    applyRolePermissions();
+    // Update Header and Badges
+    const lineLabel = currentNormInfo.line && currentNormInfo.line !== 'all' ? currentNormInfo.line : (normLineFilter !== 'all' ? normLineFilter : 'Chung');
+    const sizeLabel = currentNormInfo.size && currentNormInfo.size !== 'all' ? currentNormInfo.size : (normSizeFilter !== 'all' ? normSizeFilter : 'Đa KT');
+
+    const titleEl = document.getElementById("current-norm-title");
+    if (titleEl) {
+      titleEl.innerText = `Chi tiết định mức: ${currentNormInfo.version_code || 'V1'} - ${currentNormInfo.version_name || ''}`;
+    }
+
+    const badgeEl = document.getElementById("current-norm-line-badge");
+    if (badgeEl) {
+      badgeEl.innerText = `${lineLabel} · ${sizeLabel} (Hiệu lực: T${currentNormInfo.effective_from_month || 1}/${currentNormInfo.effective_from_year || 2026})`;
+    }
+
+    renderNormDetailsTable(currentNormDetailsList);
+    renderNormVersionsGrid(currentNormVersionsList); // re-highlight selected
   } catch (err) {
     console.error("Error loading norm details:", err);
   }
 }
 
+function renderNormDetailsTable(rows) {
+  const tbody = document.getElementById("norm-details-body");
+  if (!tbody) return;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Chưa có chỉ tiêu định mức nào. Hãy bấm <b>+ Thêm 1 Chỉ Tiêu</b> hoặc tải file Excel để nạp hàng loạt.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((d, idx) => `
+    <tr class="hover:bg-[#13284d]/50 transition border-b border-[#1e3a6a]/30">
+      <td class="p-2.5 text-center text-slate-400 font-mono text-[11px]">${idx + 1}</td>
+      <td class="p-2.5 font-bold text-white">${d.material_name}</td>
+      <td class="p-2.5 text-center font-bold ${d.line === 'DC1' ? 'text-cyan-400' : 'text-amber-400'}">
+        <span class="px-2 py-0.5 rounded text-[11px] ${d.line === 'DC1' ? 'bg-cyan-950 border border-cyan-800' : 'bg-amber-950 border border-amber-800'}">${d.line}</span>
+      </td>
+      <td class="p-2.5 text-center text-slate-300 font-semibold">${d.size}</td>
+      <td class="p-2.5 text-center text-slate-400">${d.unit}</td>
+      <td class="p-2.5 text-right">
+        <input type="number" step="0.0001" value="${d.norm_value}" data-item-id="${d.id}" class="norm-input-field w-32 bg-[#091428] border border-blue-500/30 text-xs font-mono font-bold text-cyan-300 px-2.5 py-1 rounded text-right focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400" />
+      </td>
+      <td class="p-2.5 text-center">
+        <button onclick="deleteNormItem(${d.id}, '${d.material_name.replace(/'/g, "\\'")}')" class="norm-delete-btn p-1 rounded hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 transition" title="Xóa chỉ tiêu này">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+
+  if (window.lucide) lucide.createIcons();
+  applyRolePermissions();
+}
+
+function filterNormMaterialList(keyword) {
+  if (!keyword || !keyword.trim()) {
+    renderNormDetailsTable(currentNormDetailsList);
+    return;
+  }
+  const term = keyword.toLowerCase().trim();
+  const filtered = currentNormDetailsList.filter(d => 
+    (d.material_name && d.material_name.toLowerCase().includes(term)) ||
+    (d.line && d.line.toLowerCase().includes(term)) ||
+    (d.size && d.size.toLowerCase().includes(term)) ||
+    (d.unit && d.unit.toLowerCase().includes(term))
+  );
+  renderNormDetailsTable(filtered);
+}
+
+// 4. SAVE NORM DETAILS (CHẾ ĐỘ NHẬP TAY)
 async function saveNormDetails() {
   const inputs = document.querySelectorAll(".norm-input-field");
   const items = [];
   inputs.forEach(inp => {
-    items.push({
-      id: parseInt(inp.getAttribute("data-item-id")),
-      norm_value: parseFloat(inp.value || 0)
-    });
+    const itemId = parseInt(inp.getAttribute("data-item-id"));
+    if (itemId) {
+      items.push({
+        id: itemId,
+        norm_value: parseFloat(inp.value || 0)
+      });
+    }
   });
+
+  if (items.length === 0) {
+    alert("Không có chỉ tiêu nào để lưu!");
+    return;
+  }
 
   try {
     const res = await fetch("/api/norms/details", {
@@ -2615,33 +2788,416 @@ async function saveNormDetails() {
       body: JSON.stringify({ version_id: currentNormVersionId, items: items })
     });
     const json = await res.json();
-    alert(json.message || "Đã lưu thay đổi định mức thành công!");
-    loadNormDetails(currentNormVersionId);
+    if (json.success) {
+      alert("✓ " + (json.message || "Đã lưu thay đổi định mức thành công!"));
+      loadNormDetails(currentNormVersionId);
+    } else {
+      alert("Lỗi: " + (json.error || "Không thể lưu định mức"));
+    }
   } catch (err) {
-    alert("Lỗi khi lưu định mức: " + err);
+    alert("Lỗi kết nối khi lưu định mức: " + err);
   }
 }
 
-function openCreateVersionModal() {
-  document.getElementById("modal-create-version").classList.remove("hidden");
+// 5. DOWNLOAD EXCEL TEMPLATE (TẢI FILE MẪU CHUẨN THEO DÒNG KT)
+function downloadNormTemplateExcel() {
+  const line = (normLineFilter !== 'all') ? normLineFilter : (document.getElementById("new-version-line")?.value || "DC1");
+  let size = (normSizeFilter !== 'all') ? normSizeFilter : (document.getElementById("new-version-size")?.value || (line === 'DC1' ? '30x60' : '40x80'));
+
+  let sampleRows = [];
+  if (line === "DC1") {
+    sampleRows = [
+      { stt: 1, name: "Men lót M01 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.1450, note: "Chuẩn định mức men lót DC1" },
+      { stt: 2, name: "Men phủ M02 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.1820, note: "Chuẩn định mức men phủ DC1" },
+      { stt: 3, name: "Men in lưới số 1 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.0120, note: "In hoa văn 30x60" },
+      { stt: 4, name: "Xương SP 30x60 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 4.8500, note: "Định mức xương thô" },
+      { stt: 5, name: "Than cục nung (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.5820, note: "Tiêu hao than cục" },
+      { stt: 6, name: "Than cám nung (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.0450, note: "Tiêu hao than cám" }
+    ];
+  } else {
+    sampleRows = [
+      { stt: 1, name: "Men lót M11 (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.1650, note: "Định mức men lót DC2" },
+      { stt: 2, name: "Men phủ M12 (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.2100, note: "Định mức men phủ DC2" },
+      { stt: 3, name: "Men bảo vệ bóng (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.0350, note: "Men phủ bảo vệ" },
+      { stt: 4, name: "Xương SP " + size + " (DC2)", line: "DC2", size: size, unit: "Kg", norm: 5.6200, note: "Định mức xương DC2" },
+      { stt: 5, name: "Than cục nung (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.6120, note: "Tiêu hao than cục DC2" },
+      { stt: 6, name: "Than cám nung (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.0520, note: "Tiêu hao than cám DC2" }
+    ];
+  }
+
+  // Generate CSV with UTF-8 BOM
+  let csvContent = "\uFEFF";
+  csvContent += "STT,TÊN NGUYÊN VẬT TƯ,DÂY CHUYỀN,KÍCH THƯỚC,ĐƠN VỊ TÍNH,ĐỊNH MỨC QUY ĐỊNH,GHI CHÚ\r\n";
+  sampleRows.forEach(r => {
+    csvContent += `"${r.stt}","${r.name}","${r.line}","${r.size}","${r.unit}","${r.norm}","${r.note}"\r\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Mau_Dinh_Muc_${line}_${size}_2026.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
-function closeModal(modalId) {
-  document.getElementById(modalId).classList.add("hidden");
+// 6. EXPORT CURRENT NORM TABLE TO EXCEL
+function exportCurrentNormTableExcel() {
+  if (!currentNormDetailsList || currentNormDetailsList.length === 0) {
+    alert("Không có dữ liệu định mức để xuất Excel!");
+    return;
+  }
+
+  const verCode = currentNormInfo.version_code || "DM";
+  let csvContent = "\uFEFF";
+  csvContent += `BÁO CÁO ĐỊNH MỨC TIÊU HAO - PHIÊN BẢN: ${verCode} - ${currentNormInfo.version_name || ''}\r\n`;
+  csvContent += `Hiệu lực: Tháng ${currentNormInfo.effective_from_month || 1}/${currentNormInfo.effective_from_year || 2026}\r\n\r\n`;
+  csvContent += "STT,TÊN NGUYÊN VẬT TƯ,DÂY CHUYỀN,KÍCH THƯỚC,ĐƠN VỊ TÍNH,ĐỊNH MỨC QUY ĐỊNH\r\n";
+
+  currentNormDetailsList.forEach((d, idx) => {
+    csvContent += `"${idx + 1}","${d.material_name}","${d.line}","${d.size}","${d.unit}","${d.norm_value}"\r\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Bang_Dinh_Muc_${verCode}_${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// 7. AUTO-EXTRACT FROM EXCEL FILE (CHẾ ĐỘ 1: TỰ ĐỘNG TRÍCH XUẤT)
+function triggerImportNormExcel() {
+  const fileInput = document.getElementById("norm-quick-excel-file");
+  if (fileInput) fileInput.click();
+}
+
+async function parseNormExcelFile(file, targetLine, targetSize) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    // Check if SheetJS is available and file is binary xlsx/xls
+    if (window.XLSX && !file.name.endsWith(".csv")) {
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (!rawRows || rawRows.length < 2) {
+            reject("File Excel không có đủ dữ liệu hàng!");
+            return;
+          }
+
+          // Find header row (search first 10 rows)
+          let headerIdx = 0;
+          for (let i = 0; i < Math.min(10, rawRows.length); i++) {
+            const r = rawRows[i].map(c => String(c || '').toLowerCase().trim());
+            if (r.some(c => c.includes("vật tư") || c.includes("material") || c.includes("tên") || c.includes("định mức") || c.includes("norm"))) {
+              headerIdx = i;
+              break;
+            }
+          }
+
+          const header = rawRows[headerIdx].map(c => String(c || '').toLowerCase().trim());
+          const nameCol = header.findIndex(c => c.includes("tên") || c.includes("vật tư") || c.includes("material") || c.includes("nguyên liệu"));
+          const normCol = header.findIndex(c => c.includes("định mức") || c.includes("norm") || c.includes("mức") || c.includes("quy định"));
+          const unitCol = header.findIndex(c => c.includes("đvt") || c.includes("đơn vị") || c.includes("unit"));
+          const lineCol = header.findIndex(c => c.includes("dây chuyền") || c.includes("dc") || c.includes("line"));
+          const sizeCol = header.findIndex(c => c.includes("kích thước") || c.includes("kt") || c.includes("size"));
+
+          if (nameCol === -1 || normCol === -1) {
+            reject("Không tìm thấy cột 'Tên vật tư' hoặc 'Định mức' trong file Excel!");
+            return;
+          }
+
+          const items = [];
+          for (let i = headerIdx + 1; i < rawRows.length; i++) {
+            const row = rawRows[i];
+            if (!row || row.length === 0) continue;
+            const matName = String(row[nameCol] || '').trim();
+            if (!matName || matName.toLowerCase().includes("tổng") || matName.toLowerCase().includes("stt")) continue;
+
+            const normVal = parseFloat(String(row[normCol] || '0').replace(/,/g, '.'));
+            const unitVal = unitCol !== -1 ? (String(row[unitCol] || 'Kg').trim() || 'Kg') : 'Kg';
+            const rowLine = lineCol !== -1 ? (String(row[lineCol] || targetLine).trim() || targetLine) : targetLine;
+            const rowSize = sizeCol !== -1 ? (String(row[sizeCol] || targetSize).trim() || targetSize) : targetSize;
+
+            items.push({
+              material_name: matName,
+              line: rowLine,
+              size: rowSize,
+              unit: unitVal,
+              norm_value: isNaN(normVal) ? 0 : normVal
+            });
+          }
+
+          resolve(items);
+        } catch (err) {
+          reject("Lỗi khi đọc file Excel: " + err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Fallback CSV text reader
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+          if (lines.length < 2) {
+            reject("File CSV không có đủ dữ liệu!");
+            return;
+          }
+
+          let headerIdx = 0;
+          for (let i = 0; i < Math.min(10, lines.length); i++) {
+            const lower = lines[i].toLowerCase();
+            if (lower.includes("vật tư") || lower.includes("material") || lower.includes("tên") || lower.includes("định mức")) {
+              headerIdx = i;
+              break;
+            }
+          }
+
+          const headerCols = lines[headerIdx].split(",").map(c => c.replace(/^"|"$/g, '').trim().toLowerCase());
+          const nameCol = headerCols.findIndex(c => c.includes("tên") || c.includes("vật tư") || c.includes("material"));
+          const normCol = headerCols.findIndex(c => c.includes("định mức") || c.includes("norm") || c.includes("mức"));
+          const unitCol = headerCols.findIndex(c => c.includes("đvt") || c.includes("đơn vị") || c.includes("unit"));
+          const lineCol = headerCols.findIndex(c => c.includes("dây chuyền") || c.includes("line"));
+          const sizeCol = headerCols.findIndex(c => c.includes("kích thước") || c.includes("size"));
+
+          const items = [];
+          for (let i = headerIdx + 1; i < lines.length; i++) {
+            const cols = lines[i].split(",").map(c => c.replace(/^"|"$/g, '').trim());
+            if (cols.length <= 1) continue;
+            const matName = cols[nameCol >= 0 ? nameCol : 1] || '';
+            if (!matName || matName.toLowerCase().includes("tổng")) continue;
+
+            const normVal = parseFloat(cols[normCol >= 0 ? normCol : (cols.length - 1)] || '0');
+            const unitVal = unitCol >= 0 ? cols[unitCol] : 'Kg';
+            const rowLine = lineCol >= 0 ? cols[lineCol] : targetLine;
+            const rowSize = sizeCol >= 0 ? cols[sizeCol] : targetSize;
+
+            items.push({
+              material_name: matName,
+              line: rowLine || targetLine,
+              size: rowSize || targetSize,
+              unit: unitVal || 'Kg',
+              norm_value: isNaN(normVal) ? 0 : normVal
+            });
+          }
+          resolve(items);
+        } catch (err) {
+          reject("Lỗi khi xử lý CSV: " + err);
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    }
+  });
+}
+
+// Quick Import directly from toolbar button
+async function importNormVersionFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const targetLine = normLineFilter !== 'all' ? normLineFilter : 'DC1';
+  const targetSize = normSizeFilter !== 'all' ? normSizeFilter : (targetLine === 'DC1' ? '30x60' : '40x80');
+
+  try {
+    const items = await parseNormExcelFile(file, targetLine, targetSize);
+    if (!items || items.length === 0) {
+      alert("Không trích xuất được chỉ tiêu nào từ file Excel!");
+      return;
+    }
+
+    // Auto calculate next version code
+    const basePrefix = `DM-${targetLine}-${targetSize}`;
+    let maxV = 1;
+    currentNormVersionsList.forEach(v => {
+      if (v.version_code && v.version_code.startsWith(basePrefix)) {
+        const match = v.version_code.match(/V(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num >= maxV) maxV = num + 1;
+        }
+      }
+    });
+
+    const newCode = `${basePrefix}-V${maxV}`;
+    const newName = `Định mức trích xuất tự động ${targetLine} ${targetSize} (V${maxV})`;
+    const currentMonth = 9; // T9/2026
+
+    const res = await fetch("/api/norms/versions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        version_code: newCode,
+        version_name: newName,
+        effective_from_month: currentMonth,
+        effective_from_year: 2026,
+        line: targetLine,
+        size: targetSize,
+        description: `Tự động trích xuất từ file: ${file.name} (${items.length} chỉ tiêu)`,
+        items: items
+      })
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      alert(`🎉 Đã trích xuất thành công ${items.length} chỉ tiêu vật tư!\nTạo phiên bản mới: ${newCode} (Hiệu lực: T${currentMonth}/2026)`);
+      if (json.version_id) currentNormVersionId = json.version_id;
+      loadNormVersions();
+    } else {
+      alert("Lỗi khi tạo phiên bản mới: " + (json.error || "Không rõ lỗi"));
+    }
+  } catch (err) {
+    alert("Lỗi trích xuất: " + err);
+  } finally {
+    event.target.value = ""; // reset input
+  }
+}
+
+// 8. MODAL DUAL-MODE CONTROLLER
+function openCreateVersionModal() {
+  const line = normLineFilter !== 'all' ? normLineFilter : 'DC1';
+  const size = normSizeFilter !== 'all' ? normSizeFilter : (line === 'DC1' ? '30x60' : '40x80');
+
+  const lineSel = document.getElementById("new-version-line");
+  if (lineSel) lineSel.value = line;
+
+  onModalNormLineChange();
+
+  const sizeSel = document.getElementById("new-version-size");
+  if (sizeSel) sizeSel.value = size;
+
+  onModalNormSizeChange();
+
+  switchCreateNormMode('excel');
+  document.getElementById("modal-create-version").classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+}
+
+function switchCreateNormMode(mode) {
+  const modeInp = document.getElementById("new-version-mode");
+  if (modeInp) modeInp.value = mode;
+
+  const btnExcel = document.getElementById("btn-norm-mode-excel");
+  const btnManual = document.getElementById("btn-norm-mode-manual");
+  const boxExcel = document.getElementById("modal-norm-box-excel");
+  const boxManual = document.getElementById("modal-norm-box-manual");
+  const submitText = document.getElementById("btn-submit-create-version-text");
+
+  if (mode === 'excel') {
+    if (btnExcel) btnExcel.className = "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-teal-600 text-white shadow";
+    if (btnManual) btnManual.className = "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-300 hover:bg-[#112348] hover:text-white";
+    if (boxExcel) boxExcel.classList.remove("hidden");
+    if (boxManual) boxManual.classList.add("hidden");
+    if (submitText) submitText.innerText = "Trích Xuất & Tạo Phiên Bản";
+  } else {
+    if (btnExcel) btnExcel.className = "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-300 hover:bg-[#112348] hover:text-white";
+    if (btnManual) btnManual.className = "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow";
+    if (boxExcel) boxExcel.classList.add("hidden");
+    if (boxManual) boxManual.classList.remove("hidden");
+    if (submitText) submitText.innerText = "Tạo & Kế Thừa Bản Cũ";
+  }
+}
+
+function onModalNormLineChange() {
+  const lineSel = document.getElementById("new-version-line");
+  const sizeSel = document.getElementById("new-version-size");
+  if (!lineSel || !sizeSel) return;
+
+  const line = lineSel.value;
+  if (line === "DC1") {
+    sizeSel.innerHTML = `
+      <option value="30x60" selected>30x60 (300x600 mm)</option>
+    `;
+  } else {
+    sizeSel.innerHTML = `
+      <option value="40x80" selected>40x80 (400x800 mm)</option>
+      <option value="50x50">50x50 (500x500 mm)</option>
+      <option value="60x60">60x60 (600x600 mm)</option>
+    `;
+  }
+  onModalNormSizeChange();
+}
+
+function onModalNormSizeChange() {
+  const line = document.getElementById("new-version-line")?.value || "DC1";
+  const size = document.getElementById("new-version-size")?.value || "30x60";
+
+  // Calculate next version code
+  const basePrefix = `DM-${line}-${size}`;
+  let maxV = 1;
+  currentNormVersionsList.forEach(v => {
+    if (v.version_code && v.version_code.startsWith(basePrefix)) {
+      const match = v.version_code.match(/V(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1]);
+        if (num >= maxV) maxV = num + 1;
+      }
+    }
+  });
+
+  const codeInp = document.getElementById("new-version-code");
+  const nameInp = document.getElementById("new-version-name");
+  if (codeInp) codeInp.value = `${basePrefix}-V${maxV}`;
+  if (nameInp) nameInp.value = `Định mức ${line} kích thước ${size} (Phiên bản ${maxV})`;
 }
 
 async function submitCreateVersion() {
-  const code = document.getElementById("new-version-code").value.trim();
-  const name = document.getElementById("new-version-name").value.trim();
-  const month = parseInt(document.getElementById("new-version-month").value);
-  const year = parseInt(document.getElementById("new-version-year").value);
-  const copyFrom = document.getElementById("new-version-copy-from").value;
-  const desc = document.getElementById("new-version-desc").value.trim();
+  const mode = document.getElementById("new-version-mode")?.value || "excel";
+  const code = document.getElementById("new-version-code")?.value.trim();
+  const name = document.getElementById("new-version-name")?.value.trim();
+  const month = parseInt(document.getElementById("new-version-month")?.value || "9");
+  const year = parseInt(document.getElementById("new-version-year")?.value || "2026");
+  const line = document.getElementById("new-version-line")?.value || "DC1";
+  const size = document.getElementById("new-version-size")?.value || "30x60";
+  const desc = document.getElementById("new-version-desc")?.value.trim() || "";
+  const errBox = document.getElementById("new-version-error-msg");
 
   if (!code || !name) {
-    alert("Vui lòng nhập đầy đủ Mã và Tên phiên bản!");
+    if (errBox) {
+      errBox.classList.remove("hidden");
+      errBox.innerText = "Vui lòng nhập đầy đủ Mã và Tên phiên bản!";
+    } else {
+      alert("Vui lòng nhập đầy đủ Mã và Tên phiên bản!");
+    }
     return;
   }
+
+  if (errBox) errBox.classList.add("hidden");
+
+  let items = [];
+
+  if (mode === "excel") {
+    const fileInp = document.getElementById("modal-norm-file");
+    const file = fileInp?.files[0];
+    if (!file) {
+      alert("Vui lòng chọn 1 file Excel/CSV định mức để trích xuất tự động!");
+      return;
+    }
+
+    try {
+      items = await parseNormExcelFile(file, line, size);
+      if (!items || items.length === 0) {
+        alert("Không trích xuất được dữ liệu nào từ file Excel!");
+        return;
+      }
+    } catch (parseErr) {
+      alert("Lỗi đọc file: " + parseErr);
+      return;
+    }
+  }
+
+  const copyFrom = document.getElementById("new-version-copy-from")?.value;
 
   try {
     const res = await fetch("/api/norms/versions", {
@@ -2652,21 +3208,112 @@ async function submitCreateVersion() {
         version_name: name,
         effective_from_month: month,
         effective_from_year: year,
-        copy_from_version_id: copyFrom ? parseInt(copyFrom) : null,
-        description: desc
+        line: line,
+        size: size,
+        copy_from_version_id: mode === "manual" && copyFrom ? parseInt(copyFrom) : null,
+        description: desc + (items.length > 0 ? ` (Nạp tự động ${items.length} chỉ tiêu)` : ''),
+        items: items
+      })
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      alert(`✓ Đã tạo thành công phiên bản định mức: ${code}!\nÁp dụng từ: Tháng ${month}/${year}`);
+      closeModal("modal-create-version");
+      if (json.version_id) currentNormVersionId = json.version_id;
+      loadNormVersions();
+    } else {
+      alert("Lỗi khi tạo phiên bản: " + (json.error || "Không rõ nguyên nhân"));
+    }
+  } catch (err) {
+    alert("Lỗi kết nối máy chủ: " + err);
+  }
+}
+
+// 9. ADD & DELETE NORM ITEM
+function openAddNormItemModal() {
+  const line = normLineFilter !== 'all' ? normLineFilter : 'DC1';
+  const size = normSizeFilter !== 'all' ? normSizeFilter : (line === 'DC1' ? '30x60' : '40x80');
+
+  const lineEl = document.getElementById("add-norm-line");
+  const sizeEl = document.getElementById("add-norm-size");
+  if (lineEl) lineEl.value = line;
+  if (sizeEl) sizeEl.value = size;
+
+  document.getElementById("add-norm-name").value = "";
+  document.getElementById("add-norm-val").value = "";
+  const errBox = document.getElementById("add-norm-error-msg");
+  if (errBox) errBox.classList.add("hidden");
+
+  document.getElementById("modal-add-norm-item").classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
+}
+
+async function submitAddNormItem() {
+  const name = document.getElementById("add-norm-name")?.value.trim();
+  const line = document.getElementById("add-norm-line")?.value || "DC1";
+  const size = document.getElementById("add-norm-size")?.value || "30x60";
+  const unit = document.getElementById("add-norm-unit")?.value || "Kg";
+  const val = parseFloat(document.getElementById("add-norm-val")?.value || "0");
+  const errBox = document.getElementById("add-norm-error-msg");
+
+  if (!name) {
+    if (errBox) {
+      errBox.classList.remove("hidden");
+      errBox.innerText = "Vui lòng nhập Tên nguyên vật tư!";
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/norms/items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        version_id: currentNormVersionId,
+        material_name: name,
+        line: line,
+        size: size,
+        unit: unit,
+        norm_value: val
       })
     });
     const json = await res.json();
     if (json.success) {
-      alert("Đã tạo phiên bản định mức mới thành công! Định mức mới chỉ áp dụng từ thời điểm hiệu lực.");
-      closeModal("modal-create-version");
-      loadNormVersions();
+      alert("✓ Đã thêm chỉ tiêu vật tư thành công!");
+      closeModal("modal-add-norm-item");
+      loadNormDetails(currentNormVersionId);
     } else {
-      alert(json.error || "Lỗi khi tạo phiên bản");
+      alert("Lỗi: " + (json.error || "Không thể thêm chỉ tiêu"));
     }
   } catch (err) {
     alert("Lỗi: " + err);
   }
+}
+
+async function deleteNormItem(itemId, itemName) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa chỉ tiêu định mức: "${itemName}" khỏi phiên bản này?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/norms/items?id=${itemId}`, {
+      method: "DELETE"
+    });
+    const json = await res.json();
+    if (json.success) {
+      loadNormDetails(currentNormVersionId);
+    } else {
+      alert("Lỗi khi xóa: " + (json.error || "Không thể xóa"));
+    }
+  } catch (err) {
+    alert("Lỗi: " + err);
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add("hidden");
 }
 
 // ----------------------------------------------------
