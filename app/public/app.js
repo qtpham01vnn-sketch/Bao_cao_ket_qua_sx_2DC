@@ -426,11 +426,266 @@ function togglePasswordVisibility(inputId, iconId) {
 }
 
 // ==========================================
+// BRANDING LOGOS & TRIAL/SESSION SECURITY
+// ==========================================
+const APP_LOGOS = {
+  logo_1: {
+    id: "logo_1",
+    name: "Mẫu 1: Gạch Men Đa Tầng 3D",
+    desc: "Khối gạch men 3D đa tầng (Men bóng & men mờ) lồng chữ P-N ánh kim Gold & Terracotta với viền Cyan công nghệ cao.",
+    svg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#B45309"/></linearGradient><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><rect x="18" y="10" width="34" height="34" rx="6" transform="rotate(45 35 27)" fill="#0b172a" stroke="url(#g2)" stroke-width="2.5"/><rect x="18" y="20" width="34" height="34" rx="6" transform="rotate(45 35 37)" fill="url(#g1)"/><path d="M26 34L44 16" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/><text x="35" y="41" font-family="Arial, sans-serif" font-weight="900" font-size="13" fill="#091428" text-anchor="middle" dominant-baseline="central">PN</text></svg>`
+  },
+  logo_2: {
+    id: "logo_2",
+    name: "Mẫu 2: Ngọn Lửa Lò Nung AI",
+    desc: "Ngọn lửa nung gạch khí hóa than cách điệu hình khối ôm trọn tinh thể men gạch trung tâm với vi mạch số thông minh.",
+    svg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="#DC2626"/><stop offset="50%" stop-color="#EA580C"/><stop offset="100%" stop-color="#FBBF24"/></linearGradient><linearGradient id="tileBase" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0E7490"/><stop offset="100%" stop-color="#0891B2"/></linearGradient></defs><rect x="10" y="38" width="44" height="18" rx="4" fill="#0f2042" stroke="url(#tileBase)" stroke-width="2"/><line x1="22" y1="42" x2="22" y2="52" stroke="#06B6D4" stroke-width="1.5"/><line x1="32" y1="42" x2="32" y2="52" stroke="#06B6D4" stroke-width="1.5"/><line x1="42" y1="42" x2="42" y2="52" stroke="#06B6D4" stroke-width="1.5"/><path d="M32 6C32 6 46 18 46 32C46 39.7 39.7 46 32 46C24.3 46 18 39.7 18 32C18 20 28 12 32 6Z" fill="url(#flame)"/><path d="M32 18C32 18 39 26 39 33C39 36.9 35.9 40 32 40C28.1 40 25 36.9 25 33C25 27 30 22 32 18Z" fill="#FEF08A"/><rect x="27" y="28" width="10" height="10" rx="2" transform="rotate(45 32 33)" fill="#091428" stroke="#F59E0B" stroke-width="1.5"/></svg>`
+  },
+  logo_3: {
+    id: "logo_3",
+    name: "Mẫu 3: Monogram PN Monolithic",
+    desc: "Chữ P-N cách điệu đúc khối titanium nguyên khối vững chãi trong khiên bảo vệ công nghiệp số.",
+    svg: `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full"><defs><linearGradient id="titanium" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38BDF8"/><stop offset="50%" stop-color="#0284C7"/><stop offset="100%" stop-color="#0369A1"/></linearGradient><linearGradient id="goldAcc" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FCD34D"/><stop offset="100%" stop-color="#F59E0B"/></linearGradient></defs><path d="M32 6L54 18V46L32 58L10 46V18L32 6Z" fill="#08142b" stroke="url(#titanium)" stroke-width="2.5"/><rect x="18" y="20" width="6" height="24" rx="2" fill="url(#goldAcc)"/><path d="M24 20H32C36 20 38 23 38 27C38 31 36 34 32 34H24V20Z" fill="url(#goldAcc)"/><rect x="40" y="20" width="6" height="24" rx="2" fill="url(#titanium)"/><path d="M24 20L42 44H46L28 20H24Z" fill="url(#titanium)" opacity="0.9"/></svg>`
+  }
+};
+
+function getAppLogo() {
+  const key = localStorage.getItem("px_selected_logo") || "logo_1";
+  return APP_LOGOS[key] || APP_LOGOS.logo_1;
+}
+
+function setAppLogo(logoKey) {
+  if (!APP_LOGOS[logoKey]) return;
+  localStorage.setItem("px_selected_logo", logoKey);
+  renderAppLogo();
+  renderBrandingSettings();
+  alert(`Đã áp dụng thành công ${APP_LOGOS[logoKey].name}!`);
+}
+
+function renderAppLogo() {
+  const logo = getAppLogo();
+  const container = document.getElementById("app-sidebar-logo-icon");
+  if (container) {
+    container.innerHTML = logo.svg;
+  }
+  const loginContainer = document.getElementById("login-logo-container");
+  if (loginContainer) {
+    loginContainer.innerHTML = logo.svg;
+  }
+}
+
+// ------------------------------------------
+// TRIAL COUNTDOWN ENGINE (25 HOURS)
+// ------------------------------------------
+const TRIAL_TOTAL_HOURS = 25;
+const TRIAL_DURATION_MS = TRIAL_TOTAL_HOURS * 3600 * 1000;
+
+function getDeviceFingerprint() {
+  let devId = localStorage.getItem("px_device_fingerprint");
+  if (!devId) {
+    devId = "dev_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now().toString(36);
+    localStorage.setItem("px_device_fingerprint", devId);
+  }
+  return devId;
+}
+
+function getTrialStartTime() {
+  let startTs = localStorage.getItem("px_trial_start_ts");
+  if (!startTs) {
+    startTs = Date.now().toString();
+    localStorage.setItem("px_trial_start_ts", startTs);
+  }
+  return Number(startTs);
+}
+
+function getTrialRemainingSeconds() {
+  const startTs = getTrialStartTime();
+  const elapsedMs = Date.now() - startTs;
+  const remainMs = Math.max(0, TRIAL_DURATION_MS - elapsedMs);
+  return Math.floor(remainMs / 1000);
+}
+
+function formatTrialTime(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+let trialIntervalTimer = null;
+
+function initTrialProtection() {
+  const devId = getDeviceFingerprint();
+  const isAuth = !!getActiveUser();
+  const badge = document.getElementById("trial-timer-badge");
+  const badgeText = document.getElementById("trial-timer-text");
+  const brandingRemain = document.getElementById("branding-trial-remain-text");
+  const brandingDev = document.getElementById("branding-my-device-id");
+
+  if (brandingDev) brandingDev.innerText = devId;
+
+  if (isAuth) {
+    // Official user logged in -> hide trial limits
+    if (badge) {
+      badge.classList.add("hidden");
+      badge.classList.remove("flex");
+    }
+    closeModal("modal-trial-expired");
+    if (brandingRemain) brandingRemain.innerText = "Không giới hạn (Tài khoản chính thức)";
+    return;
+  }
+
+  // Not logged in -> run countdown
+  if (badge) {
+    badge.classList.remove("hidden");
+    badge.classList.add("flex");
+  }
+
+  const tick = () => {
+    const remainSec = getTrialRemainingSeconds();
+    const formatted = formatTrialTime(remainSec);
+
+    if (badgeText) badgeText.innerText = formatted;
+    if (brandingRemain) brandingRemain.innerText = formatted;
+
+    if (remainSec <= 0) {
+      openModal("modal-trial-expired");
+    } else {
+      closeModal("modal-trial-expired");
+    }
+  };
+
+  tick();
+  if (trialIntervalTimer) clearInterval(trialIntervalTimer);
+  trialIntervalTimer = setInterval(tick, 1000);
+}
+
+function resetCurrentDeviceTrial() {
+  localStorage.setItem("px_trial_start_ts", Date.now().toString());
+  initTrialProtection();
+  alert(`Đã cấp mới thành công ${TRIAL_TOTAL_HOURS} giờ trải nghiệm cho thiết bị này!`);
+}
+
+// ------------------------------------------
+// SINGLE DEVICE SESSION (ANTI-SHARING)
+// ------------------------------------------
+function enforceSingleDeviceSession() {
+  const user = getActiveUser();
+  if (!user) return;
+
+  const currentToken = localStorage.getItem("px_auth_token");
+  if (!currentToken) return;
+
+  const users = getUsersDb();
+  const dbUser = users.find(u => u.username.toLowerCase() === user.username.toLowerCase());
+
+  if (dbUser && dbUser.activeSessionToken && dbUser.activeSessionToken !== currentToken) {
+    localStorage.removeItem("px_auth_session");
+    localStorage.removeItem("px_auth_token");
+    currentAuthUser = null;
+    currentRole = "operator";
+    openModal("modal-login");
+    alert(`CẢNH BÁO BẢO MẬT: Tài khoản [${user.username}] vừa được đăng nhập từ một thiết bị khác. Phiên làm việc trên thiết bị này đã được ngắt kết nối để bảo vệ an toàn dữ liệu.`);
+  }
+}
+
+// Storage event listener for multi-tab/multi-device session sync
+window.addEventListener("storage", (e) => {
+  if (e.key === "px_users_db_v4" || e.key === "px_auth_session" || e.key === "px_selected_logo") {
+    enforceSingleDeviceSession();
+    renderAppLogo();
+  }
+});
+
+function renderBrandingSettings() {
+  const currentLogo = getAppLogo();
+  const activeNameEl = document.getElementById("active-logo-name");
+  if (activeNameEl) activeNameEl.innerText = currentLogo.name;
+
+  const grid = document.getElementById("logo-selector-grid");
+  if (grid) {
+    grid.innerHTML = Object.values(APP_LOGOS).map(l => {
+      const isSelected = l.id === currentLogo.id;
+      return `
+        <div class="p-4 rounded-xl border transition ${isSelected ? 'bg-amber-500/10 border-amber-500/80 shadow-lg shadow-amber-950/30 ring-2 ring-amber-400/40' : 'bg-[#091428] border-blue-500/30 hover:border-blue-400/60'} flex flex-col justify-between space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold ${isSelected ? 'text-amber-300' : 'text-white'}">${l.name}</span>
+            ${isSelected ? '<span class="px-2 py-0.5 rounded text-[9.5px] font-bold bg-amber-500 text-black">Đang Dùng</span>' : ''}
+          </div>
+          <div class="w-16 h-16 mx-auto flex items-center justify-center p-2 rounded-2xl bg-[#071124] border border-[#1e3a6a]/60 shadow-inner">
+            ${l.svg}
+          </div>
+          <p class="text-[11px] text-slate-400 leading-normal text-center min-h-[40px]">${l.desc}</p>
+          <button onclick="setAppLogo('${l.id}')" class="w-full py-2 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${isSelected ? 'bg-amber-600 text-white shadow' : 'bg-[#112348] hover:bg-emerald-600 text-cyan-300 hover:text-white'}">
+            <i data-lucide="${isSelected ? 'check' : 'sparkles'}" class="w-3.5 h-3.5"></i>
+            <span>${isSelected ? 'Logo Hiện Tại' : 'Áp Dụng Logo Này'}</span>
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // Render Session Table
+  const sessionTbody = document.getElementById("branding-sessions-table-body");
+  if (sessionTbody) {
+    const users = getUsersDb();
+    sessionTbody.innerHTML = users.map((u, idx) => {
+      const hasToken = !!u.activeSessionToken;
+      return `
+        <tr class="hover:bg-[#13284d]/50">
+          <td class="p-2.5 font-mono font-bold text-cyan-300 border border-[#1e3a6a]/40">${u.username}</td>
+          <td class="p-2.5 font-bold text-white border border-[#1e3a6a]/40">${u.fullname}</td>
+          <td class="p-2.5 text-center border border-[#1e3a6a]/40">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${u.roleBadgeClass || 'bg-slate-700 text-slate-300'}">
+              ${u.roleName || u.role}
+            </span>
+          </td>
+          <td class="p-2.5 font-mono text-[10.5px] text-slate-400 border border-[#1e3a6a]/40">
+            ${u.activeSessionToken ? `<span class="text-emerald-400 font-bold">${u.activeSessionToken.substring(0, 14)}...</span>` : '<span class="text-slate-500 italic">Chưa đăng nhập</span>'}
+          </td>
+          <td class="p-2.5 text-center border border-[#1e3a6a]/40">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${hasToken ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'}">
+              ${hasToken ? 'Đang Hoạt Động (1 Thiết Bị)' : 'Offline'}
+            </span>
+          </td>
+          <td class="p-2.5 text-center border border-[#1e3a6a]/40">
+            ${hasToken ? `
+              <button onclick="terminateRemoteSession('${u.username}')" class="px-2 py-1 rounded bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-[10.5px] font-bold text-rose-300 transition flex items-center gap-1 mx-auto">
+                <i data-lucide="power-off" class="w-3 h-3"></i> Ngắt Phiên
+              </button>
+            ` : '<span class="text-slate-500 text-[10px]">-</span>'}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  const devEl = document.getElementById("branding-my-device-id");
+  if (devEl) devEl.innerText = getDeviceFingerprint();
+
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
+function terminateRemoteSession(username) {
+  if (confirm(`Bạn có chắc chắn muốn ngắt kết nối phiên làm việc của [${username}] không? Thiết bị đang đăng nhập tài khoản này sẽ bị đẩy ra ngay.`)) {
+    const users = getUsersDb();
+    const idx = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+    if (idx !== -1) {
+      users[idx].activeSessionToken = null;
+      saveUsersDb(users);
+      renderBrandingSettings();
+      alert(`Đã ngắt phiên làm việc của [${username}] thành công.`);
+    }
+  }
+}
+
+// ==========================================
 // AUTHENTICATION MODAL & LOGOUT CONTROLLER
 // ==========================================
 function handleLogout() {
   if (confirm("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?")) {
     localStorage.removeItem("px_auth_session");
+    localStorage.removeItem("px_auth_token");
     currentAuthUser = null;
     currentRole = "operator";
 
@@ -442,6 +697,7 @@ function handleLogout() {
     const errEl = document.getElementById("login-error-msg");
     if (errEl) errEl.classList.add("hidden");
 
+    initTrialProtection();
     openModal("modal-login");
     setTimeout(() => {
       if (uField) uField.focus();
@@ -481,10 +737,20 @@ function handleManualLogin() {
     return;
   }
 
-  // Success login
-  if (errEl) errEl.classList.add("hidden");
+  // Success login -> Generate Single Device Session Token
+  const sessionToken = "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
   localStorage.setItem("px_auth_session", user.username);
+  localStorage.setItem("px_auth_token", sessionToken);
   localStorage.setItem("user_role", user.role);
+
+  const idx = users.findIndex(u => u.username.toLowerCase() === user.username.toLowerCase());
+  if (idx !== -1) {
+    users[idx].activeSessionToken = sessionToken;
+    users[idx].lastActiveDevice = navigator.userAgent;
+    users[idx].lastLoginAt = new Date().toLocaleString("vi-VN");
+    saveUsersDb(users);
+  }
+
   currentRole = user.role;
   currentAuthUser = user;
   
@@ -493,6 +759,7 @@ function handleManualLogin() {
   if (pInp) pInp.value = "";
 
   closeModal("modal-login");
+  initTrialProtection();
   applyRolePermissions();
   renderAccountsTable();
   if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -603,6 +870,8 @@ function switchMasterSubTab(subTabId) {
     renderAccountsTable();
   } else if (subTabId === "norms") {
     loadNormVersions();
+  } else if (subTabId === "branding") {
+    renderBrandingSettings();
   }
   if (window.lucide) lucide.createIcons();
 }
@@ -950,8 +1219,15 @@ function toggleMobileSidebar(show) {
 document.addEventListener("DOMContentLoaded", () => {
   if (window.lucide && lucide.createIcons) lucide.createIcons();
 
+  // Render Active Logo Icon
+  try { renderAppLogo(); } catch(e) { console.error("renderAppLogo err:", e); }
+
   // Strict Authentication Guard
   const isAuth = checkAndEnforceAuth();
+
+  // Initialize 25h Trial Protection & Anti-Sharing Session Check
+  try { initTrialProtection(); } catch(e) { console.error("initTrialProtection err:", e); }
+  try { enforceSingleDeviceSession(); } catch(e) { console.error("enforceSingleDeviceSession err:", e); }
 
   renderAccountsTable();
   try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }

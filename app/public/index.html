@@ -57,8 +57,8 @@
         <!-- Brand Header -->
         <div class="p-3.5 border-b border-[#1e3a6a]/40 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg font-black text-base text-slate-900 shrink-0">
-              PN
+            <div id="app-sidebar-logo-icon" class="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden">
+              <!-- Dynamically populated by JS renderAppLogo() -->
             </div>
             <div>
               <h1 class="text-xs font-black text-white tracking-wider uppercase leading-tight">PXSX PHƯƠNG NAM</h1>
@@ -122,12 +122,12 @@
           </button>
 
           <button onclick="switchTab('brands')" id="nav-brands" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="tag" class="w-4 h-4 shrink-0"></i>
+            <i data-lucide="tags" class="w-4 h-4 shrink-0"></i>
             <span>Thương hiệu</span>
           </button>
 
           <button onclick="switchTab('consumption')" id="nav-consumption" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4 shrink-0"></i>
+            <i data-lucide="layers" class="w-4 h-4 shrink-0"></i>
             <span>Tiêu hao vật tư</span>
           </button>
 
@@ -137,7 +137,7 @@
           </button>
 
           <button onclick="switchTab('export-report')" id="nav-export-report" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="file-check-2" class="w-4 h-4 shrink-0"></i>
+            <i data-lucide="file-check-2" class="w-4 h-4 shrink-0 text-amber-400"></i>
             <span>Báo cáo trình ký</span>
           </button>
 
@@ -166,6 +166,13 @@
 
         <!-- Right Quick Controls -->
         <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Trial 25h Countdown Badge (Shows when trial mode is active) -->
+          <div id="trial-timer-badge" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold transition shadow" title="Thời gian trải nghiệm app còn lại trên thiết bị này">
+            <i data-lucide="timer" class="w-3.5 h-3.5 text-amber-400 animate-pulse"></i>
+            <span class="hidden md:inline text-[11px] text-amber-400/90 font-medium">Dùng thử:</span>
+            <span id="trial-timer-text" class="font-mono font-black text-amber-300">25:00:00</span>
+          </div>
+
           <!-- Role Switcher -->
           <div class="flex items-center gap-1.5 bg-[#112348] px-2.5 py-1.5 rounded-lg border border-blue-500/30 text-xs">
             <i data-lucide="user-check" class="w-3.5 h-3.5 text-cyan-300 shrink-0"></i>
@@ -1753,6 +1760,10 @@
               <i data-lucide="history" class="w-4 h-4 text-amber-400"></i>
               <span>Nhật Ký & Phân Quyền</span>
             </button>
+            <button onclick="switchMasterSubTab('branding')" id="btn-sub-branding" class="master-sub-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-300 hover:bg-[#112348] hover:text-white">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-purple-400"></i>
+              <span>Logo & Bản Quyền & Thiết Bị</span>
+            </button>
           </div>
 
           <!-- ================= SUB-PANE 1: QUẢN LÝ TÀI KHOẢN (MATCHING IMAGE 3) ================= -->
@@ -2035,11 +2046,12 @@
               <button id="btn-submit-import" onclick="submitMonthlyImport()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl shadow-lg transition">
                 Tiến Hành Xử Lý & Trích Xuất Dữ Liệu
               </button>
-
-              <!-- Logs Output -->
-              <div id="import-logs-box" class="hidden p-4 rounded-lg bg-[#060c18] border border-blue-500/30 text-xs font-mono text-cyan-300 space-y-1">
-              </div>
             </div>
+
+            <!-- Logs Output -->
+            <div id="import-logs-box" class="hidden p-4 rounded-lg bg-[#060c18] border border-blue-500/30 text-xs font-mono text-cyan-300 space-y-1">
+            </div>
+            
           </div>
 
           <!-- ================= SUB-PANE 4: NHẬT KÝ & PHÂN QUYỀN (LOGS & RBAC) ================= -->
@@ -2203,6 +2215,110 @@
                   <span class="text-slate-400 block font-medium mb-0.5">• Môi Trường Triển Khai:</span>
                   <span class="text-cyan-300 font-bold">Vercel Production Edge & Local Dev Server</span>
                 </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ================= SUB-PANE 5: LOGO THƯƠNG HIỆU & BẢN QUYỀN 25H & THIẾT BỊ ================= -->
+          <div id="sub-master-branding" class="master-sub-pane hidden space-y-6">
+            
+            <!-- SECTION 1: 3 MẪU LOGO NHẬN DIỆN THƯƠNG HIỆU -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+                <div>
+                  <h3 class="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="palette" class="w-4 h-4 text-amber-400"></i>
+                    BỘ SƯU TẬP 3 LOGO ICON CAO CẤP · PXSX GẠCH MEN PHƯƠNG NAM
+                  </h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Chọn 1 trong 3 mẫu logo vector chuẩn công nghiệp bên dưới để áp dụng tức thì cho toàn bộ hệ thống.</p>
+                </div>
+                <div id="active-logo-badge" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                  <span>Đang dùng: <b id="active-logo-name">Mẫu 1 - Gạch Men Đa Tầng</b></span>
+                </div>
+              </div>
+
+              <!-- 3 Logo Cards Grid -->
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="logo-selector-grid">
+                <!-- Injected dynamically by renderBrandingSettings() -->
+              </div>
+            </div>
+
+            <!-- SECTION 2: CẤU HÌNH KHÓA ĐỒNG HỒ DÙNG THỬ 25 GIỜ (TRIAL COUNTDOWN) -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+                <div>
+                  <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="timer" class="w-4 h-4 text-cyan-400"></i>
+                    CHẾ ĐỘ 1: KHÓA ĐỒNG HỒ ĐẾM NGƯỢC DÙNG THỬ (25 GIỜ TRẢI NGHIỆM)
+                  </h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Tự động nhận diện thiết bị mới và giới hạn thời gian trải nghiệm. Hết 25 giờ sẽ khóa màn hình yêu cầu liên hệ Admin.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-cyan-300 border border-blue-500/40 text-xs font-bold flex items-center gap-1">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>Tự động kích hoạt</span>
+                  </span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="p-4 rounded-xl bg-[#091428] border border-blue-500/30 space-y-2">
+                  <div class="text-xs text-slate-400 font-medium">Mã thiết bị của bạn (Device ID):</div>
+                  <div id="branding-my-device-id" class="font-mono text-xs font-bold text-cyan-300 break-all bg-[#0b1b36] p-2 rounded border border-blue-500/20">dev_loading...</div>
+                  <div class="text-[10px] text-slate-500">Mã định danh duy nhất theo phần cứng & trình duyệt.</div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-[#091428] border border-amber-500/30 space-y-2">
+                  <div class="text-xs text-slate-400 font-medium">Thời gian dùng thử còn lại:</div>
+                  <div id="branding-trial-remain-text" class="font-mono text-base font-black text-amber-300 bg-[#162215] p-2 rounded border border-amber-500/40">25:00:00</div>
+                  <div class="text-[10px] text-slate-500">Đồng hồ đếm lùi liên tục đến khi hết 25 giờ.</div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-[#091428] border border-purple-500/30 space-y-2.5">
+                  <div class="text-xs text-slate-400 font-medium">Thao tác Quản trị viên (Admin):</div>
+                  <button onclick="resetCurrentDeviceTrial()" class="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-900 font-bold text-xs shadow transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    <span>Reset 25 Giờ Dùng Thử Cho Máy Này</span>
+                  </button>
+                  <div class="text-[10px] text-slate-500 text-center">Cho phép cấp lại 25 giờ test mới khi cần.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 3: CƠ CHẾ CẤP TÀI KHOẢN & KHÓA 1 THIẾT BỊ ĐỘC QUYỀN (SINGLE DEVICE SESSION) -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+                <div>
+                  <h3 class="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="lock" class="w-4 h-4 text-emerald-400"></i>
+                    CHẾ ĐỘ 2: KHÓA 1 THIẾT BỊ ĐỘC QUYỀN (CHỐNG CHIA SẺ TÀI KHOẢN TUYỆT ĐỐI)
+                  </h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Nếu tài khoản đăng nhập trên máy mới, máy cũ sẽ bị đẩy ra ngay lập tức để ngăn chặn chia sẻ mật khẩu.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                  <span>Bảo vệ Single Session Active</span>
+                </span>
+              </div>
+
+              <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px]">
+                    <tr>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Tài Khoản</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Họ và Tên</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Vai Trò</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40">Mã Phiên (Session Token)</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center">Trạng Thái Thiết Bị</th>
+                      <th class="p-2.5 border border-[#1e3a6a]/40 text-center">Hành Động</th>
+                    </tr>
+                  </thead>
+                  <tbody id="branding-sessions-table-body" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
               </div>
             </div>
 
