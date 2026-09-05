@@ -3717,7 +3717,7 @@ function renderConsumptionTable(rows) {
   document.getElementById("consumption-row-count").innerText = `${rows.length} dòng dữ liệu`;
 
   if (!rows || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Không tìm thấy dữ liệu</td></tr>`;
     return;
   }
 
@@ -3745,7 +3745,6 @@ function renderConsumptionTable(rows) {
             ${r.status_text || (hasData ? 'Có số liệu' : 'Chưa nhập lượng sử dụng')}
           </span>
         </td>
-        <td class="p-3 text-slate-400 text-[11px]">${r.source_row || 'Data tổng hợp III'}</td>
       </tr>
     `;
   }).join("");
@@ -5221,55 +5220,68 @@ function printBrandsReport() {
   const lineStr = line === "all" ? "Toàn bộ DC1 & DC2" : `Dây chuyền ${line}`;
   const sizeStr = size === "all" ? "Tất cả kích thước" : `Kích thước ${size}`;
 
-  let sumPlan = 0, sumActual = 0, sumA1 = 0, sumA = 0, sumB = 0;
-  const rowsHtml = rawBrandsData.map((r, idx) => {
-    const plan = Number(r.plan_m2 || 0);
-    const actual = Number(r.actual_m2 || 0);
-    const a1 = Number(r.a1_m2 || 0);
-    const a = Number(r.a_m2 || 0);
-    const b = Number(r.b_m2 || 0);
-    sumPlan += plan; sumActual += actual; sumA1 += a1; sumA += a; sumB += b;
+  let sumA1 = 0, sumA = 0, sumB = 0, grandTotal = 0;
+  rawBrandsData.forEach(r => {
+    const q = Number(r.quantity_m2 || 0);
+    grandTotal += q;
+    if (r.grade === "A1") sumA1 += q;
+    else if (r.grade === "A") sumA += q;
+    else if (r.grade === "B") sumB += q;
+  });
 
-    const pctA1 = actual > 0 ? (a1 / actual * 100) : 0;
-    const pctRate = plan > 0 ? (actual / plan * 100) : 0;
+  const pctA1 = grandTotal > 0 ? (sumA1 / grandTotal * 100) : 0;
+  const pctA = grandTotal > 0 ? (sumA / grandTotal * 100) : 0;
+  const pctB = grandTotal > 0 ? (sumB / grandTotal * 100) : 0;
+
+  const rowsHtml = rawBrandsData.map((r, idx) => {
+    const q = Number(r.quantity_m2 || 0);
+    const gradeBadge = r.grade === 'A1' 
+      ? '<span style="display:inline-block; padding: 2px 6px; font-weight: bold; border-radius: 4px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 10px;">A1</span>'
+      : (r.grade === 'A'
+        ? '<span style="display:inline-block; padding: 2px 6px; font-weight: bold; border-radius: 4px; background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; font-size: 10px;">A</span>'
+        : '<span style="display:inline-block; padding: 2px 6px; font-weight: bold; border-radius: 4px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 10px;">B</span>');
 
     return `
       <tr>
         <td style="text-align: center;">${idx + 1}</td>
+        <td style="text-align: center;">${r.month || month}/${r.year || 2026}</td>
         <td style="text-align: center; font-weight: bold;">${r.line}</td>
-        <td style="text-align: center;">${r.size}</td>
+        <td style="text-align: center;">${r.size || '-'}</td>
+        <td>${r.glaze_type || 'Phương Nam'}</td>
         <td style="font-weight: 600;">${r.brand_name}</td>
-        <td>${r.glaze_type || ''}</td>
-        <td style="text-align: right;">${formatNumber(plan, 2)}</td>
-        <td style="text-align: right; font-weight: bold;">${formatNumber(actual, 2)}</td>
-        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(a1, 2)}</td>
-        <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(pctA1, 2)}%</td>
-        <td style="text-align: right;">${formatNumber(a, 2)}</td>
-        <td style="text-align: right;">${formatNumber(b, 2)}</td>
-        <td style="text-align: right; font-weight: bold; color: ${pctRate >= 100 ? '#16a34a' : '#d97706'};">${formatNumber(pctRate, 2)}%</td>
+        <td style="text-align: center;">${gradeBadge}</td>
+        <td style="text-align: right; font-weight: bold;">${formatNumber(q, 2)}</td>
       </tr>
     `;
   }).join("");
 
-  const pctA1Total = sumActual > 0 ? (sumA1 / sumActual * 100) : 0;
-  const pctRateTotal = sumPlan > 0 ? (sumActual / sumPlan * 100) : 0;
-
   const tableHtml = `
+    <div style="margin-bottom: 12px; display: flex; gap: 12px; font-size: 11px;">
+      <div style="flex: 1; padding: 8px 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+        <span style="color: #166534; font-weight: bold;">Tổng Loại A1:</span> <b>${formatNumber(sumA1, 2)} m²</b> (${formatNumber(pctA1, 2)}%)
+      </div>
+      <div style="flex: 1; padding: 8px 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;">
+        <span style="color: #1e40af; font-weight: bold;">Tổng Loại A:</span> <b>${formatNumber(sumA, 2)} m²</b> (${formatNumber(pctA, 2)}%)
+      </div>
+      <div style="flex: 1; padding: 8px 10px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;">
+        <span style="color: #92400e; font-weight: bold;">Tổng Loại B:</span> <b>${formatNumber(sumB, 2)} m²</b> (${formatNumber(pctB, 2)}%)
+      </div>
+      <div style="flex: 1.2; padding: 8px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <span style="color: #0f172a; font-weight: bold;">Tổng Toàn Bộ:</span> <b style="color: #0284c7; font-size: 12px;">${formatNumber(grandTotal, 2)} m²</b>
+      </div>
+    </div>
+
     <table class="data-table">
       <thead>
         <tr>
-          <th style="width: 25px;">STT</th>
+          <th style="width: 30px;">STT</th>
+          <th style="width: 60px;">Kỳ</th>
           <th style="width: 45px;">DC</th>
-          <th style="width: 55px;">Kích Thước</th>
+          <th style="width: 65px;">Kích Thước</th>
+          <th>Dòng Men / Sản Phẩm</th>
           <th>Tên Thương Hiệu / Nhãn Hàng</th>
-          <th style="width: 80px;">Loại Men</th>
-          <th style="width: 80px;">Kế Hoạch (m²)</th>
-          <th style="width: 80px;">Thực Hiện (m²)</th>
-          <th style="width: 75px;">A1 (m²)</th>
-          <th style="width: 55px;">% A1</th>
-          <th style="width: 70px;">A (m²)</th>
-          <th style="width: 70px;">B (m²)</th>
-          <th style="width: 65px;">% Đạt KH</th>
+          <th style="width: 60px;">Loại</th>
+          <th style="width: 105px;">Sản Lượng (m²)</th>
         </tr>
       </thead>
       <tbody>
@@ -5277,25 +5289,19 @@ function printBrandsReport() {
       </tbody>
       <tfoot>
         <tr class="row-total-main">
-          <td colspan="5" style="text-align: center; text-transform: uppercase;">TỔNG CỘNG SẢN LƯỢNG THƯƠNG HIỆU</td>
-          <td style="text-align: right;">${formatNumber(sumPlan, 2)}</td>
-          <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(sumActual, 2)}</td>
-          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(sumA1, 2)}</td>
-          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(pctA1Total, 2)}%</td>
-          <td style="text-align: right;">${formatNumber(sumA, 2)}</td>
-          <td style="text-align: right;">${formatNumber(sumB, 2)}</td>
-          <td style="text-align: right; color: #0284c7; font-size: 11px;">${formatNumber(pctRateTotal, 2)}%</td>
+          <td colspan="7" style="text-align: center; text-transform: uppercase;">TỔNG CỘNG SẢN LƯỢNG THƯƠNG HIỆU</td>
+          <td style="text-align: right; color: #0284c7; font-size: 12px; font-weight: bold;">${formatNumber(grandTotal, 2)}</td>
         </tr>
       </tfoot>
     </table>
   `;
 
   const html = createPrintDocumentHtml({
-    title: "BÁO CÁO SẢN LƯỢNG THEO DÒNG SẢN PHẨM & NHÃN HIỆU",
-    subTitle: "Chi tiết cơ cấu thương hiệu sản xuất",
+    title: "BÁO CÁO SẢN LƯỢNG THEO DÒNG SẢN PHẨM & THƯƠNG HIỆU",
+    subTitle: "Chi tiết cơ cấu phân loại thương hiệu theo dây chuyền và kích thước",
     periodInfo: `Kỳ: <b>${monthStr}</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>`,
     tableHtml: tableHtml,
-    orientation: "landscape"
+    orientation: "portrait"
   });
 
   openPrintWindow(html);
@@ -5317,24 +5323,33 @@ function printConsumptionReport() {
   const sizeStr = size === "all" ? "Tất cả kích thước" : `Kích thước ${size}`;
 
   const rowsHtml = rawConsumptionData.map((r, idx) => {
-    const norm = Number(r.norm_value || 0);
-    const actual = Number(r.actual_rate || 0);
-    const diff = norm > 0 ? ((actual - norm) / norm * 100) : 0;
-    const isSave = actual <= norm;
+    const hasData = (Number(r.used_qty) > 0) || (Number(r.actual_rate) > 0);
+    const prodM2 = Number(r.prod_qty || r.calculated_m2 || 0);
+    const diff = Number(r.diff_qty || 0);
+    const diffStr = diff !== 0 ? (diff > 0 ? `+${formatNumber(diff, 2)}` : `${formatNumber(diff, 2)}`) : "-";
+    const diffColor = diff < 0 ? "#15803d" : (diff > 0 ? "#b91c1c" : "#64748b");
+    const diffBg = diff < 0 ? "#f0fdf4" : (diff > 0 ? "#fef2f2" : "transparent");
+    const isSave = diff <= 0;
+    const statusBadge = hasData 
+      ? (isSave 
+          ? '<span style="display:inline-block; padding: 2px 6px; font-weight: bold; border-radius: 4px; background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 10px;">Đạt định mức ✓</span>'
+          : '<span style="display:inline-block; padding: 2px 6px; font-weight: bold; border-radius: 4px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 10px;">Vượt định mức ✗</span>')
+      : '<span style="display:inline-block; padding: 2px 6px; font-size: 10px; color: #64748b;">Chưa nhập liệu</span>';
 
     return `
       <tr>
         <td style="text-align: center;">${idx + 1}</td>
+        <td style="text-align: center;">${r.month || month}/${r.year || 2026}</td>
+        <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
+        <td style="text-align: center;">${r.size || '-'}</td>
         <td style="font-weight: 600;">${r.material_name}</td>
         <td style="text-align: center;">${r.unit || 'Kg'}</td>
-        <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
-        <td style="text-align: center;">${r.size || ''}</td>
-        <td style="text-align: right; font-mono font-bold;">${formatNumber(norm, 4)}</td>
-        <td style="text-align: right; font-mono font-bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${formatNumber(actual, 4)}</td>
-        <td style="text-align: right;">${formatNumber(Number(r.used_qty || 0), 2)}</td>
-        <td style="text-align: right;">${formatNumber(Number(r.calculated_m2 || 0), 2)}</td>
-        <td style="text-align: right; font-weight: bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${diff > 0 ? '+' : ''}${formatNumber(diff, 2)}%</td>
-        <td style="text-align: center; font-weight: bold; color: ${isSave ? '#16a34a' : '#dc2626'};">${isSave ? 'Đạt tiêu chuẩn ✓' : 'Vượt định mức ✗'}</td>
+        <td style="text-align: right; font-weight: bold;">${formatNumber(Number(r.norm_value || 0), 4)}</td>
+        <td style="text-align: right;">${Number(r.used_qty) > 0 ? formatNumber(Number(r.used_qty), 2) : '-'}</td>
+        <td style="text-align: right; font-weight: 600;">${prodM2 > 0 ? formatNumber(prodM2, 2) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: #0284c7;">${Number(r.actual_rate) > 0 ? formatNumber(Number(r.actual_rate), 4) : '-'}</td>
+        <td style="text-align: right; font-weight: bold; color: ${diffColor}; background: ${diffBg};">${diffStr}</td>
+        <td style="text-align: center;">${statusBadge}</td>
       </tr>
     `;
   }).join("");
@@ -5344,16 +5359,17 @@ function printConsumptionReport() {
       <thead>
         <tr>
           <th style="width: 25px;">STT</th>
-          <th>Tên Nguyên Liệu / Vật Tư</th>
-          <th style="width: 45px;">ĐVT</th>
-          <th style="width: 45px;">DC</th>
+          <th style="width: 50px;">Kỳ</th>
+          <th style="width: 40px;">DC</th>
           <th style="width: 55px;">Kích Thước</th>
-          <th style="width: 80px;">Định Mức Quy Định</th>
-          <th style="width: 80px;">Tiêu Hao Thực Tế</th>
+          <th>Nguyên Liệu / Vật Tư</th>
+          <th style="width: 40px;">ĐVT</th>
+          <th style="width: 75px;">Định Mức Kỳ</th>
           <th style="width: 80px;">Lượng Sử Dụng</th>
-          <th style="width: 80px;">Sản Lượng (m²)</th>
-          <th style="width: 65px;">Chênh Lệch</th>
-          <th style="width: 90px;">Đánh Giá</th>
+          <th style="width: 85px;">SL Tính Tiêu Hao (m²)</th>
+          <th style="width: 80px;">Tiêu Hao Thực Tế</th>
+          <th style="width: 85px;">Vượt (+) / Giảm (-)</th>
+          <th style="width: 90px;">Trạng Thái</th>
         </tr>
       </thead>
       <tbody>
@@ -5364,7 +5380,7 @@ function printConsumptionReport() {
 
   const html = createPrintDocumentHtml({
     title: "BÁO CÁO TIÊU HAO NGUYÊN VẬT TƯ SẢN XUẤT",
-    subTitle: "Phân xưởng sản xuất Men & Xương",
+    subTitle: "Báo cáo chi tiết định mức, thực tế tiêu hao và đánh giá vượt/giảm",
     periodInfo: `Kỳ: <b>${monthStr}</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>`,
     tableHtml: tableHtml,
     orientation: "landscape"
