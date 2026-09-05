@@ -16,9 +16,158 @@ let currentDashRawCoal = [];
 let currentDashRawMaterialsChart = [];
 let currentDashRawCoalTrend = [];
 
+// ==========================================
+// ROLE-BASED ACCESS CONTROL (RBAC)
+// ==========================================
+let currentRole = localStorage.getItem("user_role") || "admin";
+
+const ROLES_INFO = {
+  admin: {
+    title: "Quản trị viên",
+    email: "admin@phuongnam.local",
+    badge: "Toàn quyền",
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    avatarBg: "bg-emerald-700",
+    avatarText: "AD",
+    canEdit: true,
+    canImport: true
+  },
+  ptgd: {
+    title: "Phó Tổng Giám Đốc",
+    email: "ptgd.sx@phuongnam.local",
+    badge: "Chỉ xem",
+    badgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+    avatarBg: "bg-purple-700",
+    avatarText: "TGĐ",
+    canEdit: false,
+    canImport: false
+  },
+  truong_phong: {
+    title: "Trưởng / Phó Phòng KT-KH",
+    email: "truongphong@phuongnam.local",
+    badge: "Chỉ xem",
+    badgeClass: "bg-blue-500/20 text-cyan-300 border-blue-500/40",
+    avatarBg: "bg-blue-700",
+    avatarText: "TP",
+    canEdit: false,
+    canImport: false
+  },
+  quan_doc: {
+    title: "Quản Đốc Phân Xưởng",
+    email: "quandoc.px@phuongnam.local",
+    badge: "Chỉ xem",
+    badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    avatarBg: "bg-amber-700",
+    avatarText: "QĐ",
+    canEdit: false,
+    canImport: false
+  }
+};
+
+function changeUserRole(roleKey) {
+  if (!ROLES_INFO[roleKey]) roleKey = "admin";
+  currentRole = roleKey;
+  localStorage.setItem("user_role", roleKey);
+  applyRolePermissions();
+}
+
+function applyRolePermissions() {
+  const role = ROLES_INFO[currentRole] || ROLES_INFO.admin;
+
+  // Sync role dropdowns
+  const topSel = document.getElementById("user-role-select");
+  if (topSel && topSel.value !== currentRole) topSel.value = currentRole;
+
+  const adminSel = document.getElementById("admin-role-select");
+  if (adminSel && adminSel.value !== currentRole) adminSel.value = currentRole;
+
+  // Sync sidebar footer
+  const badgeEl = document.getElementById("sidebar-role-badge");
+  const titleEl = document.getElementById("sidebar-user-title");
+  const emailEl = document.getElementById("sidebar-user-email");
+  const avatarEl = document.getElementById("sidebar-user-avatar");
+
+  if (badgeEl) {
+    badgeEl.innerText = role.badge;
+    badgeEl.className = `px-1.5 py-0.5 rounded text-[9.5px] font-bold border ${role.badgeClass}`;
+  }
+  if (titleEl) titleEl.innerText = role.title;
+  if (emailEl) emailEl.innerText = role.email;
+  if (avatarEl) {
+    avatarEl.innerText = role.avatarText;
+    avatarEl.className = `w-7 h-7 rounded-full ${role.avatarBg} text-white flex items-center justify-center text-xs font-bold shrink-0`;
+  }
+
+  // Permission enforcement for Norms Tab
+  const btnCreateVersion = document.getElementById("btn-create-norm-version");
+  const btnSaveNorms = document.getElementById("btn-save-norm-details");
+  const rbacNormNotice = document.getElementById("rbac-norm-notice");
+
+  if (btnCreateVersion) btnCreateVersion.style.display = role.canEdit ? "inline-flex" : "none";
+  if (btnSaveNorms) btnSaveNorms.style.display = role.canEdit ? "inline-block" : "none";
+  if (rbacNormNotice) {
+    if (role.canEdit) {
+      rbacNormNotice.classList.add("hidden");
+    } else {
+      rbacNormNotice.classList.remove("hidden");
+      rbacNormNotice.innerHTML = `<i data-lucide="lock" class="w-4 h-4 inline mr-1 text-amber-400"></i> <b>Chế độ Chỉ Xem (${role.title}):</b> Bạn không có quyền thêm mới hoặc chỉnh sửa định mức tiêu hao.`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+  document.querySelectorAll(".norm-input-field").forEach(inp => {
+    inp.disabled = !role.canEdit;
+    if (!role.canEdit) {
+      inp.classList.add("opacity-70", "cursor-not-allowed");
+    } else {
+      inp.classList.remove("opacity-70", "cursor-not-allowed");
+    }
+  });
+
+  // Permission enforcement for Import Tab
+  const btnSubmitImport = document.getElementById("btn-submit-import");
+  const rbacImportNotice = document.getElementById("rbac-import-notice");
+
+  if (btnSubmitImport) {
+    btnSubmitImport.disabled = !role.canImport;
+    if (!role.canImport) {
+      btnSubmitImport.classList.add("opacity-50", "cursor-not-allowed");
+    } else {
+      btnSubmitImport.classList.remove("opacity-50", "cursor-not-allowed");
+    }
+  }
+  if (rbacImportNotice) {
+    if (role.canImport) {
+      rbacImportNotice.classList.add("hidden");
+    } else {
+      rbacImportNotice.classList.remove("hidden");
+      rbacImportNotice.innerHTML = `<i data-lucide="shield-alert" class="w-4 h-4 inline mr-1 text-amber-400"></i> <b>Chế độ Chỉ Xem (${role.title}):</b> Chức năng Upload và Bóc Tách dữ liệu Excel chỉ dành riêng cho Quản trị viên (Admin).`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+// Mobile Sidebar Drawer Toggle
+function toggleMobileSidebar(show) {
+  const sidebar = document.getElementById("sidebar");
+  const backdrop = document.getElementById("sidebar-backdrop");
+  if (!sidebar || !backdrop) return;
+
+  const isOpen = !sidebar.classList.contains("-translate-x-full");
+  const shouldOpen = show !== undefined ? show : !isOpen;
+
+  if (shouldOpen) {
+    sidebar.classList.remove("-translate-x-full");
+    backdrop.classList.remove("hidden");
+  } else {
+    sidebar.classList.add("-translate-x-full");
+    backdrop.classList.add("hidden");
+  }
+}
+
 // Initialize on load
 document.addEventListener("DOMContentLoaded", () => {
   if (window.lucide && lucide.createIcons) lucide.createIcons();
+  applyRolePermissions();
   try { loadDashboardData(); } catch(e) { console.error("loadDashboardData err:", e); }
   try { loadSummaryData(); } catch(e) { console.error("loadSummaryData err:", e); }
   try { loadBrandsData(); } catch(e) { console.error("loadBrandsData err:", e); }
@@ -48,6 +197,10 @@ function formatNumber(num, decimals = 2, fixedDecimals = false) {
 // Tab Switching
 function switchTab(tabId) {
   currentTab = tabId;
+  if (window.innerWidth < 768) {
+    toggleMobileSidebar(false);
+  }
+
   document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("hidden"));
   document.querySelectorAll(".nav-btn").forEach(b => {
     b.classList.remove("bg-emerald-600/90", "text-white", "shadow");
@@ -72,7 +225,7 @@ function switchTab(tabId) {
     "coal": "Sử dụng than",
     "import": "Import Excel",
     "export-report": "Báo cáo trình ký",
-    "admin": "Quản trị"
+    "admin": "Phân quyền & CSDL"
   };
   document.getElementById("breadcrumb-current").innerText = titles[tabId] || "Tổng quan";
 
@@ -84,7 +237,8 @@ function switchTab(tabId) {
   else if (tabId === "coal") loadCoalData();
   else if (tabId === "export-report") renderFormMauPreview();
 
-  lucide.createIcons();
+  applyRolePermissions();
+  if (window.lucide) lucide.createIcons();
 }
 
 // Toggle Dark / Light Theme
@@ -95,13 +249,13 @@ function toggleTheme() {
   const text = document.getElementById("theme-text");
 
   if (isDark) {
-    text.innerText = "Tone Sáng Doanh Nghiệp";
+    text.innerText = "Tone Sáng";
     icon.setAttribute("data-lucide", "sun");
   } else {
-    text.innerText = "Tone Xanh Kỹ Thuật Số";
+    text.innerText = "Tone Xanh";
     icon.setAttribute("data-lucide", "moon");
   }
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
   if (monthlyTrendChart) monthlyTrendChart.update();
   if (brandDistChart) brandDistChart.update();
 }
@@ -1749,6 +1903,7 @@ async function loadNormDetails(versionId) {
         </td>
       </tr>
     `).join("");
+    applyRolePermissions();
   } catch (err) {
     console.error("Error loading norm details:", err);
   }

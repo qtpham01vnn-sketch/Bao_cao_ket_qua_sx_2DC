@@ -29,93 +29,107 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260905_align_center_v8" />
+  <link rel="stylesheet" href="style.css?v=20260905_sticky_rbac_v9" />
 </head>
-<body class="bg-[#091428] text-slate-100 transition-colors duration-300 min-h-screen flex flex-col font-sans">
+<body class="bg-[#091428] text-slate-100 transition-colors duration-300 font-sans antialiased overflow-hidden">
   
   <!-- App Shell -->
-  <div class="flex flex-1 h-screen overflow-hidden">
+  <div id="app-container" class="flex h-screen w-screen overflow-hidden bg-[#091428]">
     
-    <!-- LEFT SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-[#0a1832] border-r border-[#1e3a6a]/60 flex flex-col justify-between shrink-0 shadow-2xl z-20">
-      <div>
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" onclick="toggleMobileSidebar(false)" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity duration-300 md:hidden"></div>
+
+    <!-- LEFT SIDEBAR (Fixed Desktop, Slide-over Drawer on Mobile) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#0a1832] border-r border-[#1e3a6a]/60 flex flex-col justify-between shrink-0 shadow-2xl transition-transform duration-300 ease-in-out -translate-x-full md:static md:translate-x-0 md:h-screen">
+      
+      <!-- Top Brand & Navigation -->
+      <div class="flex flex-col h-[calc(100vh-125px)] overflow-hidden">
         <!-- Brand Header -->
-        <div class="p-5 border-b border-[#1e3a6a]/40 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg font-black text-lg text-slate-900">
-            PN
+        <div class="p-4 border-b border-[#1e3a6a]/40 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-lg font-black text-lg text-slate-900 shrink-0">
+              PN
+            </div>
+            <div>
+              <h1 class="text-sm font-black text-white tracking-wider uppercase leading-tight">PHƯƠNG NAM</h1>
+              <p class="text-[10px] text-slate-400 font-semibold tracking-wide">QUẢN LÝ SẢN XUẤT</p>
+            </div>
           </div>
-          <div>
-            <h1 class="text-sm font-black text-white tracking-wider uppercase leading-tight">PHƯƠNG NAM</h1>
-            <p class="text-[11px] text-slate-400 font-medium tracking-wide">QUẢN LÝ SẢN XUẤT</p>
-          </div>
+          <!-- Close button on Mobile -->
+          <button onclick="toggleMobileSidebar(false)" class="md:hidden text-slate-400 hover:text-white p-1 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
         </div>
 
-        <div class="px-4 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+        <div class="px-4 pt-3 pb-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
           Không gian điều hành
         </div>
 
-        <!-- Navigation Menu -->
-        <nav class="px-2 space-y-1 overflow-y-auto max-h-[calc(100vh-230px)]">
+        <!-- Navigation Menu (Scrolls internally) -->
+        <nav class="flex-1 px-2 space-y-1 overflow-y-auto" id="sidebar-nav">
           <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all bg-emerald-600/90 text-white shadow">
-            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <i data-lucide="layout-grid" class="w-4 h-4 shrink-0"></i>
             <span>Tổng quan</span>
           </button>
 
           <button onclick="switchTab('summary')" id="nav-summary" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="activity" class="w-4 h-4"></i>
+            <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
             <span>Sản lượng · chất lượng</span>
           </button>
 
           <button onclick="switchTab('brands')" id="nav-brands" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="tag" class="w-4 h-4"></i>
+            <i data-lucide="tag" class="w-4 h-4 shrink-0"></i>
             <span>Thương hiệu</span>
           </button>
 
           <button onclick="switchTab('norms')" id="nav-norms" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="layers" class="w-4 h-4"></i>
+            <i data-lucide="layers" class="w-4 h-4 shrink-0"></i>
             <span>Định mức phiên bản</span>
           </button>
 
           <button onclick="switchTab('consumption')" id="nav-consumption" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 shrink-0"></i>
             <span>Tiêu hao vật tư</span>
           </button>
 
           <button onclick="switchTab('coal')" id="nav-coal" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="flame" class="w-4 h-4"></i>
+            <i data-lucide="flame" class="w-4 h-4 shrink-0"></i>
             <span>Sử dụng than</span>
           </button>
 
           <button onclick="switchTab('import')" id="nav-import" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+            <i data-lucide="upload-cloud" class="w-4 h-4 shrink-0"></i>
             <span>Import Excel</span>
           </button>
 
           <button onclick="switchTab('export-report')" id="nav-export-report" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="file-check-2" class="w-4 h-4"></i>
+            <i data-lucide="file-check-2" class="w-4 h-4 shrink-0"></i>
             <span>Báo cáo trình ký</span>
           </button>
 
           <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-300 hover:bg-[#13284d] hover:text-white">
-            <i data-lucide="settings" class="w-4 h-4"></i>
-            <span>Quản trị</span>
+            <i data-lucide="shield-check" class="w-4 h-4 shrink-0"></i>
+            <span>Phân quyền & CSDL</span>
           </button>
         </nav>
       </div>
 
-      <!-- User footer -->
-      <div class="p-3 border-t border-[#1e3a6a]/40 bg-[#081224]">
-        <div class="flex items-center gap-2 mb-1.5">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span class="text-[11px] text-slate-400">Bản chạy thử trên máy</span>
+      <!-- Pinned User / Role Footer (Always Visible at Bottom) -->
+      <div class="p-3 border-t border-[#1e3a6a]/40 bg-[#081224] shrink-0" id="sidebar-user-footer">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-[10.5px] text-slate-400">Phiên bản 2026.1</span>
+          </div>
+          <span id="sidebar-role-badge" class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Toàn quyền</span>
         </div>
         <div class="flex items-center gap-2">
-          <div class="w-7 h-7 rounded-full bg-emerald-800 text-white flex items-center justify-center text-xs font-bold">
-            A
+          <div id="sidebar-user-avatar" class="w-7 h-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            AD
           </div>
-          <div>
-            <div class="text-xs font-bold text-white">Quản trị viên</div>
-            <div class="text-[10px] text-slate-400">admin@local</div>
+          <div class="min-w-0 flex-1">
+            <div id="sidebar-user-title" class="text-xs font-bold text-white truncate">Quản trị viên</div>
+            <div id="sidebar-user-email" class="text-[10px] text-slate-400 truncate">admin@phuongnam.local</div>
           </div>
         </div>
       </div>
@@ -125,32 +139,47 @@
     <div class="flex-1 flex flex-col h-full overflow-hidden bg-[#091428]">
       
       <!-- TOP BAR -->
-      <header class="h-14 border-b border-[#1e3a6a]/40 px-6 flex items-center justify-between bg-[#0a1832] z-10">
-        <!-- Breadcrumb -->
-        <div class="flex items-center gap-2 text-xs text-slate-300">
-          <span>Điều hành sản xuất</span>
-          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+      <header class="h-14 border-b border-[#1e3a6a]/40 px-3 sm:px-6 flex items-center justify-between bg-[#0a1832] z-10 shrink-0">
+        <!-- Breadcrumb & Mobile Menu Toggle -->
+        <div class="flex items-center gap-2.5 text-xs text-slate-300">
+          <button onclick="toggleMobileSidebar(true)" class="md:hidden p-1.5 rounded-lg bg-[#112348] border border-blue-500/30 text-slate-200 hover:text-white" title="Mở danh mục">
+            <i data-lucide="menu" class="w-4 h-4"></i>
+          </button>
+          <span class="hidden sm:inline">Điều hành sản xuất</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500 hidden sm:inline"></i>
           <span id="breadcrumb-current" class="font-bold text-white">Tổng quan</span>
         </div>
 
         <!-- Right Quick Controls -->
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Role Switcher -->
+          <div class="flex items-center gap-1.5 bg-[#112348] px-2.5 py-1.5 rounded-lg border border-blue-500/30 text-xs">
+            <i data-lucide="user-check" class="w-3.5 h-3.5 text-cyan-300 shrink-0"></i>
+            <span class="text-[11px] text-slate-400 hidden xl:inline">Vai trò:</span>
+            <select id="user-role-select" onchange="changeUserRole(this.value)" class="bg-transparent text-xs font-bold text-cyan-300 focus:outline-none cursor-pointer">
+              <option value="admin" selected>Quản trị viên (Toàn quyền)</option>
+              <option value="ptgd">Phó TGĐ (Chỉ xem)</option>
+              <option value="truong_phong">Trưởng / Phó Phòng (Chỉ xem)</option>
+              <option value="quan_doc">Quản Đốc / Phó QĐ (Chỉ xem)</option>
+            </select>
+          </div>
+
           <!-- Theme Toggle Button -->
-          <button onclick="toggleTheme()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/30 text-xs font-semibold text-cyan-300 transition">
+          <button onclick="toggleTheme()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/30 text-xs font-semibold text-cyan-300 transition">
             <i data-lucide="sun" id="theme-icon" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span id="theme-text">Tone Sáng Doanh Nghiệp</span>
+            <span id="theme-text" class="hidden sm:inline">Tone Sáng</span>
           </button>
 
           <!-- Export Signoff shortcut -->
-          <button onclick="quickExportSignOff()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
+          <button onclick="quickExportSignOff()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span>Xuất Excel Trình Ký (T8)</span>
+            <span>Xuất Excel (T8)</span>
           </button>
         </div>
       </header>
 
-      <!-- MAIN BODY (Scrollable) -->
-      <main class="flex-1 overflow-y-auto p-6 space-y-6" id="main-content">
+      <!-- MAIN BODY (Scrolls Independently) -->
+      <main class="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 space-y-6" id="main-content">
         
                         <!-- ================= TAB 1: DASHBOARD (EXCEL REPLICA 2026) ================= -->
         <div id="tab-dashboard" class="tab-pane space-y-6">
@@ -1183,15 +1212,19 @@
 
         <!-- ================= TAB 4: ĐỊNH MỨC PHIÊN BẢN ================= -->
         <div id="tab-norms" class="tab-pane hidden space-y-6">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 class="text-sm font-bold text-white">Quản Lý Phiên Bản Định Mức Tiêu Hao (Men · Xương · Vật Tư)</h2>
               <p class="text-xs text-slate-400">Bảo toàn dữ liệu lịch sử các tháng cũ, chỉ áp dụng phiên bản mới từ thời điểm có hiệu lực.</p>
             </div>
-            <button onclick="openCreateVersionModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition">
+            <button id="btn-create-norm-version" onclick="openCreateVersionModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
               <span>Tạo Phiên Bản Mới</span>
             </button>
+          </div>
+
+          <!-- RBAC Notice Banner if view-only -->
+          <div id="rbac-norm-notice" class="hidden p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300">
           </div>
 
           <!-- Versions List Grid -->
@@ -1204,7 +1237,7 @@
               <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider" id="current-norm-title">
                 Chi tiết định mức: DM-2026-V1
               </h3>
-              <button onclick="saveNormDetails()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow">
+              <button id="btn-save-norm-details" onclick="saveNormDetails()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition shadow">
                 Lưu Thay Đổi Định Mức
               </button>
             </div>
@@ -1587,7 +1620,11 @@
               </div>
             </div>
 
-            <button onclick="submitMonthlyImport()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl shadow-lg transition">
+            <!-- RBAC Notice if view-only -->
+            <div id="rbac-import-notice" class="hidden p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300">
+            </div>
+
+            <button id="btn-submit-import" onclick="submitMonthlyImport()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl shadow-lg transition">
               Tiến Hành Xử Lý & Trích Xuất Dữ Liệu
             </button>
 
@@ -1667,17 +1704,188 @@
           </div>
         </div>
 
-        <!-- ================= TAB 9: QUẢN TRỊ ================= -->
+        <!-- ================= TAB 9: QUẢN TRỊ & PHÂN QUYỀN ================= -->
         <div id="tab-admin" class="tab-pane hidden space-y-6">
-          <div class="p-6 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4 max-w-3xl">
-            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Thông Tin Hệ Thống & Cấu Hình CSDL</h2>
-            <div class="space-y-2 text-xs text-slate-300">
-              <div>• <b>Cơ sở dữ liệu:</b> SQLite 3 (`production_data.db`)</div>
-              <div>• <b>Chế độ bảo vệ file Excel:</b> Read-Only tuyệt đối (không ghi đè file gốc)</div>
-              <div>• <b>Chuẩn định mức:</b> Versioned Norms (Temporal Logic)</div>
-              <div>• <b>Số cổng mạng nội bộ:</b> Port 8080</div>
+          
+          <!-- Banner Header -->
+          <div class="p-4 bg-gradient-to-r from-[#0c241b] via-[#0f3426] to-[#0a1f3a] rounded-xl border border-emerald-500/30 shadow-lg flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-black text-emerald-300 uppercase tracking-wide">
+                HỆ THỐNG PHÂN QUYỀN TRUY CẬP & QUẢN TRỊ CSDL
+              </h2>
+              <p class="text-xs text-slate-300 mt-0.5">
+                Thiết lập quyền hạn truy cập đa cấp: Quản trị viên (Toàn quyền) · Ban Giám Đốc · Phòng Ban · Quản Đốc Phân Xưởng (Chỉ xem)
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                <span>RBAC Active</span>
+              </span>
             </div>
           </div>
+
+          <!-- Section 1: Active Role Switcher Card -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+              <div>
+                <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                  <i data-lucide="user-cog" class="w-4 h-4"></i>
+                  Chuyển Đổi Vai Trò Đang Sử Dụng (Kiểm Thử Phân Quyền)
+                </h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Chọn vai trò bất kỳ để trải nghiệm giao diện và kiểm tra cơ chế khóa quyền tự động.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="admin-role-select" onchange="changeUserRole(this.value)" class="bg-[#091428] border border-blue-500/40 text-xs font-bold text-cyan-300 rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                  <option value="admin">Quản trị viên (Admin - Toàn quyền)</option>
+                  <option value="ptgd">Phó Tổng Giám Đốc (Chỉ xem)</option>
+                  <option value="truong_phong">Trưởng / Phó Phòng KT-KH (Chỉ xem)</option>
+                  <option value="quan_doc">Quản Đốc / Phó QĐ Phân Xưởng (Chỉ xem)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Role Summary Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <!-- Admin -->
+              <div class="p-3.5 rounded-lg bg-[#091428] border border-emerald-500/40 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">Quản trị viên (Admin)</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Toàn quyền</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-normal">Được phép xem, import dữ liệu mới, điều chỉnh định mức và cấu hình hệ thống.</p>
+              </div>
+
+              <!-- Phó TGĐ -->
+              <div class="p-3.5 rounded-lg bg-[#091428] border border-purple-500/30 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">Phó Tổng Giám Đốc</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">Chỉ xem</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-normal">Xem toàn bộ báo cáo lãnh đạo, theo dõi KPI, duyệt số liệu và in/xuất báo cáo trình ký.</p>
+              </div>
+
+              <!-- Trưởng/Phó Phòng -->
+              <div class="p-3.5 rounded-lg bg-[#091428] border border-blue-500/30 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">Trưởng/Phó Phòng</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-blue-500/20 text-cyan-300 border border-blue-500/40">Chỉ xem</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-normal">Tra cứu sản lượng, chất lượng A1, tiêu hao than & vật tư, xuất file Excel phân tích.</p>
+              </div>
+
+              <!-- Quản Đốc / Phó QĐ -->
+              <div class="p-3.5 rounded-lg bg-[#091428] border border-amber-500/30 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-white">Quản Đốc / Phó QĐ</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Chỉ xem</span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-normal">Giám sát hoạt động 2 dây chuyền, kiểm tra các lô than, suất tiêu hao nung & sấy.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Ma Trận Phân Quyền Chi Tiết (Access Control Matrix) -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                Bảng Ma Trận Phân Quyền Chi Tiết (Role & Permission Matrix)
+              </h3>
+            </div>
+            
+            <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
+              <table class="table-excel-grid w-full text-xs text-left">
+                <thead class="bg-[#0b172a] text-slate-300 font-bold">
+                  <tr>
+                    <th class="p-3 text-left">Chức Năng Nghiệp Vụ</th>
+                    <th class="p-3 text-center">Quản Trị Viên (Admin)</th>
+                    <th class="p-3 text-center">Phó Tổng Giám Đốc</th>
+                    <th class="p-3 text-center">Trưởng / Phó Phòng</th>
+                    <th class="p-3 text-center">Quản Đốc / Phó QĐ</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                  <tr class="hover:bg-[#13284d]/50">
+                    <td class="p-2.5 font-semibold text-white">1. Xem Tổng Quan Dashboard (Phần I - IV)</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Toàn quyền</td>
+                    <td class="p-2.5 text-center text-purple-300 font-bold">✅ Xem đầy đủ</td>
+                    <td class="p-2.5 text-center text-cyan-300 font-bold">✅ Xem đầy đủ</td>
+                    <td class="p-2.5 text-center text-amber-300 font-bold">✅ Xem đầy đủ</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50">
+                    <td class="p-2.5 font-semibold text-white">2. Thao Tác Bộ Lọc Thông Minh (Slicers DC1, DC2, Tháng, Kích thước)</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-purple-300 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-cyan-300 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-amber-300 font-bold">✅ Có</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50">
+                    <td class="p-2.5 font-semibold text-white">3. Xuất Báo Cáo Trình Ký / In Ấn PDF</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-purple-300 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-cyan-300 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-amber-300 font-bold">✅ Có</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50">
+                    <td class="p-2.5 font-semibold text-white">4. Xem Định Mức Phiên Bản & Tiêu Hao Vật Tư</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Có</td>
+                    <td class="p-2.5 text-center text-purple-300 font-bold">✅ Chỉ xem</td>
+                    <td class="p-2.5 text-center text-cyan-300 font-bold">✅ Chỉ xem</td>
+                    <td class="p-2.5 text-center text-amber-300 font-bold">✅ Chỉ xem</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50 bg-rose-950/10">
+                    <td class="p-2.5 font-semibold text-white">5. Tạo Mới / Chỉnh Sửa Định Mức Phiên Bản</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Được phép</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50 bg-rose-950/10">
+                    <td class="p-2.5 font-semibold text-white">6. Import Bóc Tách File Excel Định Kỳ</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Được phép</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                  </tr>
+                  <tr class="hover:bg-[#13284d]/50 bg-rose-950/10">
+                    <td class="p-2.5 font-semibold text-white">7. Cấu Hình Hệ Thống & Phân Quyền CSDL</td>
+                    <td class="p-2.5 text-center text-emerald-400 font-bold">✅ Toàn quyền</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                    <td class="p-2.5 text-center text-rose-400 font-bold">❌ Không (Khóa)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section 3: Thông Tin Cấu Hình Kỹ Thuật & CSDL -->
+          <div class="p-5 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg space-y-3">
+            <h3 class="text-xs font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="database" class="w-4 h-4"></i>
+              Thông Tin Kỹ Thuật & Cơ Chế An Toàn Dữ Liệu
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
+              <div class="p-3 rounded-lg bg-[#091428] border border-blue-500/20">
+                <span class="text-slate-400 block font-medium mb-0.5">• Cơ Sở Dữ Liệu:</span>
+                <span class="text-white font-bold">SQLite 3 Serverless Database</span>
+              </div>
+              <div class="p-3 rounded-lg bg-[#091428] border border-blue-500/20">
+                <span class="text-slate-400 block font-medium mb-0.5">• Chế Độ Bảo Vệ File Gốc:</span>
+                <span class="text-emerald-400 font-bold">Read-Only Tuyệt Đối (Zero data corruption)</span>
+              </div>
+              <div class="p-3 rounded-lg bg-[#091428] border border-blue-500/20">
+                <span class="text-slate-400 block font-medium mb-0.5">• Logic Định Mức Phiên Bản:</span>
+                <span class="text-white font-bold">Temporal Versioning (Bảo toàn lịch sử quá khứ)</span>
+              </div>
+              <div class="p-3 rounded-lg bg-[#091428] border border-blue-500/20">
+                <span class="text-slate-400 block font-medium mb-0.5">• Môi Trường Triển Khai:</span>
+                <span class="text-cyan-300 font-bold">Vercel Production Edge & Local Dev Server</span>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </main>
@@ -1736,6 +1944,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260905_coal_tab_fix_v5"></script>
+  <script src="app.js?v=20260905_sticky_rbac_v9"></script>
 </body>
 </html>
