@@ -4138,7 +4138,7 @@ async function submitMonthlyImport() {
 }
 
 // ----------------------------------------------------
-// TAB 8: FORM MẪU BÁO CÁO TỔNG HỢP TRÌNH KÝ 8 PHẦN (V2)
+// TAB 8: FORM MẪU BÁO CÁO TỔNG HỢP TRÌNH KÝ 8 PHẦN (V3)
 // ----------------------------------------------------
 let formMauPeriodType = 'month';
 let formMauPeriodValue = '8';
@@ -4251,6 +4251,188 @@ function formatRatePointDiff(val) {
   return `${sign}${formatNumber(val, 2)}%`;
 }
 
+function renderMaterialTableBlock(matList, title) {
+  if (!matList || matList.length === 0) return '';
+  return `
+    <div class="mb-6">
+      <h5 class="text-xs font-bold text-emerald-400 mb-2">${title}:</h5>
+      <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 shadow">
+        <table class="table-excel-grid w-full text-center text-[11px]">
+          <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+            <tr>
+              <th class="p-2 border border-[#1e3a6a] w-12">STT</th>
+              <th class="p-2 border border-[#1e3a6a] text-left">Tên Nguyên Liệu / Vật Tư</th>
+              <th class="p-2 border border-[#1e3a6a] w-14">ĐVT</th>
+              <th class="p-2 border border-[#1e3a6a] text-right">Định Mức Quy Định</th>
+              <th class="p-2 border border-[#1e3a6a] text-right">Khối Lượng Dùng</th>
+              <th class="p-2 border border-[#1e3a6a] text-right">Sản Lượng (m²)</th>
+              <th class="p-2 border border-[#1e3a6a] text-right text-cyan-300">Thực Tế</th>
+              <th class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Vượt / Giảm</th>
+              <th class="p-2 border border-[#1e3a6a] text-center w-24">Đánh Giá</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+            ${matList.map((r, i) => `
+              <tr class="hover:bg-[#13284d]/60">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${i + 1}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">${r.material_name}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${r.unit}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.norm_value, 4)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${formatNumber(r.used_qty, 2)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${formatNumber(r.prod_qty, 0)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-cyan-300">${formatNumber(r.actual_rate, 4)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold ${r.diff_qty <= 0 ? 'text-emerald-400' : 'text-rose-400'}">${r.diff_qty > 0 ? '+' : ''}${formatNumber(r.diff_qty, 2)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-center text-xs ${r.diff_qty <= 0 ? 'text-emerald-400' : 'text-amber-400'}">${r.diff_qty <= 0 ? 'Đạt ĐM ✓' : 'Vượt ĐM'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderCoalDetailBlock(coalGroup, groupTitle, isDC2Combined = false) {
+  if (!coalGroup) return '';
+  const rows = coalGroup.all_rows || [];
+  if (rows.length === 0) return '';
+
+  const sumD = coalGroup.sum_drying || {};
+  const sumF = coalGroup.sum_firing || {};
+  const sumA = coalGroup.sum_all || {};
+
+  return `
+    <div class="mb-6">
+      <h5 class="text-xs font-bold text-emerald-400 mb-2 flex items-center justify-between">
+        <span>${groupTitle}</span>
+        <span class="text-[11px] text-slate-400 font-normal italic">Đơn vị tính: Kg, m², Kg/m²</span>
+      </h5>
+      <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 shadow">
+        <table class="table-excel-grid w-full text-center text-[11px]">
+          <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+            <tr>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-10">STT</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-left">Tên Loại Than / Lô Than</th>
+              <th colspan="4" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-cyan-300 text-[10px]">Chất Lượng Lô Than</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-slate-200">KL. Lĩnh (Kg)</th>
+              <th colspan="2" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-amber-300 text-[10px]">Xuất Cám (Kg)</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Lĩnh Bù (Kg)</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-rose-400">Cám Vượt TC</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right font-bold text-cyan-300">Tổng Sử Dụng (Kg)</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-white">Sản Lượng (m²)</th>
+              <th colspan="3" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-emerald-300 text-[10px]">Tiêu Hao (Kg/m²)</th>
+              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-left w-32">Ghi Chú</th>
+            </tr>
+            <tr class="bg-[#0e2246] text-slate-300 text-[10px]">
+              <th class="p-1 border border-[#1e3a6a]">Nhiệt Trị</th>
+              <th class="p-1 border border-[#1e3a6a]">% Cám TT</th>
+              <th class="p-1 border border-[#1e3a6a]">% Cám TC</th>
+              <th class="p-1 border border-[#1e3a6a]">% Xỉ Đá</th>
+              <th class="p-1 border border-[#1e3a6a] text-right">SL (Kg)</th>
+              <th class="p-1 border border-[#1e3a6a] text-right">% Cám</th>
+              <th class="p-1 border border-[#1e3a6a] text-right">Than Cục</th>
+              <th class="p-1 border border-[#1e3a6a] text-right">Có Cám</th>
+              <th class="p-1 border border-[#1e3a6a] text-right font-bold text-emerald-300">Cục+Cám+Bù</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+            ${rows.map((r, i) => {
+              const isDrying = (r.firing_type || '').includes('Không');
+              if (isDrying) {
+                return `
+                  <tr class="hover:bg-[#13284d]/60 text-slate-400 italic text-[10px]">
+                    <td class="p-1 border border-[#1e3a6a] text-center"></td>
+                    <td class="p-1 border border-[#1e3a6a] text-left pl-4">${r.coal_supplier}</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.issued_weight, 0)}</td>
+                    <td class="p-1 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.ash_weight, 0)}</td>
+                    <td class="p-1 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.ash_export_rate, 2)}</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-center">-</td>
+                    <td class="p-1 border border-[#1e3a6a] text-right font-mono font-bold text-slate-300">${formatNumber(r.total_used_weight, 0)}</td>
+                    <td class="p-1 border border-[#1e3a6a] text-left text-slate-400" colspan="4">Sấy lò không tính tiêu hao</td>
+                    <td class="p-1 border border-[#1e3a6a] text-left text-[9px] text-slate-500">${r.note || ''}</td>
+                  </tr>
+                `;
+              } else {
+                return `
+                  <tr class="hover:bg-[#13284d]/60">
+                    <td class="p-1.5 border border-[#1e3a6a] text-center font-bold text-cyan-300">${r.stt || i + 1}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">${r.coal_supplier}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] font-mono text-center">${formatNumber(r.heat_value, 0)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] font-mono font-bold text-cyan-300 text-center">${formatNumber(r.ash_rate, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] font-mono text-slate-400 text-center">${formatNumber(r.std_ash_rate, 0)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] font-mono text-amber-300 text-center">${formatNumber(r.stone_rate, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-white">${formatNumber(r.issued_weight, 0)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-200">${formatNumber(r.ash_weight, 0)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.ash_export_rate, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold ${r.compensation_weight > 0 ? 'text-emerald-400' : 'text-slate-500'}">${r.compensation_weight > 0 ? formatNumber(r.compensation_weight, 0) : '-'}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold ${r.excess_ash_weight > 0 ? 'text-rose-400' : 'text-slate-500'}">${r.excess_ash_weight > 0 ? formatNumber(r.excess_ash_weight, 0) : '-'}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-cyan-300">${formatNumber(r.total_used_weight, 0)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-white">${formatNumber(r.production_m2, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.rate_lump, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.rate_with_ash, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-400">${formatNumber(r.rate_total, 2)}</td>
+                    <td class="p-1.5 border border-[#1e3a6a] text-left text-[10px] text-slate-400">${r.note || ''}</td>
+                  </tr>
+                `;
+              }
+            }).join('')}
+
+            <!-- Dòng TỔNG SẤY LÒ -->
+            <tr class="bg-[#102542] text-slate-300 font-bold text-[10px]">
+              <td colspan="6" class="p-1.5 text-center uppercase border border-[#1e3a6a]">TỔNG SẤY LÒ:</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(sumD.issued_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(sumD.ash_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(sumD.ash_pct, 2)}</td>
+              <td class="p-1.5 text-center border border-[#1e3a6a]">-</td>
+              <td class="p-1.5 text-center border border-[#1e3a6a]">-</td>
+              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(sumD.total_used_weight, 0)}</td>
+              <td colspan="4" class="p-1.5 text-left border border-[#1e3a6a] italic text-slate-400">Sấy lò không tính tiêu hao</td>
+              <td class="p-1.5 border border-[#1e3a6a]"></td>
+            </tr>
+
+            <!-- Dòng TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ -->
+            <tr class="bg-[#0c1a35] text-emerald-300 font-bold text-[11px]">
+              <td colspan="6" class="p-1.5 text-center uppercase border border-[#1e3a6a]">TỔNG TIÊU HAO KHÔNG TÍNH SẤY LÒ:</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(sumF.issued_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-200">${formatNumber(sumF.ash_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(sumF.ash_pct, 2)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(sumF.compensation_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(sumF.excess_ash_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sumF.total_used_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-white">${formatNumber(sumF.production_m2, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a]">${formatNumber(sumF.rate_lump, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a]">${formatNumber(sumF.rate_with_ash, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(sumF.rate_total, 2)}</td>
+              <td class="p-1.5 border border-[#1e3a6a] text-center text-xs text-emerald-400">Khoán ✓</td>
+            </tr>
+
+            <!-- Dòng TỔNG + SẤY LÒ -->
+            <tr class="bg-[#071326] text-white font-bold text-[11px]">
+              <td colspan="6" class="p-1.5 text-center uppercase border border-[#1e3a6a]">TỔNG + SẤY LÒ:</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-black">${formatNumber(sumA.issued_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-200 font-black">${formatNumber(sumA.ash_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(sumA.ash_pct, 2)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(sumA.compensation_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(sumA.excess_ash_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sumA.total_used_weight, 0)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(sumA.production_m2, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(sumA.rate_lump, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(sumA.rate_with_ash, 2)}</td>
+              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${formatNumber(sumA.rate_total, 2)}</td>
+              <td class="p-1.5 border border-[#1e3a6a] text-center text-xs text-cyan-300">Tổng cộng</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function renderFormMauContent(d) {
   if (!d || !d.section_1_production) return;
 
@@ -4359,7 +4541,6 @@ function renderFormMauContent(d) {
     `;
   }).join('');
 
-  // Function to render Summary block for DC2 and 2DC
   function renderTotalBlock(tot, bgColor = 'bg-amber-500/10') {
     const p = tot.plan;
     const a = tot.actual;
@@ -4457,27 +4638,6 @@ function renderFormMauContent(d) {
 
   const s2_40_list = s2.dc2_40x80 || [];
   const s2_40_sum = s2.dc2_40x80_sum || {};
-
-  // --- SECTION IV: SỬ DỤNG THAN ---
-  const s4_rows = s4.rows || [];
-  const s4Html = s4_rows.map(r => {
-    const isTot = r.is_total;
-    const bg = isTot ? 'bg-[#0c1a35] font-bold text-white' : 'hover:bg-[#13284d]/60';
-    const num = r.data || {};
-    return `
-      <tr class="${bg}">
-        <td class="p-1.5 text-center border border-[#1e3a6a] ${isTot ? 'font-bold text-amber-300' : 'text-slate-400'}">${r.stt}</td>
-        <td class="p-1.5 font-bold border border-[#1e3a6a] ${isTot ? 'text-cyan-300 uppercase' : 'text-slate-200'}">${r.name}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(num.issued_weight, 0)}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-slate-300">${formatNumber(num.ash_weight, 0)}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-slate-300">${formatNumber(num.compensation_weight, 0)}</td>
-        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">${formatNumber(num.total_used_weight, 0)}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(num.production_m2, 2)}</td>
-        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(num.rate_kg_m2, 4)}</td>
-        <td class="p-1.5 text-center border border-[#1e3a6a] text-emerald-300 text-xs font-semibold">${r.eval || ''}</td>
-      </tr>
-    `;
-  }).join('');
 
   // --- SECTION V: NHÂN SỰ ---
   const hrRows = s5.table || [];
@@ -4827,82 +4987,123 @@ function renderFormMauContent(d) {
       </div>
     </div>
 
-    <!-- PHẦN III: TIÊU HAO VẬT TƯ -->
+    <!-- PHẦN III: TIÊU HAO VẬT TƯ (ĐẦY ĐỦ 30x60, 50x50, 40x80) -->
     <div class="mb-8">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           III. TÌNH HÌNH TIÊU HAO NGUYÊN LIỆU, MEN, XƯƠNG & VẬT TƯ
         </h4>
+        <span class="text-xs text-slate-400 italic">Đầy đủ theo từng kích thước 30x60, 50x50 & 40x80</span>
       </div>
-      <div class="grid grid-cols-1 gap-6">
-        <!-- DC1 30x60 -->
-        <div>
-          <h5 class="text-xs font-bold text-emerald-400 mb-2">1. Tiêu hao vật tư Dây chuyền số 1 (30x60):</h5>
-          <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60">
-            <table class="table-excel-grid w-full text-center text-[11px]">
-              <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
-                <tr>
-                  <th class="p-2 border border-[#1e3a6a] w-12">STT</th>
-                  <th class="p-2 border border-[#1e3a6a] text-left">Tên Nguyên Liệu / Vật Tư</th>
-                  <th class="p-2 border border-[#1e3a6a] w-14">ĐVT</th>
-                  <th class="p-2 border border-[#1e3a6a] text-right">Định Mức Quy Định</th>
-                  <th class="p-2 border border-[#1e3a6a] text-right">Khối Lượng Dùng</th>
-                  <th class="p-2 border border-[#1e3a6a] text-right">Sản Lượng (m²)</th>
-                  <th class="p-2 border border-[#1e3a6a] text-right text-cyan-300">Thực Tế</th>
-                  <th class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Vượt / Giảm</th>
-                  <th class="p-2 border border-[#1e3a6a] text-center w-24">Đánh Giá</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
-                ${(s3.dc1_30x60 || []).map((r, i) => `
-                  <tr class="hover:bg-[#13284d]/60">
-                    <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${i + 1}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">${r.material_name}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${r.unit}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(r.norm_value, 4)}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${formatNumber(r.used_qty, 2)}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${formatNumber(r.prod_qty, 0)}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-cyan-300">${formatNumber(r.actual_rate, 4)}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold ${r.diff_qty <= 0 ? 'text-emerald-400' : 'text-rose-400'}">${r.diff_qty > 0 ? '+' : ''}${formatNumber(r.diff_qty, 2)}</td>
-                    <td class="p-1.5 border border-[#1e3a6a] text-center text-xs ${r.diff_qty <= 0 ? 'text-emerald-400' : 'text-amber-400'}">${r.diff_qty <= 0 ? 'Đạt ĐM ✓' : 'Vượt ĐM'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      ${renderMaterialTableBlock(s3.dc1_30x60, '1. Tiêu hao vật tư Dây chuyền số 1 (30x60)')}
+      ${renderMaterialTableBlock(s3.dc2_50x50, '2. Tiêu hao vật tư Dây chuyền số 2 (50x50)')}
+      ${renderMaterialTableBlock(s3.dc2_40x80, '3. Tiêu hao vật tư Dây chuyền số 2 (40x80)')}
+      ${s3.dc2_60x60 && s3.dc2_60x60.length > 0 ? renderMaterialTableBlock(s3.dc2_60x60, '4. Tiêu hao vật tư Dây chuyền số 2 (60x60)') : ''}
     </div>
 
-    <!-- PHẦN IV: SỬ DỤNG THAN TRẠM KHÍ HOÁ -->
+    <!-- PHẦN IV: SỬ DỤNG THAN TRẠM KHÍ HOÁ CHI TIẾT (KHỚP 100% ẢNH 2 & ẢNH 3) -->
     <div class="mb-8">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           IV. SỬ DỤNG THAN TRẠM KHÍ HÓA KHÍ TRONG KỲ
         </h4>
-        <span class="text-xs text-slate-400 italic">Chi tiết theo từng dòng kích thước & toàn nhà máy</span>
+        <span class="text-xs text-slate-400 italic">Chi tiết từng lô than, sấy lò và tổng hợp cho 2 dây chuyền</span>
       </div>
-      <div class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg">
-        <table class="table-excel-grid w-full text-center text-[11px]">
-          <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
-            <tr>
-              <th class="p-2 border border-[#1e3a6a] w-12">STT</th>
-              <th class="p-2 border border-[#1e3a6a] text-left">Hạng Mục Lò & Dây Chuyền</th>
-              <th class="p-2 border border-[#1e3a6a] text-right">Than Cục Cấp (Kg)</th>
-              <th class="p-2 border border-[#1e3a6a] text-right">Than Cám Xỉ (Kg)</th>
-              <th class="p-2 border border-[#1e3a6a] text-right">Than Bù (Kg)</th>
-              <th class="p-2 border border-[#1e3a6a] text-right font-bold text-cyan-300">Tổng Than Sử Dụng (Kg)</th>
-              <th class="p-2 border border-[#1e3a6a] text-right text-white">Sản Lượng (m²)</th>
-              <th class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Suất Tiêu Hao (Kg/m²)</th>
-              <th class="p-2 border border-[#1e3a6a] text-center w-36">Đánh Giá</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
-            ${s4Html}
-          </tbody>
-        </table>
+
+      <!-- 1. DC1 30x60 -->
+      ${renderCoalDetailBlock(s4.dc1_30x60, '1. Dây chuyền số 1 (Gạch ốp 300x600 mm):')}
+
+      <!-- 2. DC2 50x50 -->
+      ${renderCoalDetailBlock(s4.dc2_50x50, '2. Dây chuyền số 2 - Kích thước 500x500 mm:')}
+
+      <!-- 3. DC2 40x80 -->
+      ${renderCoalDetailBlock(s4.dc2_40x80, '3. Dây chuyền số 2 - Kích thước 400x800 mm:')}
+
+      <!-- 4. DC2 60x60 nếu có -->
+      ${s4.dc2_60x60 && (s4.dc2_60x60.all_rows || []).length > 0 ? renderCoalDetailBlock(s4.dc2_60x60, '4. Dây chuyền số 2 - Kích thước 600x600 mm:') : ''}
+
+      <!-- TỔNG HỢP DC2 & TOÀN NHÀ MÁY -->
+      <div class="mb-6">
+        <h5 class="text-xs font-bold text-amber-300 mb-2">★ Tổng hợp sử dụng Than Dây chuyền 2 & Toàn bộ 2 Dây chuyền:</h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 shadow">
+          <table class="table-excel-grid w-full text-center text-[11px]">
+            <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 border border-[#1e3a6a] text-left">Hạng Mục Tổng Hợp</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-white">Than Cục Cấp (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-amber-200">Xuất Cám Xỉ (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Lĩnh Bù (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-rose-400">Cám Vượt TC (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right font-bold text-cyan-300">Tổng Than Sử Dụng (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-white">Sản Lượng (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right">Suất Than Cục</th>
+                <th class="p-2 border border-[#1e3a6a] text-right">Suất Có Cám</th>
+                <th class="p-2 border border-[#1e3a6a] text-right font-black text-emerald-300">Suất Tiêu Hao (Kg/m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-center w-28">Đánh Giá</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              <!-- DC2 Firing -->
+              <tr class="bg-[#0c1a35] text-amber-200 font-bold">
+                <td class="p-1.5 text-left border border-[#1e3a6a] uppercase">TỔNG TIÊU HAO DC2 KHÔNG TÍNH SẤY LÒ:</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(s4.dc2_total?.sum_firing?.issued_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_total?.sum_firing?.ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.dc2_total?.sum_firing?.compensation_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(s4.dc2_total?.sum_firing?.excess_ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(s4.dc2_total?.sum_firing?.total_used_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(s4.dc2_total?.sum_firing?.production_m2, 2)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_total?.sum_firing?.rate_lump, 2)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.dc2_total?.sum_firing?.rate_with_ash, 2)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.dc2_total?.sum_firing?.rate_total, 2)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-center text-xs text-emerald-300">Khoán ✓</td>
+              </tr>
+              <!-- DC2 All (+ Sấy lò) -->
+              <tr class="bg-[#102542] text-white font-bold">
+                <td class="p-1.5 text-left border border-[#1e3a6a] uppercase text-amber-300">TỔNG SỬ DỤNG DC2 (+ SẤY LÒ):</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-black">${formatNumber(s4.dc2_total?.sum_all?.issued_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-200">${formatNumber(s4.dc2_total?.sum_all?.ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.dc2_total?.sum_all?.compensation_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(s4.dc2_total?.sum_all?.excess_ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(s4.dc2_total?.sum_all?.total_used_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(s4.dc2_total?.sum_all?.production_m2, 2)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(s4.dc2_total?.sum_all?.rate_lump, 2)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(s4.dc2_total?.sum_all?.rate_with_ash, 2)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-amber-300">${formatNumber(s4.dc2_total?.sum_all?.rate_total, 2)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-center text-xs text-amber-300">DC2</td>
+              </tr>
+              <!-- 2DC Firing -->
+              <tr class="bg-[#0b2b40] text-cyan-300 font-bold">
+                <td class="p-1.5 text-left border border-[#1e3a6a] uppercase">TỔNG TIÊU HAO 2 DC KHÔNG TÍNH SẤY LÒ:</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(s4.total_2dc?.sum_firing?.issued_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-200">${formatNumber(s4.total_2dc?.sum_firing?.ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.total_2dc?.sum_firing?.compensation_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(s4.total_2dc?.sum_firing?.excess_ash_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(s4.total_2dc?.sum_firing?.total_used_weight, 0)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-white">${formatNumber(s4.total_2dc?.sum_firing?.production_m2, 2)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.total_2dc?.sum_firing?.rate_lump, 2)}</td>
+                <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(s4.total_2dc?.sum_firing?.rate_with_ash, 2)}</td>
+                <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${formatNumber(s4.total_2dc?.sum_firing?.rate_total, 2)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-center text-xs text-emerald-300">Toàn NM</td>
+              </tr>
+              <!-- 2DC Grand Total -->
+              <tr class="bg-[#051c2c] text-white font-bold text-xs">
+                <td class="p-2 text-left border border-[#1e3a6a] uppercase font-black text-cyan-300">TỔNG SỬ DỤNG TOÀN BỘ 2 DÂY CHUYỀN (+ SẤY LÒ):</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(s4.total_2dc?.sum_all?.issued_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-amber-200">${formatNumber(s4.total_2dc?.sum_all?.ash_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.total_2dc?.sum_all?.compensation_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-rose-400">${formatNumber(s4.total_2dc?.sum_all?.excess_ash_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(s4.total_2dc?.sum_all?.total_used_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(s4.total_2dc?.sum_all?.production_m2, 2)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-slate-200">${formatNumber(s4.total_2dc?.sum_all?.rate_lump, 2)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-slate-200">${formatNumber(s4.total_2dc?.sum_all?.rate_with_ash, 2)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${formatNumber(s4.total_2dc?.sum_all?.rate_total, 2)}</td>
+                <td class="p-2 border border-[#1e3a6a] text-center font-bold text-xs text-emerald-400">Đạt kế hoạch ✓</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 

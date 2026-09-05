@@ -92,7 +92,6 @@ def get_default_hr_notes():
     return "- DC1 ngày 03/06 chuyển 02 đốc công và 05 công nhân PLĐG sang THK hỗ trợ. Đề nghị P.TC-HC tuyển bổ sung đủ định biên tối thiểu 102 người.\n- DC2 tuyển mới 4 người, nghỉ việc 3 người. Nhân sự cơ bản đáp ứng sản xuất.\n- Bộ phận TB-TM định biên 62/62 đủ nhân sự; Phòng KT-CN định biên 24/24 đủ nhân sự."
 
 def get_default_plan_next_period():
-    """Default Plan matching Page 1 of PDF (e.g. Month 9/2026)"""
     return {
         "items": [
             {
@@ -117,7 +116,6 @@ def get_default_plan_next_period():
     }
 
 def get_default_goals_next_period():
-    """Default Goals matching Page 2 of PDF (e.g. Month 9/2026)"""
     return {
         "items": [
             {
@@ -249,12 +247,11 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "stop_time_2mf": a_data["stop_time_2mf"] - p_data["stop_time_2mf"]
         }
 
-        # IMPORTANT: Rate difference according to user formula (Actual % - Plan %) for A1, A, B, A/ép, C/ép, Huỷ/ép
         rate_pct = {
             "sl_ep": (a_data["sl_ep"] / p_data["sl_ep"] * 100) if p_data["sl_ep"] > 0 else 0,
-            "a1": a_data["pct_a1"] - p_data["pct_a1"], # e.g. 93.81 - 90.00 = +3.81%
-            "a": a_data["pct_a"] - p_data["pct_a"],     # e.g. 2.64 - 7.00 = -4.36%
-            "b": a_data["pct_b"] - p_data["pct_b"],     # e.g. 3.54 - 3.00 = +0.54%
+            "a1": a_data["pct_a1"] - p_data["pct_a1"],
+            "a": a_data["pct_a"] - p_data["pct_a"],
+            "b": a_data["pct_b"] - p_data["pct_b"],
             "recovery_total": (a_data["recovery_total"] / p_data["recovery_total"] * 100) if p_data["recovery_total"] > 0 else 0,
             "a_ep": a_data["a_ep"] - p_data["a_ep"],
             "c_ep": a_data["c_ep"] - p_data["c_ep"],
@@ -366,12 +363,10 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     for g in dc1_glazes:
         g["pct"] = (g["prod_m2"] / sum_dc1_glazes * 100) if sum_dc1_glazes > 0 else 0
 
-    # Split DC2 50x50 into Men Bóng and Men Sugar Sân Vườn
     dc2_50x50_all = [r for r in sec2_raw if r["line"] == "DC2" and r["size"] == "50x50"]
     dc2_50x50_bong = [r for r in dc2_50x50_all if "bóng" in (r["glaze_type"] or "").lower()]
     dc2_50x50_sugar = [r for r in dc2_50x50_all if "sugar" in (r["glaze_type"] or "").lower() or "vườn" in (r["glaze_type"] or "").lower()]
     
-    # In case there are items not matched into bong or sugar
     other_50x50 = [r for r in dc2_50x50_all if r not in dc2_50x50_bong and r not in dc2_50x50_sugar]
     if other_50x50:
         dc2_50x50_bong.extend(other_50x50)
@@ -413,52 +408,77 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     mat_dc2_60x60 = [r for r in sec3_raw if r["line"] == "DC2" and r["size"] == "60x60"]
     mat_dc2_40x80 = [r for r in sec3_raw if r["line"] == "DC2" and r["size"] == "40x80"]
 
-    # 4. SECTION IV: SỬ DỤNG THAN (Structured per size and total DC2, total 2DC)
-    q_sec4 = f'''
-        SELECT line, size, firing_type,
-               SUM(issued_weight) as issued_weight,
-               SUM(ash_weight) as ash_weight,
-               SUM(compensation_weight) as compensation_weight,
-               SUM(excess_ash_weight) as excess_ash_weight,
-               SUM(total_used_weight) as total_used_weight,
-               SUM(production_m2) as production_m2
+    # 4. SECTION IV: SỬ DỤNG THAN CHI TIẾT THEO TỪNG DÒNG (Khớp 100% Tab Sử dụng than)
+    q_sec4_detail = f'''
+        SELECT id, stt, excel_row, month, year, line, size, coal_supplier, warehouse, import_date, firing_type,
+               heat_value, ash_rate, std_ash_rate, stone_rate, issued_weight, ash_weight,
+               ash_export_rate, compensation_weight, excess_ash_weight, total_used_weight,
+               production_m2, rate_lump, rate_with_ash, rate_total, note
         FROM data_coal_consumption
         WHERE month IN ({placeholders})
-        GROUP BY line, size, firing_type
-        ORDER BY line, size
+        ORDER BY line, size, id ASC
     '''
-    sec4_raw = [dict(r) for r in cur.execute(q_sec4, months).fetchall()]
+    coal_raw_all = [dict(r) for r in cur.execute(q_sec4_detail, months).fetchall()]
 
-    def summarize_coal_group(rows_list):
-        issued = sum(r["issued_weight"] or 0 for r in rows_list)
-        ash = sum(r["ash_weight"] or 0 for r in rows_list)
-        comp = sum(r["compensation_weight"] or 0 for r in rows_list)
-        total_used = sum(r["total_used_weight"] or 0 for r in rows_list)
-        prod_m2 = sum(r["production_m2"] or 0 for r in rows_list)
+    def process_coal_section(rows_list, title):
+        firing = [r for r in rows_list if "không" not in (r.get("firing_type") or "").lower()]
+        drying = [r for r in rows_list if "không" in (r.get("firing_type") or "").lower()]
+        
+        sum_lump_f = sum(r["issued_weight"] or 0 for r in firing)
+        sum_ash_f = sum(r["ash_weight"] or 0 for r in firing)
+        sum_comp_f = sum(r["compensation_weight"] or 0 for r in firing)
+        sum_excess_f = sum(r["excess_ash_weight"] or 0 for r in firing)
+        sum_used_f = sum(r["total_used_weight"] or ((r["issued_weight"] or 0) + (r["ash_weight"] or 0) + (r["compensation_weight"] or 0) - (r["excess_ash_weight"] or 0)) for r in firing)
+        sum_m2_f = sum(r["production_m2"] or 0 for r in firing)
+        
+        sum_lump_d = sum(r["issued_weight"] or 0 for r in drying)
+        sum_ash_d = sum(r["ash_weight"] or 0 for r in drying)
+        sum_used_d = sum(r["total_used_weight"] or ((r["issued_weight"] or 0) + (r["ash_weight"] or 0)) for r in drying)
+
+        total_issued = sum_lump_f + sum_lump_d
+        total_ash = sum_ash_f + sum_ash_d
+        total_comp = sum_comp_f
+        total_excess = sum_excess_f
+        total_used = sum_used_f + sum_used_d
+        total_m2 = sum_m2_f
+
         return {
-            "issued_weight": issued,
-            "ash_weight": ash,
-            "compensation_weight": comp,
-            "total_used_weight": total_used,
-            "production_m2": prod_m2,
-            "rate_kg_m2": (total_used / prod_m2) if prod_m2 > 0 else 0
+            "title": title,
+            "all_rows": rows_list,
+            "firing_rows": firing,
+            "drying_rows": drying,
+            "sum_firing": {
+                "issued_weight": sum_lump_f, "ash_weight": sum_ash_f, "compensation_weight": sum_comp_f,
+                "excess_ash_weight": sum_excess_f, "total_used_weight": sum_used_f, "production_m2": sum_m2_f,
+                "rate_lump": (sum_lump_f / sum_m2_f) if sum_m2_f > 0 else 0,
+                "rate_with_ash": ((sum_lump_f + sum_ash_f - sum_excess_f) / sum_m2_f) if sum_m2_f > 0 else 0,
+                "rate_total": (sum_used_f / sum_m2_f) if sum_m2_f > 0 else 0,
+                "ash_pct": (sum_ash_f / (sum_lump_f + sum_ash_f) * 100) if (sum_lump_f + sum_ash_f) > 0 else 0
+            },
+            "sum_drying": {
+                "issued_weight": sum_lump_d, "ash_weight": sum_ash_d, "total_used_weight": sum_used_d,
+                "ash_pct": (sum_ash_d / (sum_lump_d + sum_ash_d) * 100) if (sum_lump_d + sum_ash_d) > 0 else 0
+            },
+            "sum_all": {
+                "issued_weight": total_issued,
+                "ash_weight": total_ash,
+                "compensation_weight": total_comp,
+                "excess_ash_weight": total_excess,
+                "total_used_weight": total_used,
+                "production_m2": total_m2,
+                "rate_lump": (total_issued / total_m2) if total_m2 > 0 else 0,
+                "rate_with_ash": ((total_issued + total_ash - total_excess) / total_m2) if total_m2 > 0 else 0,
+                "rate_total": (total_used / total_m2) if total_m2 > 0 else 0,
+                "ash_pct": (total_ash / (total_issued + total_ash) * 100) if (total_issued + total_ash) > 0 else 0
+            }
         }
 
-    coal_dc1_30x60 = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC1"])
-    coal_dc2_50x50 = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC2" and r["size"] == "50x50"])
-    coal_dc2_60x60 = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC2" and r["size"] == "60x60"])
-    coal_dc2_40x80 = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC2" and r["size"] == "40x80"])
-    coal_dc2_total = summarize_coal_group([r for r in sec4_raw if r["line"] == "DC2"])
-    coal_all_total = summarize_coal_group(sec4_raw)
-
-    coal_table_rows = [
-        {"stt": 1, "name": "Dây chuyền số 1 (300x600)", "data": coal_dc1_30x60, "eval": "Đạt định mức khoán ✓", "is_total": False},
-        {"stt": 2, "name": "DC2 - Kích thước 500x500", "data": coal_dc2_50x50, "eval": "Ổn định", "is_total": False},
-        {"stt": 3, "name": "DC2 - Kích thước 600x600", "data": coal_dc2_60x60, "eval": "Ổn định", "is_total": False},
-        {"stt": 4, "name": "DC2 - Kích thước 400x800", "data": coal_dc2_40x80, "eval": "Ổn định", "is_total": False},
-        {"stt": "", "name": "TỔNG SỬ DỤNG DÂY CHUYỀN 2", "data": coal_dc2_total, "eval": "", "is_total": True},
-        {"stt": "", "name": "TỔNG SỬ DỤNG 2 DÂY CHUYỀN", "data": coal_all_total, "eval": "Đạt kế hoạch năm ✓", "is_total": True}
-    ]
+    coal_dc1_30x60 = process_coal_section([r for r in coal_raw_all if r["line"] == "DC1" and r["size"] == "30x60"], "1. Dây chuyền số 1 (300x600)")
+    coal_dc2_50x50 = process_coal_section([r for r in coal_raw_all if r["line"] == "DC2" and r["size"] == "50x50"], "2. DC2 - Kích thước 500x500")
+    coal_dc2_40x80 = process_coal_section([r for r in coal_raw_all if r["line"] == "DC2" and r["size"] == "40x80"], "3. DC2 - Kích thước 400x800")
+    coal_dc2_60x60 = process_coal_section([r for r in coal_raw_all if r["line"] == "DC2" and r["size"] == "60x60"], "4. DC2 - Kích thước 600x600")
+    coal_dc2_total = process_coal_section([r for r in coal_raw_all if r["line"] == "DC2"], "TỔNG SỬ DỤNG DÂY CHUYỀN 2")
+    coal_all_total = process_coal_section(coal_raw_all, "TỔNG SỬ DỤNG 2 DÂY CHUYỀN (TOÀN NHÀ MÁY)")
 
     # 5, 6, 7, 8: FETCH CUSTOM DATA FROM DB OR DEFAULTS
     saved_custom = cur.execute("SELECT * FROM report_form_mau_custom WHERE period_key = ?", (p_info["period_key"],)).fetchone()
@@ -531,12 +551,11 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "dc2_40x80": mat_dc2_40x80
         },
         "section_4_coal": {
-            "rows": coal_table_rows,
             "dc1_30x60": coal_dc1_30x60,
             "dc2_50x50": coal_dc2_50x50,
-            "dc2_60x60": coal_dc2_60x60,
             "dc2_40x80": coal_dc2_40x80,
-            "total_dc2": coal_dc2_total,
+            "dc2_60x60": coal_dc2_60x60,
+            "dc2_total": coal_dc2_total,
             "total_2dc": coal_all_total
         },
         "section_5_hr": {
@@ -617,16 +636,13 @@ def parse_form_mau_excel_upload(file_bytes):
 
     # 1. Parse Section V: Nhân sự
     hr_rows = []
-    found_hr = False
     for i, r in enumerate(rows):
         if not r or not any(r): continue
         r_str = " ".join([str(c) for c in r if c is not None]).lower()
         if "tình hình nhân sự" in r_str or "định biên" in r_str or ("đốc công" in r_str and "plđg" in r_str):
-            found_hr = True
             for j in range(i + 1, min(i + 25, len(rows))):
                 sub_r = rows[j]
                 if not sub_r or not any(sub_r): continue
-                stt_val = str(sub_r[0] or sub_r[1] or "").strip()
                 pos_val = str(sub_r[1] or sub_r[2] or "").strip()
                 if any(kw in pos_val.lower() for kw in ["văn phòng", "đốc công", "ép", "lò nung", "plđg", "xe nâng", "vscn", "tạo bột", "than hoá", "phòng kt"]):
                     nums = [float(c) if isinstance(c, (int, float)) else 0 for c in sub_r if isinstance(c, (int, float))]
