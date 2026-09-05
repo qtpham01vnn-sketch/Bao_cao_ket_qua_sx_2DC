@@ -44,36 +44,60 @@ html:not(.dark) body {
 
 /* 1. SIDEBAR IN LIGHT MODE */
 html:not(.dark) #sidebar {
-  background-color: #064e3b;
-  border-right-color: #047857;
+  background-color: #ffffff !important;
+  border-right-color: #cbd5e1 !important;
 }
 html:not(.dark) #sidebar h1 {
-  color: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
 }
 html:not(.dark) #sidebar p,
 html:not(.dark) #sidebar .text-slate-400 {
-  color: #a7f3d0 !important;
+  color: #64748b !important;
+  font-weight: 700 !important;
 }
 html:not(.dark) #sidebar .nav-btn {
-  color: #d1fae5 !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+html:not(.dark) #sidebar .nav-btn i,
+html:not(.dark) #sidebar .nav-btn svg {
+  color: #334155 !important;
 }
 html:not(.dark) #sidebar .nav-btn:hover {
-  background-color: #047857 !important;
-  color: #ffffff !important;
+  background-color: #f1f5f9 !important;
+  color: #059669 !important;
 }
-html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90 {
-  background-color: #10b981 !important;
+html:not(.dark) #sidebar .nav-btn:hover i,
+html:not(.dark) #sidebar .nav-btn:hover svg {
+  color: #059669 !important;
+}
+html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90,
+html:not(.dark) #sidebar .nav-btn[class*="bg-emerald"] {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3) !important;
+}
+html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90 i,
+html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90 svg,
+html:not(.dark) #sidebar .nav-btn.bg-emerald-600\/90 span,
+html:not(.dark) #sidebar .nav-btn[class*="bg-emerald"] i,
+html:not(.dark) #sidebar .nav-btn[class*="bg-emerald"] svg,
+html:not(.dark) #sidebar .nav-btn[class*="bg-emerald"] span {
   color: #ffffff !important;
 }
 html:not(.dark) #sidebar .bg-\[\#081224\] {
-  background-color: #043c2e !important;
-  border-top-color: #047857 !important;
+  background-color: #f8fafc !important;
+  border-top-color: #cbd5e1 !important;
 }
 html:not(.dark) #sidebar .bg-\[\#081224\] .text-white {
-  color: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
 }
 html:not(.dark) #sidebar .bg-\[\#081224\] .text-slate-400 {
-  color: #a7f3d0 !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
 }
 
 /* 2. HEADER & BREADCRUMBS */
@@ -97,6 +121,25 @@ html:not(.dark) header button.bg-\[\#112348\] {
 }
 html:not(.dark) header button.bg-\[\#112348\]:hover {
   background-color: #e2e8f0 !important;
+}
+
+/* 2B. BANNER HEADERS IN LIGHT MODE */
+html:not(.dark) .p-4.bg-gradient-to-r {
+  background: linear-gradient(135deg, #065f46 0%, #047857 50%, #0f766e 100%) !important;
+  border-color: #047857 !important;
+  box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25) !important;
+}
+html:not(.dark) .p-4.bg-gradient-to-r h2,
+html:not(.dark) .p-4.bg-gradient-to-r h3,
+html:not(.dark) .p-4.bg-gradient-to-r .text-emerald-300,
+html:not(.dark) .p-4.bg-gradient-to-r .text-white,
+html:not(.dark) .p-4.bg-gradient-to-r span,
+html:not(.dark) .p-4.bg-gradient-to-r p {
+  color: #ffffff !important;
+}
+html:not(.dark) .p-4.bg-gradient-to-r .text-slate-300,
+html:not(.dark) .p-4.bg-gradient-to-r .text-slate-400 {
+  color: #e2e8f0 !important;
 }
 
 /* 3. CARD CONTAINERS & MAIN PANELS */
