@@ -2810,7 +2810,7 @@ async function saveNormDetails() {
   }
 }
 
-// 5. DOWNLOAD EXCEL TEMPLATE (TẢI FILE MẪU CHUẨN THEO DÒNG KT)
+// 5. DOWNLOAD EXCEL TEMPLATE (TẢI FILE MẪU EXCEL .XLSX CHUẨN TCVN)
 function downloadNormTemplateExcel() {
   const line = (normLineFilter !== 'all') ? normLineFilter : (document.getElementById("new-version-line")?.value || "DC1");
   let size = (normSizeFilter !== 'all') ? normSizeFilter : (document.getElementById("new-version-size")?.value || (line === 'DC1' ? '30x60' : '40x80'));
@@ -2818,43 +2818,84 @@ function downloadNormTemplateExcel() {
   let sampleRows = [];
   if (line === "DC1") {
     sampleRows = [
-      { stt: 1, name: "Men lót M01 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.1450, note: "Chuẩn định mức men lót DC1" },
-      { stt: 2, name: "Men phủ M02 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.1820, note: "Chuẩn định mức men phủ DC1" },
-      { stt: 3, name: "Men in lưới số 1 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.0120, note: "In hoa văn 30x60" },
-      { stt: 4, name: "Xương SP 30x60 (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 4.8500, note: "Định mức xương thô" },
-      { stt: 5, name: "Than cục nung (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.5820, note: "Tiêu hao than cục" },
-      { stt: 6, name: "Than cám nung (DC1)", line: "DC1", size: "30x60", unit: "Kg", norm: 0.0450, note: "Tiêu hao than cám" }
+      [1, "Xương SP 30x60 (DC1)", "DC1", "30x60", "Kg", 19.04, "Định mức xương thô DC1"],
+      [2, "Men EWB (Men lót)", "DC1", "30x60", "Kg", 0.456, "Men lót DC1"],
+      [3, "Men EWM (Men phủ)", "DC1", "30x60", "Kg", 0.383, "Men phủ DC1"],
+      [4, "Men EWP", "DC1", "30x60", "Kg", 0.520, "Men lót phủ"],
+      [5, "Men GWB", "DC1", "30x60", "Kg", 0.434, "Men bóng"],
+      [6, "Men GWM", "DC1", "30x60", "Kg", 0.434, "Men mờ"],
+      [7, "Men GWP", "DC1", "30x60", "Kg", 0.520, "Men in"],
+      [8, "Bao bì", "DC1", "30x60", "Cái", 0.697, "Vỏ thùng hộp"],
+      [9, "Nan Nẹp", "DC1", "30x60", "Cái", 0.04724, "Nan nẹp bảo vệ"],
+      [10, "Pallet", "DC1", "30x60", "Cái", 0.01181, "Palet đóng hàng"],
+      [11, "Màng co PE khổ 500mm", "DC1", "30x60", "Kg", 0.00343, "Màng co bọc kiện"],
+      [12, "Vỏ Điều", "DC1", "30x60", "Kg", 1.650, "Chất trợ cháy"],
+      [13, "Bi cao nhôm (Grand)", "DC1", "30x60", "Kg", 0.0020, "Bi nghiền"],
+      [14, "Bi cao nhôm (Luxury)", "DC1", "30x60", "Kg", 0.00277, "Bi nghiền"],
+      [15, "Bi trung nhôm", "DC1", "30x60", "Kg", 0.0433, "Bi nghiền"],
+      [16, "Dây đai hộp", "DC1", "30x60", "Kg", 0.0082, "Dây đai máy"],
+      [17, "Dây đai pét", "DC1", "30x60", "Cái", 0.0064, "Dây đai kiện"],
+      [18, "Ke góc", "DC1", "30x60", "Kg", 0.0371, "Ke góc hộp"],
+      [19, "Than cục nung", "DC1", "30x60", "Kg", 0.582, "Tiêu hao than cục"],
+      [20, "Than cám nung", "DC1", "30x60", "Kg", 0.045, "Tiêu hao than cám"]
     ];
   } else {
     sampleRows = [
-      { stt: 1, name: "Men lót M11 (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.1650, note: "Định mức men lót DC2" },
-      { stt: 2, name: "Men phủ M12 (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.2100, note: "Định mức men phủ DC2" },
-      { stt: 3, name: "Men bảo vệ bóng (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.0350, note: "Men phủ bảo vệ" },
-      { stt: 4, name: "Xương SP " + size + " (DC2)", line: "DC2", size: size, unit: "Kg", norm: 5.6200, note: "Định mức xương DC2" },
-      { stt: 5, name: "Than cục nung (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.6120, note: "Tiêu hao than cục DC2" },
-      { stt: 6, name: "Than cám nung (DC2)", line: "DC2", size: size, unit: "Kg", norm: 0.0520, note: "Tiêu hao than cám DC2" }
+      [1, "XƯƠNG DC2", "DC2", size, "Kg", 21.65, "Định mức xương DC2"],
+      [2, "Men E Lót Bóng", "DC2", size, "Kg", 0.436, "Men lót DC2"],
+      [3, "Men G Lát Bóng", "DC2", size, "Kg", 0.389, "Men phủ bóng DC2"],
+      [4, "Men E MATT", "DC2", size, "Kg", 0.319, "Men lót mờ"],
+      [5, "Men MATT", "DC2", size, "Kg", 0.319, "Men phủ mờ"],
+      [6, "Bã điều", "DC2", size, "Kg", 1.84, "Chất trợ cháy"],
+      [7, "Bi trung nhôm", "DC2", size, "Kg", 0.027, "Bi nghiền"],
+      [8, "Bi cao nhôm", "DC2", size, "Kg", 0.0023, "Bi nghiền"],
+      [9, "Ke góc", "DC2", size, "Kg", 0.022, "Ke bảo vệ góc"],
+      [10, "Màng co", "DC2", size, "Kg", 0.0049, "Màng co"],
+      [11, "Dây đai vỏ hộp (Dây đai máy)", "DC2", size, "Kg", 0.0109, "Dây đai hộp"],
+      [12, "Dây đai Pet (Dây đai tay)", "DC2", size, "Kg", 0.0053, "Dây đai kiện"],
+      [13, "Bao bì", "DC2", size, "Cái", 0.557, "Vỏ bao bì"],
+      [14, "Palet", "DC2", size, "Cái", 0.0154, "Palet đóng gạch"],
+      [15, "Than cục nung", "DC2", size, "Kg", 0.612, "Tiêu hao than cục DC2"],
+      [16, "Than cám nung", "DC2", size, "Kg", 0.052, "Tiêu hao than cám DC2"]
     ];
   }
 
-  // Generate CSV with UTF-8 BOM
-  let csvContent = "\uFEFF";
-  csvContent += "STT,TÊN NGUYÊN VẬT TƯ,DÂY CHUYỀN,KÍCH THƯỚC,ĐƠN VỊ TÍNH,ĐỊNH MỨC QUY ĐỊNH,GHI CHÚ\r\n";
-  sampleRows.forEach(r => {
-    csvContent += `"${r.stt}","${r.name}","${r.line}","${r.size}","${r.unit}","${r.norm}","${r.note}"\r\n`;
-  });
+  // Generate real .XLSX via SheetJS
+  if (window.XLSX) {
+    const wsData = [
+      ["CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM", "", "", "", "", "", ""],
+      ["PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG", "", "", "", "", "", ""],
+      ["BẢNG ĐỊNH MỨC TIÊU HAO NGUYÊN LIỆU, MEN, XƯƠNG VÀ VẬT TƯ", "", "", "", "", "", ""],
+      [`Dây Chuyền: ${line} - Dòng Kích Thước: ${size} (Năm 2026)`, "", "", "", "", "", ""],
+      [],
+      ["STT", "TÊN NGUYÊN VẬT TƯ", "DÂY CHUYỀN", "KÍCH THƯỚC", "ĐƠN VỊ TÍNH", "ĐỊNH MỨC QUY ĐỊNH", "GHI CHÚ"],
+      ...sampleRows,
+      [],
+      ["", "", "", "", "", "", ""],
+      ["", "NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT"],
+      ["", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)"]
+    ];
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Mau_Dinh_Muc_${line}_${size}_2026.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+      { wch: 8 },
+      { wch: 36 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 30 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dinh_Muc_Mau");
+    XLSX.writeFile(wb, `Mau_Dinh_Muc_${line}_${size}_2026.xlsx`);
+  } else {
+    alert("Thư viện Excel đang tải, vui lòng thử lại sau 2 giây!");
+  }
 }
 
-// 6. EXPORT CURRENT NORM TABLE TO EXCEL
+// 6. EXPORT CURRENT NORM TABLE TO EXCEL (.XLSX CHUẨN TCVN)
 function exportCurrentNormTableExcel() {
   if (!currentNormDetailsList || currentNormDetailsList.length === 0) {
     alert("Không có dữ liệu định mức để xuất Excel!");
@@ -2862,27 +2903,58 @@ function exportCurrentNormTableExcel() {
   }
 
   const verCode = currentNormInfo.version_code || "DM";
-  let csvContent = "\uFEFF";
-  csvContent += `BÁO CÁO ĐỊNH MỨC TIÊU HAO - PHIÊN BẢN: ${verCode} - ${currentNormInfo.version_name || ''}\r\n`;
-  csvContent += `Hiệu lực: Tháng ${currentNormInfo.effective_from_month || 1}/${currentNormInfo.effective_from_year || 2026}\r\n\r\n`;
-  csvContent += "STT,TÊN NGUYÊN VẬT TƯ,DÂY CHUYỀN,KÍCH THƯỚC,ĐƠN VỊ TÍNH,ĐỊNH MỨC QUY ĐỊNH\r\n";
+  const verName = currentNormInfo.version_name || "Định mức tiêu hao";
+  const m = currentNormInfo.effective_from_month || 1;
+  const y = currentNormInfo.effective_from_year || 2026;
+  const lineLabel = currentNormInfo.line || normLineFilter || "Chung";
+  const sizeLabel = currentNormInfo.size || normSizeFilter || "Đa KT";
 
-  currentNormDetailsList.forEach((d, idx) => {
-    csvContent += `"${idx + 1}","${d.material_name}","${d.line}","${d.size}","${d.unit}","${d.norm_value}"\r\n`;
-  });
+  if (window.XLSX) {
+    const dataRows = currentNormDetailsList.map((d, idx) => [
+      idx + 1,
+      d.material_name,
+      d.line,
+      d.size,
+      d.unit,
+      d.norm_value,
+      ""
+    ]);
 
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Bang_Dinh_Muc_${verCode}_${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    const wsData = [
+      ["CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM", "", "", "", "", "", ""],
+      ["PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG", "", "", "", "", "", ""],
+      ["BẢNG ĐỊNH MỨC TIÊU HAO NGUYÊN LIỆU XƯƠNG, MEN, VẬT TƯ", "", "", "", "", "", ""],
+      [`Phiên Bản: ${verCode} - ${verName}`, "", "", "", "", "", ""],
+      [`Dây Chuyền: ${lineLabel} · Kích Thước: ${sizeLabel} - Hiệu lực: Tháng ${m}/${y}`, "", "", "", "", "", ""],
+      [],
+      ["STT", "TÊN NGUYÊN VẬT TƯ", "DÂY CHUYỀN", "KÍCH THƯỚC", "ĐƠN VỊ TÍNH", "ĐỊNH MỨC QUY ĐỊNH (Kg/m²)", "GHI CHÚ"],
+      ...dataRows,
+      [],
+      ["", "", "", "", "", "", ""],
+      ["", "NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT"],
+      ["", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)"]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+      { wch: 8 },
+      { wch: 38 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 26 },
+      { wch: 28 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bang_Dinh_Muc");
+    XLSX.writeFile(wb, `Bang_Dinh_Muc_${verCode}_${Date.now()}.xlsx`);
+  } else {
+    alert("Thư viện Excel đang tải, vui lòng thử lại sau 2 giây!");
+  }
 }
 
-// 7. AUTO-EXTRACT FROM EXCEL FILE (CHẾ ĐỘ 1: TỰ ĐỘNG TRÍCH XUẤT)
+// 7. AUTO-EXTRACT FROM EXCEL FILE (CHUYÊN GIA BÓC TÁCH TỜ TRÌNH & EXCEL NHÀ MÁY)
 function triggerImportNormExcel() {
   const fileInput = document.getElementById("norm-quick-excel-file");
   if (fileInput) fileInput.click();
@@ -2892,7 +2964,6 @@ async function parseNormExcelFile(file, targetLine, targetSize) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
-    // Check if SheetJS is available and file is binary xlsx/xls
     if (window.XLSX && !file.name.endsWith(".csv")) {
       reader.onload = function(e) {
         try {
@@ -2900,115 +2971,190 @@ async function parseNormExcelFile(file, targetLine, targetSize) {
           const workbook = XLSX.read(data, { type: "array" });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
           
           if (!rawRows || rawRows.length < 2) {
             reject("File Excel không có đủ dữ liệu hàng!");
             return;
           }
 
-          // Find header row (search first 10 rows)
-          let headerIdx = 0;
-          for (let i = 0; i < Math.min(10, rawRows.length); i++) {
-            const r = rawRows[i].map(c => String(c || '').toLowerCase().trim());
-            if (r.some(c => c.includes("vật tư") || c.includes("material") || c.includes("tên") || c.includes("định mức") || c.includes("norm"))) {
-              headerIdx = i;
+          let detectedLine = targetLine;
+          let detectedSize = targetSize;
+
+          // 1. Quét 20 dòng đầu để nhận diện Dây chuyền & Kích thước từ Tiêu đề Tờ trình
+          for (let i = 0; i < Math.min(20, rawRows.length); i++) {
+            const rowStr = rawRows[i].map(c => String(c || '').trim()).join(" ").toLowerCase();
+            if (rowStr.includes("600x600") || rowStr.includes("600*600") || rowStr.includes("60x60")) {
+              detectedSize = "60x60";
+              detectedLine = "DC2";
+            } else if (rowStr.includes("400x800") || rowStr.includes("400*800") || rowStr.includes("40x80")) {
+              detectedSize = "40x80";
+              detectedLine = "DC2";
+            } else if (rowStr.includes("500x500") || rowStr.includes("500*500") || rowStr.includes("50x50")) {
+              detectedSize = "50x50";
+              detectedLine = "DC2";
+            } else if (rowStr.includes("300x600") || rowStr.includes("300*600") || rowStr.includes("30x60")) {
+              detectedSize = "30x60";
+              detectedLine = "DC1";
+            }
+            if (rowStr.includes("dc1") || rowStr.includes("dây chuyền 1")) detectedLine = "DC1";
+            if (rowStr.includes("dc2") || rowStr.includes("dây chuyền 2")) detectedLine = "DC2";
+          }
+
+          // 2. Định vị chính xác Dòng Tiêu Đề Cột Bảng (Header Row)
+          let headerRowIdx = -1;
+          let nameCol = -1;
+          let normCol = -1;
+          let unitCol = -1;
+          let lineCol = -1;
+          let sizeCol = -1;
+
+          for (let i = 0; i < Math.min(25, rawRows.length); i++) {
+            const row = rawRows[i].map(c => String(c || '').toLowerCase().trim());
+            const nIdx = row.findIndex(c => 
+              c.includes("tên nguyên liệu") || 
+              c.includes("tên vật tư") || 
+              c.includes("nguyên liệu, vật tư") || 
+              c.includes("nguyên vật tư") || 
+              c.includes("tên nguyên vật tư") || 
+              c.includes("material")
+            );
+
+            if (nIdx !== -1) {
+              headerRowIdx = i;
+              nameCol = nIdx;
+
+              // Ghép chuỗi tiêu đề đa dòng (cho header gộp dòng 10-12)
+              const maxCols = Math.max(...rawRows.slice(Math.max(0, i - 1), Math.min(rawRows.length, i + 3)).map(r => r.length));
+              const combinedHeaders = [];
+              for (let c = 0; c < maxCols; c++) {
+                let cellTexts = [];
+                for (let r = Math.max(0, i - 1); r <= Math.min(rawRows.length - 1, i + 2); r++) {
+                  if (rawRows[r] && rawRows[r][c]) {
+                    cellTexts.push(String(rawRows[r][c]).toLowerCase().trim());
+                  }
+                }
+                combinedHeaders[c] = cellTexts.join(" ");
+              }
+
+              // Ưu tiên 1: Cột "ĐM Khoán", "Định mức khoán", "Khoán", "ĐM (kg/m2)"
+              let bestNorm = -1;
+              for (let c = 0; c < combinedHeaders.length; c++) {
+                const txt = combinedHeaders[c];
+                if (txt.includes("đm khoán") || txt.includes("định mức khoán") || txt.includes("khoán") || txt.includes("đm (kg/m2)") || txt.includes("đm (kg/m²)") || txt.includes("đm (kg/m)")) {
+                  bestNorm = c;
+                  break;
+                }
+              }
+
+              // Ưu tiên 2: Cột "Định mức quy định", "Định mức", "Norm"
+              if (bestNorm === -1) {
+                for (let c = 0; c < combinedHeaders.length; c++) {
+                  const txt = combinedHeaders[c];
+                  if (txt.includes("định mức quy định") || txt.includes("định mức") || txt.includes("norm") || txt.includes("sd thực tế")) {
+                    bestNorm = c;
+                    break;
+                  }
+                }
+              }
+
+              normCol = bestNorm;
+              unitCol = combinedHeaders.findIndex(c => c.includes("đvt") || c.includes("đơn vị"));
+              lineCol = combinedHeaders.findIndex(c => c.includes("dây chuyền") || c.includes("line"));
+              sizeCol = combinedHeaders.findIndex(c => c.includes("kích thước") || c.includes("size"));
+
               break;
             }
           }
 
-          const header = rawRows[headerIdx].map(c => String(c || '').toLowerCase().trim());
-          const nameCol = header.findIndex(c => c.includes("tên") || c.includes("vật tư") || c.includes("material") || c.includes("nguyên liệu"));
-          const normCol = header.findIndex(c => c.includes("định mức") || c.includes("norm") || c.includes("mức") || c.includes("quy định"));
-          const unitCol = header.findIndex(c => c.includes("đvt") || c.includes("đơn vị") || c.includes("unit"));
-          const lineCol = header.findIndex(c => c.includes("dây chuyền") || c.includes("dc") || c.includes("line"));
-          const sizeCol = header.findIndex(c => c.includes("kích thước") || c.includes("kt") || c.includes("size"));
-
-          if (nameCol === -1 || normCol === -1) {
-            reject("Không tìm thấy cột 'Tên vật tư' hoặc 'Định mức' trong file Excel!");
+          if (headerRowIdx === -1 || nameCol === -1) {
+            reject("Không tìm thấy dòng tiêu đề cột 'Tên nguyên liệu, vật tư' trong file Excel!");
             return;
           }
 
-          const items = [];
-          for (let i = headerIdx + 1; i < rawRows.length; i++) {
-            const row = rawRows[i];
-            if (!row || row.length === 0) continue;
-            const matName = String(row[nameCol] || '').trim();
-            if (!matName || matName.toLowerCase().includes("tổng") || matName.toLowerCase().includes("stt")) continue;
+          // 3. Danh sách từ khóa DỪNG QUÉT (Footer / Ký tên / Nơi gửi)
+          const stopKeywords = [
+            "kính trình", "tổng giám đốc", "ban tổng giám đốc", "nơi gửi", 
+            "lưu:", "p.ktcn", "pxsx", "p.khth", "p kế toán", "kế toán", 
+            "phê duyệt", "đồng nai,", "ngày 0", "ngày 1", "ngày 2", "ngày 3", "gửi các phó"
+          ];
 
-            const normVal = parseFloat(String(row[normCol] || '0').replace(/,/g, '.'));
-            const unitVal = unitCol !== -1 ? (String(row[unitCol] || 'Kg').trim() || 'Kg') : 'Kg';
-            const rowLine = lineCol !== -1 ? (String(row[lineCol] || targetLine).trim() || targetLine) : targetLine;
-            const rowSize = sizeCol !== -1 ? (String(row[sizeCol] || targetSize).trim() || targetSize) : targetSize;
+          const items = [];
+          for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
+            const row = rawRows[r];
+            if (!row || row.length === 0) continue;
+
+            const rawName = String(row[nameCol] || '').trim();
+            const fullRowStr = row.map(c => String(c || '').toLowerCase().trim()).join(" ");
+
+            // Kiểm tra điểm dừng kết thúc bảng
+            if (stopKeywords.some(kw => fullRowStr.includes(kw) || rawName.toLowerCase().includes(kw))) {
+              break;
+            }
+
+            // Bỏ qua dòng trống, dòng header lặp lại, hoặc dòng ghi chú nơi gửi
+            if (!rawName || rawName.length < 2) continue;
+            if (rawName.toLowerCase().includes("tên nguyên liệu") || rawName.toLowerCase().includes("tổng cộng") || rawName.toLowerCase().includes("cộng")) continue;
+            if (/^\d+$/.test(rawName)) continue; // bỏ qua nếu tên chỉ là số STT thuần túy
+            if (rawName.startsWith("- ") && (rawName.toLowerCase().includes("tgđ") || rawName.toLowerCase().includes("lưu") || rawName.toLowerCase().includes("pxsx"))) continue;
+
+            // Bóc tách giá trị Định Mức Chuẩn
+            let normVal = 0;
+            if (normCol !== -1 && row[normCol] !== undefined && row[normCol] !== "") {
+              const strVal = String(row[normCol]).replace(/,/g, '.').trim();
+              const parsed = parseFloat(strVal);
+              if (!isNaN(parsed)) normVal = parsed;
+            }
+
+            // Nếu ô normCol rỗng (do merge cell), tìm ô số thực dương đầu tiên sau cột tên vật tư
+            if (normVal === 0) {
+              for (let c = nameCol + 1; c < row.length; c++) {
+                const cellStr = String(row[c] || '').replace(/,/g, '.').trim();
+                const p = parseFloat(cellStr);
+                if (!isNaN(p) && p > 0 && p < 1000) {
+                  normVal = p;
+                }
+              }
+            }
+
+            // Xác định Đơn Vị Tính (ĐVT)
+            let unitVal = "Kg";
+            const lowerName = rawName.toLowerCase();
+            if (unitCol !== -1 && row[unitCol] && String(row[unitCol]).trim().length > 0) {
+              unitVal = String(row[unitCol]).trim();
+            } else {
+              if (lowerName.includes("bao bì") || lowerName.includes("palet") || lowerName.includes("pallet") || lowerName.includes("nan nẹp") || lowerName.includes("hộp") || lowerName.includes("dây đai pét")) {
+                unitVal = "Cái";
+              } else if (lowerName.includes("m2") || lowerName.includes("m²")) {
+                unitVal = "m²";
+              }
+            }
+
+            const rowLine = lineCol !== -1 && row[lineCol] ? String(row[lineCol]).trim() : detectedLine;
+            const rowSize = sizeCol !== -1 && row[sizeCol] ? String(row[sizeCol]).trim() : detectedSize;
 
             items.push({
-              material_name: matName,
-              line: rowLine,
-              size: rowSize,
+              material_name: rawName,
+              line: rowLine || detectedLine,
+              size: rowSize || detectedSize,
               unit: unitVal,
-              norm_value: isNaN(normVal) ? 0 : normVal
+              norm_value: normVal
             });
           }
 
-          resolve(items);
+          if (items.length === 0) {
+            reject("Không bóc tách được dòng vật tư hợp lệ nào từ bảng!");
+            return;
+          }
+
+          resolve({ items: items, detectedLine: detectedLine, detectedSize: detectedSize });
         } catch (err) {
           reject("Lỗi khi đọc file Excel: " + err);
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
-      // Fallback CSV text reader
-      reader.onload = function(e) {
-        try {
-          const text = e.target.result;
-          const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-          if (lines.length < 2) {
-            reject("File CSV không có đủ dữ liệu!");
-            return;
-          }
-
-          let headerIdx = 0;
-          for (let i = 0; i < Math.min(10, lines.length); i++) {
-            const lower = lines[i].toLowerCase();
-            if (lower.includes("vật tư") || lower.includes("material") || lower.includes("tên") || lower.includes("định mức")) {
-              headerIdx = i;
-              break;
-            }
-          }
-
-          const headerCols = lines[headerIdx].split(",").map(c => c.replace(/^"|"$/g, '').trim().toLowerCase());
-          const nameCol = headerCols.findIndex(c => c.includes("tên") || c.includes("vật tư") || c.includes("material"));
-          const normCol = headerCols.findIndex(c => c.includes("định mức") || c.includes("norm") || c.includes("mức"));
-          const unitCol = headerCols.findIndex(c => c.includes("đvt") || c.includes("đơn vị") || c.includes("unit"));
-          const lineCol = headerCols.findIndex(c => c.includes("dây chuyền") || c.includes("line"));
-          const sizeCol = headerCols.findIndex(c => c.includes("kích thước") || c.includes("size"));
-
-          const items = [];
-          for (let i = headerIdx + 1; i < lines.length; i++) {
-            const cols = lines[i].split(",").map(c => c.replace(/^"|"$/g, '').trim());
-            if (cols.length <= 1) continue;
-            const matName = cols[nameCol >= 0 ? nameCol : 1] || '';
-            if (!matName || matName.toLowerCase().includes("tổng")) continue;
-
-            const normVal = parseFloat(cols[normCol >= 0 ? normCol : (cols.length - 1)] || '0');
-            const unitVal = unitCol >= 0 ? cols[unitCol] : 'Kg';
-            const rowLine = lineCol >= 0 ? cols[lineCol] : targetLine;
-            const rowSize = sizeCol >= 0 ? cols[sizeCol] : targetSize;
-
-            items.push({
-              material_name: matName,
-              line: rowLine || targetLine,
-              size: rowSize || targetSize,
-              unit: unitVal || 'Kg',
-              norm_value: isNaN(normVal) ? 0 : normVal
-            });
-          }
-          resolve(items);
-        } catch (err) {
-          reject("Lỗi khi xử lý CSV: " + err);
-        }
-      };
-      reader.readAsText(file, "UTF-8");
+      reject("Vui lòng tải lên file Excel (.xlsx hoặc .xls)");
     }
   });
 }
@@ -3022,14 +3168,18 @@ async function importNormVersionFromExcel(event) {
   const targetSize = normSizeFilter !== 'all' ? normSizeFilter : (targetLine === 'DC1' ? '30x60' : '40x80');
 
   try {
-    const items = await parseNormExcelFile(file, targetLine, targetSize);
+    const parseResult = await parseNormExcelFile(file, targetLine, targetSize);
+    const items = parseResult.items || [];
+    const line = parseResult.detectedLine || targetLine;
+    const size = parseResult.detectedSize || targetSize;
+
     if (!items || items.length === 0) {
       alert("Không trích xuất được chỉ tiêu nào từ file Excel!");
       return;
     }
 
     // Auto calculate next version code
-    const basePrefix = `DM-${targetLine}-${targetSize}`;
+    const basePrefix = `DM-${line}-${size}`;
     let maxV = 1;
     currentNormVersionsList.forEach(v => {
       if (v.version_code && v.version_code.startsWith(basePrefix)) {
@@ -3042,7 +3192,7 @@ async function importNormVersionFromExcel(event) {
     });
 
     const newCode = `${basePrefix}-V${maxV}`;
-    const newName = `Định mức trích xuất tự động ${targetLine} ${targetSize} (V${maxV})`;
+    const newName = `Định mức trích xuất tự động ${line} ${size} (V${maxV})`;
     const currentMonth = 9; // T9/2026
 
     const res = await fetch("/api/norms/versions", {
@@ -3053,8 +3203,8 @@ async function importNormVersionFromExcel(event) {
         version_name: newName,
         effective_from_month: currentMonth,
         effective_from_year: 2026,
-        line: targetLine,
-        size: targetSize,
+        line: line,
+        size: size,
         description: `Tự động trích xuất từ file: ${file.name} (${items.length} chỉ tiêu)`,
         items: items
       })
@@ -3095,20 +3245,38 @@ async function onModalNormFileChange(event) {
   const size = document.getElementById("new-version-size")?.value || "30x60";
 
   try {
-    modalParsedNormItems = await parseNormExcelFile(file, line, size);
+    const parseResult = await parseNormExcelFile(file, line, size);
+    modalParsedNormItems = parseResult.items || [];
+
+    // Auto sync detected line & size to dropdowns
+    if (parseResult.detectedLine) {
+      const lineEl = document.getElementById("new-version-line");
+      if (lineEl && lineEl.value !== parseResult.detectedLine) {
+        lineEl.value = parseResult.detectedLine;
+        onModalNormLineChange();
+      }
+    }
+    if (parseResult.detectedSize) {
+      const sizeEl = document.getElementById("new-version-size");
+      if (sizeEl) {
+        sizeEl.value = parseResult.detectedSize;
+        onModalNormSizeChange();
+      }
+    }
+
     if (previewBox && fileNameEl && countEl && itemsEl) {
       previewBox.classList.remove("hidden");
-      fileNameEl.innerHTML = `<i data-lucide="file-check" class="w-3.5 h-3.5 inline text-emerald-400 mr-1"></i> File: <b>${file.name}</b>`;
+      fileNameEl.innerHTML = `<i data-lucide="file-check" class="w-3.5 h-3.5 inline text-emerald-400 mr-1"></i> File: <b>${file.name}</b> (${parseResult.detectedLine || line} - ${parseResult.detectedSize || size})`;
       countEl.innerText = `${modalParsedNormItems.length} chỉ tiêu vật tư`;
       
-      const sampleItems = modalParsedNormItems.slice(0, 5).map((it, idx) => 
-        `<div class="flex items-center justify-between text-[11px] py-0.5 border-b border-slate-800">
-           <span>${idx + 1}. ${it.material_name} (${it.unit})</span>
-           <span class="text-cyan-300 font-bold font-mono">${it.norm_value}</span>
+      const sampleItems = modalParsedNormItems.slice(0, 6).map((it, idx) => 
+        `<div class="flex items-center justify-between text-[11px] py-1 border-b border-slate-800">
+           <span class="text-slate-200">${idx + 1}. <b>${it.material_name}</b> <span class="text-slate-400 font-normal">(${it.unit})</span></span>
+           <span class="text-cyan-300 font-bold font-mono text-xs bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">${it.norm_value}</span>
          </div>`
       ).join("");
       
-      const moreText = modalParsedNormItems.length > 5 ? `<div class="text-[10px] text-slate-400 italic pt-1">+ ${modalParsedNormItems.length - 5} chỉ tiêu khác...</div>` : '';
+      const moreText = modalParsedNormItems.length > 6 ? `<div class="text-[10px] text-slate-400 italic pt-1 text-center font-medium">+ và ${modalParsedNormItems.length - 6} chỉ tiêu khác đã bóc tách thành công...</div>` : '';
       itemsEl.innerHTML = sampleItems + moreText;
       if (window.lucide) lucide.createIcons();
     }
@@ -3254,7 +3422,8 @@ async function submitCreateVersion() {
       }
 
       try {
-        items = await parseNormExcelFile(file, line, size);
+        const parseResult = await parseNormExcelFile(file, line, size);
+        items = parseResult.items || [];
         if (!items || items.length === 0) {
           alert("Không trích xuất được dữ liệu nào từ file Excel!");
           return;
