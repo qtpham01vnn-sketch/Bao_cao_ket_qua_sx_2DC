@@ -232,7 +232,23 @@ function getActiveUser() {
   const sessionUsername = localStorage.getItem("px_auth_session");
   if (!sessionUsername) return null;
   const user = users.find(u => u.username.toLowerCase() === sessionUsername.toLowerCase());
-  return user || null;
+  if (user) return user;
+
+  // If session is a VIP or Guest email
+  if (sessionUsername.includes("@") || sessionUsername.startsWith("vip_")) {
+    return {
+      username: sessionUsername,
+      fullname: localStorage.getItem("px_auth_fullname") || sessionUsername,
+      role: localStorage.getItem("user_role") || "quan_doc",
+      roleName: "Khách Mời VIP (Chỉ Xem)",
+      roleBadgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+      avatar: "VIP",
+      avatarBg: "bg-cyan-700",
+      canEdit: false,
+      canImport: false
+    };
+  }
+  return null;
 }
 
 let currentAuthUser = getActiveUser();
@@ -273,19 +289,19 @@ const ROLES_INFO = {
     title: "Quản Đốc Phân Xưởng",
     roleName: "Management (Read-Only)",
     badge: "Chỉ xem",
-    badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-    avatarBg: "bg-amber-700",
+    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    avatarBg: "bg-emerald-700",
     avatarText: "QĐ",
     canEdit: false,
     canImport: false
   },
   operator: {
-    title: "Thống Kê / Tác Nghiệp",
-    roleName: "Operator (Thống Kê)",
+    title: "Khách Dùng Thử / Tác Nghiệp",
+    roleName: "Dùng Thử 25h (Chỉ Xem)",
     badge: "Chỉ xem",
-    badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-    avatarBg: "bg-emerald-700",
-    avatarText: "TK",
+    badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    avatarBg: "bg-amber-600",
+    avatarText: "25h",
     canEdit: false,
     canImport: false
   }
@@ -304,15 +320,12 @@ function changeUserRole(roleKey) {
 
 function checkAndEnforceAuth() {
   const user = getActiveUser();
+  const remainSec = getTrialRemainingSeconds();
   const loginModal = document.getElementById("modal-login");
   
-  if (!user) {
+  if (!user && remainSec <= 0) {
     if (loginModal) {
       loginModal.classList.remove("hidden");
-      setTimeout(() => {
-        const uInp = document.getElementById("login-username");
-        if (uInp) uInp.focus();
-      }, 150);
     }
     return false;
   }
@@ -320,18 +333,32 @@ function checkAndEnforceAuth() {
   if (loginModal) {
     loginModal.classList.add("hidden");
   }
-  currentAuthUser = user;
-  currentRole = user.role || "operator";
   applyRolePermissions();
   return true;
 }
 
 function applyRolePermissions() {
   currentAuthUser = getActiveUser();
+  const remainSec = getTrialRemainingSeconds();
+
   if (!currentAuthUser) {
-    const loginModal = document.getElementById("modal-login");
-    if (loginModal) loginModal.classList.remove("hidden");
-    return;
+    if (remainSec <= 0) {
+      const loginModal = document.getElementById("modal-login");
+      if (loginModal) loginModal.classList.remove("hidden");
+      return;
+    } else {
+      currentAuthUser = {
+        username: "khach_dung_thu",
+        fullname: "Khách Trải Nghiệm (25 Giờ)",
+        role: "operator",
+        roleName: "Dùng Thử 25h",
+        roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+        avatar: "25h",
+        avatarBg: "bg-amber-600",
+        canEdit: false,
+        canImport: false
+      };
+    }
   }
 
   currentRole = currentAuthUser.role || "operator";
@@ -821,16 +848,43 @@ async function submitPinActivation() {
 
   // Master VIP Code Check (686868, 888999, 999888)
   if (["686868", "888999", "999888"].includes(pin)) {
-    localStorage.removeItem("px_trial_start_ts");
-    resetCurrentDeviceTrial();
+    const vipUser = {
+      username: myEmail || "vip_guest",
+      fullname: "Khách Mời VIP (Mã Master 686868)",
+      role: "ptgd",
+      roleName: "Khách Mời VIP (Chỉ Xem)",
+      roleBadgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+      avatar: "VIP",
+      avatarBg: "bg-purple-700",
+      pin: pin,
+      status: "Hoạt Động"
+    };
+
+    let users = getUsersDb();
+    if (!users.some(u => u.username.toLowerCase() === vipUser.username.toLowerCase())) {
+      users.push(vipUser);
+      saveUsersDb(users);
+    }
+
+    localStorage.setItem("px_auth_session", vipUser.username);
+    localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
+    localStorage.setItem("user_role", vipUser.role);
+    localStorage.setItem("px_auth_fullname", vipUser.fullname);
+
+    currentRole = vipUser.role;
+    currentAuthUser = vipUser;
+
     closeModal("modal-login");
     closeModal("modal-trial-expired");
+    initTrialProtection();
+    applyRolePermissions();
     alert("🎉 XÁC NHẬN THÀNH CÔNG! Chào mừng Quý khách VIP. Bạn đã được cấp quyền truy cập toàn bộ hệ thống.");
     return;
   }
 
   let verified = false;
   let grantType = "25h";
+  let approvedEmail = myEmail;
 
   try {
     const res = await fetch("/api/access/verify-pin", {
@@ -843,6 +897,7 @@ async function submitPinActivation() {
       if (data.success) {
         verified = true;
         grantType = data.grant_type || "25h";
+        if (data.request && data.request.email) approvedEmail = data.request.email;
       }
     }
   } catch(e) {
@@ -855,6 +910,7 @@ async function submitPinActivation() {
     if (matched) {
       verified = true;
       grantType = matched.status === "approved_permanent" ? "permanent" : "25h";
+      approvedEmail = matched.email;
     }
   }
 
@@ -864,21 +920,38 @@ async function submitPinActivation() {
       resetCurrentDeviceTrial();
       closeModal("modal-login");
       closeModal("modal-trial-expired");
+      initTrialProtection();
+      applyRolePermissions();
       alert(`🎉 CHÚC MỪNG! Mã PIN hợp lệ. Bạn đã được kích hoạt ${TRIAL_TOTAL_HOURS} Giờ trải nghiệm miễn phí trên thiết bị này.`);
     } else {
-      const users = getUsersDb();
-      let user = users.find(u => u.username === "quanly" || u.role === "ptgd");
-      if (!user) user = { username: myEmail || "vip_guest", fullname: "Khách Mời VIP", role: "ptgd" };
-      
-      localStorage.setItem("px_auth_session", user.username);
+      const vipUser = {
+        username: approvedEmail || "vip_user",
+        fullname: "Khách Mời VIP (Phê duyệt Email)",
+        role: "ptgd",
+        roleName: "Khách Mời VIP (Chỉ Xem)",
+        roleBadgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+        avatar: "VIP",
+        avatarBg: "bg-cyan-700",
+        status: "Hoạt Động"
+      };
+
+      let users = getUsersDb();
+      if (!users.some(u => u.username.toLowerCase() === vipUser.username.toLowerCase())) {
+        users.push(vipUser);
+        saveUsersDb(users);
+      }
+
+      localStorage.setItem("px_auth_session", vipUser.username);
       localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
-      localStorage.setItem("user_role", user.role);
-      currentRole = user.role;
-      currentAuthUser = user;
-      
+      localStorage.setItem("user_role", vipUser.role);
+      localStorage.setItem("px_auth_fullname", vipUser.fullname);
+      currentRole = vipUser.role;
+      currentAuthUser = vipUser;
+
       closeModal("modal-login");
       closeModal("modal-trial-expired");
       initTrialProtection();
+      applyRolePermissions();
       alert("🎉 CHÚC MỪNG! Bạn đã được kích hoạt Quyền Truy Cập Chính Thức (Không giới hạn thời gian).");
     }
   } else {
