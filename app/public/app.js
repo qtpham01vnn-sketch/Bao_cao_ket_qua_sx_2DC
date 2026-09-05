@@ -1165,7 +1165,7 @@ function handleLogout() {
   }
 }
 
-function handleManualLogin() {
+async function handleManualLogin() {
   const uInput = document.getElementById("login-username").value.trim().toLowerCase();
   const pInput = document.getElementById("login-password").value.trim();
   const errEl = document.getElementById("login-error-msg");
@@ -1173,18 +1173,89 @@ function handleManualLogin() {
   if (!uInput || !pInput) {
     if (errEl) {
       errEl.classList.remove("hidden");
-      errEl.innerText = "Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu!";
+      errEl.innerText = "Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu / Mã PIN!";
     }
     return;
   }
 
   const users = getUsersDb();
-  const user = users.find(u => u.username.toLowerCase() === uInput);
+  let user = users.find(u => u.username.toLowerCase() === uInput);
+
+  // If not found in default users, check if it's an email/PIN or Master PIN
+  if (!user) {
+    // Check Master PIN
+    if (["686868", "888999", "999888"].includes(pInput)) {
+      user = {
+        username: uInput,
+        fullname: `Khách Mời VIP (${uInput})`,
+        role: "ptgd",
+        roleName: "Khách Mời VIP (Chỉ Xem)",
+        roleBadgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+        avatar: "VIP",
+        avatarBg: "bg-purple-700",
+        pin: pInput,
+        status: "Hoạt Động"
+      };
+      users.push(user);
+      saveUsersDb(users);
+    } else {
+      // Check backend access requests / local requests
+      let verified = false;
+      let grantType = "25h";
+      let approvedName = uInput;
+      const devId = getDeviceFingerprint();
+
+      try {
+        const res = await fetch("/api/access/verify-pin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: pInput, device_id: devId, email: uInput })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            verified = true;
+            grantType = data.grant_type || "25h";
+            if (data.request && data.request.full_name) approvedName = data.request.full_name;
+          }
+        }
+      } catch(e) {}
+
+      if (!verified) {
+        const localReqs = JSON.parse(localStorage.getItem("px_local_access_requests") || "[]");
+        const matched = localReqs.find(r => (r.email.toLowerCase() === uInput || r.activation_pin === pInput) && r.status && r.status.startsWith("approved"));
+        if (matched && (matched.activation_pin === pInput || matched.email.toLowerCase() === uInput)) {
+          verified = true;
+          grantType = matched.status === "approved_permanent" ? "permanent" : "25h";
+          approvedName = matched.full_name || uInput;
+        }
+      }
+
+      if (verified) {
+        user = {
+          username: uInput,
+          fullname: approvedName,
+          role: grantType === "permanent" ? "ptgd" : "operator",
+          roleName: grantType === "permanent" ? "Khách Mời VIP (Chính Thức)" : "Dùng Thử 25h",
+          roleBadgeClass: grantType === "permanent" ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-amber-500/20 text-amber-300 border-amber-500/40",
+          avatar: grantType === "permanent" ? "VIP" : "25h",
+          avatarBg: grantType === "permanent" ? "bg-cyan-700" : "bg-amber-600",
+          pin: pInput,
+          status: "Hoạt Động"
+        };
+        users.push(user);
+        saveUsersDb(users);
+        if (grantType === "25h") {
+          resetCurrentDeviceTrial();
+        }
+      }
+    }
+  }
 
   if (!user || user.pin !== pInput) {
     if (errEl) {
       errEl.classList.remove("hidden");
-      errEl.innerText = "Tên đăng nhập hoặc Mật khẩu không chính xác. Vui lòng kiểm tra lại!";
+      errEl.innerText = "Tên đăng nhập / Email hoặc Mật khẩu / Mã PIN không chính xác. Vui lòng kiểm tra lại!";
     }
     return;
   }
