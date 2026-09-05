@@ -320,10 +320,9 @@ function changeUserRole(roleKey) {
 
 function checkAndEnforceAuth() {
   const user = getActiveUser();
-  const remainSec = getTrialRemainingSeconds();
   const loginModal = document.getElementById("modal-login");
   
-  if (!user && remainSec <= 0) {
+  if (!user) {
     if (loginModal) {
       loginModal.classList.remove("hidden");
     }
@@ -339,26 +338,11 @@ function checkAndEnforceAuth() {
 
 function applyRolePermissions() {
   currentAuthUser = getActiveUser();
-  const remainSec = getTrialRemainingSeconds();
+  const loginModal = document.getElementById("modal-login");
 
   if (!currentAuthUser) {
-    if (remainSec <= 0) {
-      const loginModal = document.getElementById("modal-login");
-      if (loginModal) loginModal.classList.remove("hidden");
-      return;
-    } else {
-      currentAuthUser = {
-        username: "khach_dung_thu",
-        fullname: "Khách Trải Nghiệm (25 Giờ)",
-        role: "operator",
-        roleName: "Dùng Thử 25h",
-        roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-        avatar: "25h",
-        avatarBg: "bg-amber-600",
-        canEdit: false,
-        canImport: false
-      };
-    }
+    if (loginModal) loginModal.classList.remove("hidden");
+    return;
   }
 
   currentRole = currentAuthUser.role || "operator";
@@ -560,23 +544,29 @@ function initTrialProtection() {
   }
 
   const tick = () => {
+    const user = getActiveUser();
     const remainSec = getTrialRemainingSeconds();
     const formatted = formatTrialTime(remainSec);
 
     if (badgeText) badgeText.innerText = formatted;
     if (brandingRemain) {
-      brandingRemain.innerText = `${formatted} (${isAuth ? 'Tài khoản chính thức' : '25 Giờ đếm ngược'})`;
+      brandingRemain.innerText = `${formatted} (${user ? 'Tài khoản chính thức' : '25 Giờ đếm ngược'})`;
     }
 
     const loginModal = document.getElementById("modal-login");
     const isLoginModalOpen = loginModal && !loginModal.classList.contains("hidden");
 
-    if (remainSec <= 0 && !isAuth) {
-      // Only pop trial expired lock if user is NOT currently interacting with modal-login
-      if (!isLoginModalOpen) {
-        openModal("modal-trial-expired");
-      }
-    } else if (remainSec > 0 || isAuth) {
+    if (!user) {
+      // Unauthenticated: modal-login is active, modal-trial-expired must be closed
+      const expModal = document.getElementById("modal-trial-expired");
+      if (expModal) expModal.classList.add("hidden");
+      return;
+    }
+
+    // If logged in as guest with trial limit
+    if (remainSec <= 0 && user.username === "khach_25h") {
+      openModal("modal-trial-expired");
+    } else {
       closeModal("modal-trial-expired");
     }
   };
@@ -918,6 +908,29 @@ async function submitPinActivation() {
     if (errEl) errEl.classList.add("hidden");
     if (grantType === "25h") {
       resetCurrentDeviceTrial();
+      const guestUser = {
+        username: approvedEmail || "khach_25h",
+        fullname: approvedEmail ? `Khách Mời (${approvedEmail})` : "Khách Trải Nghiệm (25 Giờ)",
+        role: "operator",
+        roleName: "Dùng Thử 25h",
+        roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+        avatar: "25h",
+        avatarBg: "bg-amber-600",
+        canEdit: false,
+        canImport: false
+      };
+      let users = getUsersDb();
+      if (!users.some(u => u.username.toLowerCase() === guestUser.username.toLowerCase())) {
+        users.push(guestUser);
+        saveUsersDb(users);
+      }
+      localStorage.setItem("px_auth_session", guestUser.username);
+      localStorage.setItem("px_auth_token", "sess_25h_" + Date.now());
+      localStorage.setItem("user_role", guestUser.role);
+      localStorage.setItem("px_auth_fullname", guestUser.fullname);
+      currentRole = guestUser.role;
+      currentAuthUser = guestUser;
+
       closeModal("modal-login");
       closeModal("modal-trial-expired");
       initTrialProtection();
@@ -1125,6 +1138,8 @@ function handleLogout() {
   if (confirm("Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?")) {
     localStorage.removeItem("px_auth_session");
     localStorage.removeItem("px_auth_token");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("px_auth_fullname");
     currentAuthUser = null;
     currentRole = "operator";
 
@@ -1136,8 +1151,12 @@ function handleLogout() {
     const errEl = document.getElementById("login-error-msg");
     if (errEl) errEl.classList.add("hidden");
 
-    closeModal("modal-trial-expired");
-    openModal("modal-login");
+    const expModal = document.getElementById("modal-trial-expired");
+    if (expModal) expModal.classList.add("hidden");
+
+    const loginModal = document.getElementById("modal-login");
+    if (loginModal) loginModal.classList.remove("hidden");
+
     switchLoginTab("auth");
     initTrialProtection();
     setTimeout(() => {
@@ -1680,44 +1699,11 @@ document.addEventListener("DOMContentLoaded", () => {
   try { loadCoalData(); } catch(e) { console.error("loadCoalData err:", e); }
   try { populateFormMauPeriodSelect(); loadFormMauData(); } catch(e) { console.error("loadFormMauData err:", e); }
 
-  // Background polling for real-time Admin notifications & Guest instant unlock
+  // Background polling for real-time Admin notifications
   setInterval(async () => {
     const user = getActiveUser();
     if (user && user.role === "admin") {
       try { loadAccessRequests(); } catch(e) {}
-    } else {
-      const devId = getDeviceFingerprint();
-      const myEmail = localStorage.getItem("px_my_pending_email") || "";
-      try {
-        const res = await fetch(`/api/access/check-status?device_id=${encodeURIComponent(devId)}&email=${encodeURIComponent(myEmail)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.found && data.request) {
-            const req = data.request;
-            if (req.status === "approved_25h") {
-              if (getTrialRemainingSeconds() <= 0) {
-                resetCurrentDeviceTrial();
-                closeModal("modal-login");
-                closeModal("modal-trial-expired");
-              }
-            } else if (req.status === "approved_permanent") {
-              if (!getActiveUser()) {
-                const users = getUsersDb();
-                let u = users.find(x => x.username === "quanly" || x.role === "ptgd");
-                if (!u) u = { username: req.email, fullname: req.full_name || "Khách Mời VIP", role: "ptgd" };
-                localStorage.setItem("px_auth_session", u.username);
-                localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
-                localStorage.setItem("user_role", u.role);
-                currentRole = u.role;
-                currentAuthUser = u;
-                closeModal("modal-login");
-                closeModal("modal-trial-expired");
-                initTrialProtection();
-              }
-            }
-          }
-        }
-      } catch(e) {}
     }
   }, 8000);
 });
