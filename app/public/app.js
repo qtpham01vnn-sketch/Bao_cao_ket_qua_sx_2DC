@@ -2654,6 +2654,51 @@ async function loadNormVersions() {
   }
 }
 
+// Smart decimal rounding: max 3 decimals for numbers >= 1, max 4 decimals for numbers < 1
+function formatSmartDecimal(val) {
+  if (val === undefined || val === null || val === "" || isNaN(val)) return 0;
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, '.'));
+  if (isNaN(num)) return 0;
+  if (num >= 1) {
+    return parseFloat(num.toFixed(3));
+  } else {
+    return parseFloat(num.toFixed(4));
+  }
+}
+
+async function deleteNormVersion(versionId, versionCode) {
+  if (!versionId) return;
+  if (!confirm(`Bạn có chắc chắn muốn xóa phiên bản định mức [${versionCode || 'này'}] không?\nToàn bộ các chỉ tiêu định mức thuộc phiên bản này sẽ bị xóa khỏi hệ thống.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/norms/versions?id=${versionId}`, {
+      method: "DELETE"
+    });
+    const json = await res.json();
+    if (json.success) {
+      alert(`✓ Đã xóa thành công phiên bản [${versionCode || ''}]!`);
+      if (currentNormVersionId === versionId) {
+        currentNormVersionId = null;
+      }
+      loadNormVersions();
+    } else {
+      alert("Lỗi khi xóa phiên bản: " + (json.error || "Không thể xóa"));
+    }
+  } catch (err) {
+    alert("Lỗi kết nối khi xóa phiên bản: " + err);
+  }
+}
+
+function deleteCurrentNormVersion() {
+  if (!currentNormVersionId || !currentNormInfo || !currentNormInfo.id) {
+    alert("Vui lòng chọn 1 phiên bản định mức trước khi xóa!");
+    return;
+  }
+  deleteNormVersion(currentNormVersionId, currentNormInfo.version_code || `Phiên bản #${currentNormVersionId}`);
+}
+
 function renderNormVersionsGrid(versions) {
   const grid = document.getElementById("norm-versions-grid");
   if (!grid) return;
@@ -2674,13 +2719,18 @@ function renderNormVersionsGrid(versions) {
     const itemsCount = v.filtered_item_count !== undefined ? v.filtered_item_count : (v.item_count || 0);
 
     return `
-      <div onclick="loadNormDetails(${v.id})" class="p-4 rounded-xl border cursor-pointer transition transform hover:-translate-y-0.5 ${isSelected ? 'bg-gradient-to-br from-blue-900/40 to-[#0f2042] border-blue-400 shadow-xl ring-1 ring-blue-500/50' : 'bg-[#0f2042] border-[#1e3a6a]/60 hover:border-blue-400/50 shadow-md'}">
+      <div onclick="loadNormDetails(${v.id})" class="p-4 rounded-xl border cursor-pointer transition transform hover:-translate-y-0.5 relative group ${isSelected ? 'bg-gradient-to-br from-blue-900/40 to-[#0f2042] border-blue-400 shadow-xl ring-1 ring-blue-500/50' : 'bg-[#0f2042] border-[#1e3a6a]/60 hover:border-blue-400/50 shadow-md'}">
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-1.5 flex-wrap">
             <span class="px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 font-mono text-xs font-black border border-blue-400/30">${v.version_code}</span>
             <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${v.line === 'DC1' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800' : (v.line === 'DC2' ? 'bg-amber-950/80 text-amber-300 border border-amber-800' : 'bg-slate-800 text-slate-300')}">${lineLabel} • ${sizeLabel}</span>
           </div>
-          <span class="text-[11px] text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/40">T${v.effective_from_month}/${v.effective_from_year}</span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/40">T${v.effective_from_month}/${v.effective_from_year}</span>
+            <button onclick="event.stopPropagation(); deleteNormVersion(${v.id}, '${v.version_code.replace(/'/g, "\\'")}')" class="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-950/60 transition border border-transparent hover:border-rose-700/50" title="Xóa phiên bản ${v.version_code}">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-400"></i>
+            </button>
+          </div>
         </div>
         <h4 class="text-xs font-bold text-white mb-1 leading-snug">${v.version_name}</h4>
         <p class="text-[11px] text-slate-400 line-clamp-2">${v.description || 'Không có ghi chú'}</p>
@@ -2734,7 +2784,9 @@ function renderNormDetailsTable(rows) {
     return;
   }
 
-  tbody.innerHTML = rows.map((d, idx) => `
+  tbody.innerHTML = rows.map((d, idx) => {
+    const val = formatSmartDecimal(d.norm_value);
+    return `
     <tr class="hover:bg-[#13284d]/50 transition border-b border-[#1e3a6a]/30">
       <td class="p-2.5 text-center text-slate-400 font-mono text-[11px]">${idx + 1}</td>
       <td class="p-2.5 font-bold text-white">${d.material_name}</td>
@@ -2744,7 +2796,7 @@ function renderNormDetailsTable(rows) {
       <td class="p-2.5 text-center text-slate-300 font-semibold">${d.size}</td>
       <td class="p-2.5 text-center text-slate-400">${d.unit}</td>
       <td class="p-2.5 text-right">
-        <input type="number" step="0.0001" value="${d.norm_value}" data-item-id="${d.id}" class="norm-input-field w-32 bg-[#091428] border border-blue-500/30 text-xs font-mono font-bold text-cyan-300 px-2.5 py-1 rounded text-right focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400" />
+        <input type="number" step="0.0001" value="${val}" data-item-id="${d.id}" class="norm-input-field w-32 bg-[#091428] border border-blue-500/30 text-xs font-mono font-bold text-cyan-300 px-2.5 py-1 rounded text-right focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400" />
       </td>
       <td class="p-2.5 text-center">
         <button onclick="deleteNormItem(${d.id}, '${d.material_name.replace(/'/g, "\\'")}')" class="norm-delete-btn p-1 rounded hover:bg-rose-600/30 text-slate-400 hover:text-rose-300 transition" title="Xóa chỉ tiêu này">
@@ -2752,7 +2804,8 @@ function renderNormDetailsTable(rows) {
         </button>
       </td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   if (window.lucide) lucide.createIcons();
   applyRolePermissions();
@@ -2826,12 +2879,12 @@ function downloadNormTemplateExcel() {
       [6, "Men GWM", "DC1", "30x60", "Kg", 0.434, "Men mờ"],
       [7, "Men GWP", "DC1", "30x60", "Kg", 0.520, "Men in"],
       [8, "Bao bì", "DC1", "30x60", "Cái", 0.697, "Vỏ thùng hộp"],
-      [9, "Nan Nẹp", "DC1", "30x60", "Cái", 0.04724, "Nan nẹp bảo vệ"],
-      [10, "Pallet", "DC1", "30x60", "Cái", 0.01181, "Palet đóng hàng"],
-      [11, "Màng co PE khổ 500mm", "DC1", "30x60", "Kg", 0.00343, "Màng co bọc kiện"],
+      [9, "Nan Nẹp", "DC1", "30x60", "Cái", 0.0472, "Nan nẹp bảo vệ"],
+      [10, "Pallet", "DC1", "30x60", "Cái", 0.0118, "Palet đóng hàng"],
+      [11, "Màng co PE khổ 500mm", "DC1", "30x60", "Kg", 0.0034, "Màng co bọc kiện"],
       [12, "Vỏ Điều", "DC1", "30x60", "Kg", 1.650, "Chất trợ cháy"],
       [13, "Bi cao nhôm (Grand)", "DC1", "30x60", "Kg", 0.0020, "Bi nghiền"],
-      [14, "Bi cao nhôm (Luxury)", "DC1", "30x60", "Kg", 0.00277, "Bi nghiền"],
+      [14, "Bi cao nhôm (Luxury)", "DC1", "30x60", "Kg", 0.0028, "Bi nghiền"],
       [15, "Bi trung nhôm", "DC1", "30x60", "Kg", 0.0433, "Bi nghiền"],
       [16, "Dây đai hộp", "DC1", "30x60", "Kg", 0.0082, "Dây đai máy"],
       [17, "Dây đai pét", "DC1", "30x60", "Cái", 0.0064, "Dây đai kiện"],
@@ -2862,30 +2915,63 @@ function downloadNormTemplateExcel() {
 
   // Generate real .XLSX via SheetJS
   if (window.XLSX) {
+    const now = new Date();
+    const dateStr = `Đồng Nai, ngày ${now.getDate()} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
+
     const wsData = [
       ["CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM", "", "", "", "", "", ""],
       ["PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG", "", "", "", "", "", ""],
-      ["BẢNG ĐỊNH MỨC TIÊU HAO NGUYÊN LIỆU, MEN, XƯƠNG VÀ VẬT TƯ", "", "", "", "", "", ""],
-      [`Dây Chuyền: ${line} - Dòng Kích Thước: ${size} (Năm 2026)`, "", "", "", "", "", ""],
+      ["BẢNG ĐỊNH MỨC TIÊU HAO NGUYÊN LIỆU, MEN, XƯƠNG VÀ VẬT TƯ (MẪU CHUẨN)", "", "", "", "", "", ""],
+      [`Dây Chuyền: ${line} · Kích Thước: ${size} - Áp dụng năm 2026`, "", "", "", "", "", ""],
       [],
-      ["STT", "TÊN NGUYÊN VẬT TƯ", "DÂY CHUYỀN", "KÍCH THƯỚC", "ĐƠN VỊ TÍNH", "ĐỊNH MỨC QUY ĐỊNH", "GHI CHÚ"],
+      ["STT", "TÊN NGUYÊN VẬT TƯ", "DÂY CHUYỀN", "KÍCH THƯỚC", "ĐƠN VỊ TÍNH", "ĐỊNH MỨC QUY ĐỊNH (Kg/m²)", "GHI CHÚ"],
       ...sampleRows,
       [],
-      ["", "", "", "", "", "", ""],
-      ["", "NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT"],
-      ["", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)"]
+      ["", "", "", "", dateStr, "", ""],
+      ["NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT", ""],
+      ["(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)", ""]
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    const sigRow = 6 + sampleRows.length + 2;
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
+      { s: { r: sigRow - 1, c: 4 }, e: { r: sigRow - 1, c: 6 } },
+      { s: { r: sigRow, c: 0 }, e: { r: sigRow, c: 1 } },
+      { s: { r: sigRow, c: 2 }, e: { r: sigRow, c: 3 } },
+      { s: { r: sigRow, c: 4 }, e: { r: sigRow, c: 4 } },
+      { s: { r: sigRow, c: 5 }, e: { r: sigRow, c: 6 } },
+      { s: { r: sigRow + 1, c: 0 }, e: { r: sigRow + 1, c: 1 } },
+      { s: { r: sigRow + 1, c: 2 }, e: { r: sigRow + 1, c: 3 } },
+      { s: { r: sigRow + 1, c: 4 }, e: { r: sigRow + 1, c: 4 } },
+      { s: { r: sigRow + 1, c: 5 }, e: { r: sigRow + 1, c: 6 } }
+    ];
+
     ws['!cols'] = [
       { wch: 8 },
-      { wch: 36 },
+      { wch: 38 },
       { wch: 14 },
       { wch: 14 },
       { wch: 14 },
-      { wch: 22 },
-      { wch: 30 }
+      { wch: 28 },
+      { wch: 28 }
     ];
+
+    // Format numbers
+    for (let R = 6; R < 6 + sampleRows.length; ++R) {
+      const sttCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
+      if (sttCell) sttCell.t = 'n';
+
+      const normCell = ws[XLSX.utils.encode_cell({ r: R, c: 5 })];
+      if (normCell && typeof normCell.v === 'number') {
+        normCell.t = 'n';
+        normCell.z = (normCell.v < 1) ? "0.0000" : "0.000";
+      }
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Dinh_Muc_Mau");
@@ -2916,9 +3002,12 @@ function exportCurrentNormTableExcel() {
       d.line,
       d.size,
       d.unit,
-      d.norm_value,
+      formatSmartDecimal(d.norm_value),
       ""
     ]);
+
+    const now = new Date();
+    const dateStr = `Đồng Nai, ngày ${now.getDate()} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
     const wsData = [
       ["CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM", "", "", "", "", "", ""],
@@ -2930,25 +3019,57 @@ function exportCurrentNormTableExcel() {
       ["STT", "TÊN NGUYÊN VẬT TƯ", "DÂY CHUYỀN", "KÍCH THƯỚC", "ĐƠN VỊ TÍNH", "ĐỊNH MỨC QUY ĐỊNH (Kg/m²)", "GHI CHÚ"],
       ...dataRows,
       [],
-      ["", "", "", "", "", "", ""],
-      ["", "NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT"],
-      ["", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)"]
+      ["", "", "", "", dateStr, "", ""],
+      ["NGƯỜI LẬP BIỂU", "", "TRƯỞNG PHÒNG KTCN", "", "QUẢN ĐỐC PHÂN XƯỞNG", "TỔNG GIÁM ĐỐC PHÊ DUYỆT", ""],
+      ["(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "", "(Ký & ghi rõ họ tên)", "(Ký & đóng dấu)", ""]
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    const sigRow = 7 + dataRows.length + 2;
+
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } }, // PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } }, // BẢNG ĐỊNH MỨC TIÊU HAO...
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } }, // Phiên Bản
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 6 } }, // Dây Chuyền · Kích Thước
+      { s: { r: sigRow - 1, c: 4 }, e: { r: sigRow - 1, c: 6 } }, // Ngày tháng năm
+      { s: { r: sigRow, c: 0 }, e: { r: sigRow, c: 1 } }, // Người lập biểu
+      { s: { r: sigRow, c: 2 }, e: { r: sigRow, c: 3 } }, // Trưởng phòng KTCN
+      { s: { r: sigRow, c: 4 }, e: { r: sigRow, c: 4 } }, // Quản đốc
+      { s: { r: sigRow, c: 5 }, e: { r: sigRow, c: 6 } }, // Tổng Giám Đốc
+      { s: { r: sigRow + 1, c: 0 }, e: { r: sigRow + 1, c: 1 } },
+      { s: { r: sigRow + 1, c: 2 }, e: { r: sigRow + 1, c: 3 } },
+      { s: { r: sigRow + 1, c: 4 }, e: { r: sigRow + 1, c: 4 } },
+      { s: { r: sigRow + 1, c: 5 }, e: { r: sigRow + 1, c: 6 } }
+    ];
+
     ws['!cols'] = [
       { wch: 8 },
-      { wch: 38 },
+      { wch: 40 },
       { wch: 14 },
       { wch: 14 },
       { wch: 14 },
-      { wch: 26 },
+      { wch: 28 },
       { wch: 28 }
     ];
 
+    // Format numbers
+    for (let R = 7; R < 7 + dataRows.length; ++R) {
+      const sttCell = ws[XLSX.utils.encode_cell({ r: R, c: 0 })];
+      if (sttCell) sttCell.t = 'n';
+
+      const normCell = ws[XLSX.utils.encode_cell({ r: R, c: 5 })];
+      if (normCell && typeof normCell.v === 'number') {
+        normCell.t = 'n';
+        normCell.z = (normCell.v < 1) ? "0.0000" : "0.000";
+      }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bang_Dinh_Muc");
-    XLSX.writeFile(wb, `Bang_Dinh_Muc_${verCode}_${Date.now()}.xlsx`);
+    XLSX.writeFile(wb, `Bang_Dinh_Muc_${verCode}_${lineLabel}_${sizeLabel}.xlsx`);
   } else {
     alert("Thư viện Excel đang tải, vui lòng thử lại sau 2 giây!");
   }
@@ -3076,7 +3197,8 @@ async function parseNormExcelFile(file, targetLine, targetSize) {
           const stopKeywords = [
             "kính trình", "tổng giám đốc", "ban tổng giám đốc", "nơi gửi", 
             "lưu:", "p.ktcn", "pxsx", "p.khth", "p kế toán", "kế toán", 
-            "phê duyệt", "đồng nai,", "ngày 0", "ngày 1", "ngày 2", "ngày 3", "gửi các phó"
+            "phê duyệt", "đồng nai,", "ngày 0", "ngày 1", "ngày 2", "ngày 3", "gửi các phó",
+            "nơi nhận", "thủ kho", "người lập", "trưởng phòng"
           ];
 
           const items = [];
@@ -3096,7 +3218,7 @@ async function parseNormExcelFile(file, targetLine, targetSize) {
             if (!rawName || rawName.length < 2) continue;
             if (rawName.toLowerCase().includes("tên nguyên liệu") || rawName.toLowerCase().includes("tổng cộng") || rawName.toLowerCase().includes("cộng")) continue;
             if (/^\d+$/.test(rawName)) continue; // bỏ qua nếu tên chỉ là số STT thuần túy
-            if (rawName.startsWith("- ") && (rawName.toLowerCase().includes("tgđ") || rawName.toLowerCase().includes("lưu") || rawName.toLowerCase().includes("pxsx"))) continue;
+            if (rawName.startsWith("-") && (rawName.toLowerCase().includes("tgđ") || rawName.toLowerCase().includes("lưu") || rawName.toLowerCase().includes("pxsx") || rawName.toLowerCase().includes("phó") || rawName.toLowerCase().includes("ktcn") || rawName.toLowerCase().includes("kế toán"))) continue;
 
             // Bóc tách giá trị Định Mức Chuẩn
             let normVal = 0;
@@ -3116,6 +3238,9 @@ async function parseNormExcelFile(file, targetLine, targetSize) {
                 }
               }
             }
+
+            // Làm tròn thông minh: Số >= 1 lấy tối đa 3 số thập phân, số < 1 lấy tối đa 4 số thập phân
+            normVal = formatSmartDecimal(normVal);
 
             // Xác định Đơn Vị Tính (ĐVT)
             let unitVal = "Kg";
