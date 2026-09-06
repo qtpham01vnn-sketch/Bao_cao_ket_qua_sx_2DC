@@ -875,6 +875,8 @@ async function submitPinActivation() {
   let verified = false;
   let grantType = "25h";
   let approvedEmail = myEmail;
+  let approvedFullName = "";
+  let approvedDept = "";
 
   try {
     const res = await fetch("/api/access/verify-pin", {
@@ -887,7 +889,11 @@ async function submitPinActivation() {
       if (data.success) {
         verified = true;
         grantType = data.grant_type || "25h";
-        if (data.request && data.request.email) approvedEmail = data.request.email;
+        if (data.request) {
+          if (data.request.email) approvedEmail = data.request.email;
+          if (data.request.full_name) approvedFullName = data.request.full_name;
+          if (data.request.department) approvedDept = data.request.department;
+        }
       }
     }
   } catch(e) {
@@ -901,29 +907,40 @@ async function submitPinActivation() {
       verified = true;
       grantType = matched.status === "approved_permanent" ? "permanent" : "25h";
       approvedEmail = matched.email;
+      approvedFullName = matched.full_name || "";
+      approvedDept = matched.department || "";
     }
   }
 
   if (verified) {
     if (errEl) errEl.classList.add("hidden");
+    const finalFullName = approvedFullName || (approvedEmail ? `Khách Mời (${approvedEmail})` : "Khách Mời VIP");
+    
     if (grantType === "25h") {
       resetCurrentDeviceTrial();
       const guestUser = {
         username: approvedEmail || "khach_25h",
-        fullname: approvedEmail ? `Khách Mời (${approvedEmail})` : "Khách Trải Nghiệm (25 Giờ)",
+        fullname: finalFullName,
+        title: approvedDept || "Dùng Thử 25h",
         role: "operator",
-        roleName: "Dùng Thử 25h",
+        roleName: "Dùng Thử 25h (Chỉ Xem)",
         roleBadgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
         avatar: "25h",
         avatarBg: "bg-amber-600",
+        pin: pin,
+        status: "Hoạt Động",
         canEdit: false,
         canImport: false
       };
       let users = getUsersDb();
-      if (!users.some(u => u.username.toLowerCase() === guestUser.username.toLowerCase())) {
+      const existIdx = users.findIndex(u => u.username.toLowerCase() === guestUser.username.toLowerCase());
+      if (existIdx !== -1) {
+        users[existIdx] = { ...users[existIdx], ...guestUser };
+      } else {
         users.push(guestUser);
-        saveUsersDb(users);
       }
+      saveUsersDb(users);
+
       localStorage.setItem("px_auth_session", guestUser.username);
       localStorage.setItem("px_auth_token", "sess_25h_" + Date.now());
       localStorage.setItem("user_role", guestUser.role);
@@ -935,24 +952,32 @@ async function submitPinActivation() {
       closeModal("modal-trial-expired");
       initTrialProtection();
       applyRolePermissions();
+      renderAccountsTable();
       alert(`🎉 CHÚC MỪNG! Mã PIN hợp lệ. Bạn đã được kích hoạt ${TRIAL_TOTAL_HOURS} Giờ trải nghiệm miễn phí trên thiết bị này.`);
     } else {
       const vipUser = {
         username: approvedEmail || "vip_user",
-        fullname: "Khách Mời VIP (Phê duyệt Email)",
+        fullname: finalFullName,
+        title: approvedDept || "Khách Mời Phê Duyệt",
         role: "ptgd",
         roleName: "Khách Mời VIP (Chỉ Xem)",
         roleBadgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
         avatar: "VIP",
         avatarBg: "bg-cyan-700",
-        status: "Hoạt Động"
+        pin: pin,
+        status: "Hoạt Động",
+        canEdit: false,
+        canImport: false
       };
 
       let users = getUsersDb();
-      if (!users.some(u => u.username.toLowerCase() === vipUser.username.toLowerCase())) {
+      const existIdx = users.findIndex(u => u.username.toLowerCase() === vipUser.username.toLowerCase());
+      if (existIdx !== -1) {
+        users[existIdx] = { ...users[existIdx], ...vipUser };
+      } else {
         users.push(vipUser);
-        saveUsersDb(users);
       }
+      saveUsersDb(users);
 
       localStorage.setItem("px_auth_session", vipUser.username);
       localStorage.setItem("px_auth_token", "sess_vip_" + Date.now());
@@ -965,6 +990,7 @@ async function submitPinActivation() {
       closeModal("modal-trial-expired");
       initTrialProtection();
       applyRolePermissions();
+      renderAccountsTable();
       alert("🎉 CHÚC MỪNG! Bạn đã được kích hoạt Quyền Truy Cập Chính Thức (Không giới hạn thời gian).");
     }
   } else {
