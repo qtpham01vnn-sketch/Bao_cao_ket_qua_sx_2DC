@@ -6477,7 +6477,7 @@ function renderFormMauContent(d) {
     <!-- PHẦN VI: KẾ HOẠCH SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 1 PDF - TÙY CHỌN ẨN/HIỆN) -->
     <div class="mb-8 transition" id="sec-vi-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
-        <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
+        <h4 contenteditable="true" class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2 outline-none focus:text-cyan-200 focus:bg-cyan-950/40 px-2 py-0.5 rounded transition">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           VI. KẾ HOẠCH THỰC HIỆN ${s6.next_full_title || s6.next_title || 'THÁNG TIẾP THEO'} (LẦN 01)
         </h4>
@@ -6509,7 +6509,7 @@ function renderFormMauContent(d) {
     <!-- PHẦN VII: MỤC TIÊU SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 2 PDF - TÙY CHỌN ẨN/HIỆN) -->
     <div class="mb-8 transition" id="sec-vii-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
-        <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
+        <h4 contenteditable="true" class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2 outline-none focus:text-cyan-200 focus:bg-cyan-950/40 px-2 py-0.5 rounded transition">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           VII. MỤC TIÊU THỰC HIỆN ${s7.next_full_title || s7.next_title || 'THÁNG TIẾP THEO'} & KẾ HOẠCH CÁC PHÒNG BAN
         </h4>
@@ -6537,7 +6537,7 @@ function renderFormMauContent(d) {
       </div>
 
       <!-- Kế hoạch các phòng ban / phân xưởng thực hiện -->
-      <h5 class="text-xs font-bold text-amber-400 mb-2">★ Kế hoạch các phòng ban / phân xưởng cần thực hiện trong kỳ (Bấm để chỉnh sửa):</h5>
+      <h5 contenteditable="true" class="text-xs font-bold text-amber-400 mb-2 outline-none focus:text-amber-200 focus:bg-amber-950/30 px-2 py-0.5 rounded transition">★ Kế hoạch các phòng ban / phân xưởng cần thực hiện trong kỳ (Bấm để chỉnh sửa):</h5>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         ${deptTasks.map(d => `
           <div contenteditable="true" class="bg-[#0c1a35]/80 p-3.5 rounded-xl border border-[#1e3a6a] shadow-sm outline-none focus:border-cyan-400">
@@ -6554,16 +6554,16 @@ function renderFormMauContent(d) {
     <!-- PHẦN VIII: ĐÁNH GIÁ & CHỮ KÝ 6 CẤP TRÌNH KÝ (CHUẨN TRANG 3 PDF - TÙY CHỌN ẨN/HIỆN) -->
     <div class="mb-8 transition" id="sec-viii-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
-        <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
+        <h4 contenteditable="true" class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2 outline-none focus:text-cyan-200 focus:bg-cyan-950/40 px-2 py-0.5 rounded transition">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           VIII. ĐÁNH GIÁ KẾT QUẢ SẢN XUẤT & PHÊ DUYỆT TRÌNH KÝ
         </h4>
       </div>
       
       <div contenteditable="true" class="bg-[#0c1a35]/80 p-4 rounded-xl border border-[#1e3a6a] text-slate-200 text-xs leading-relaxed mb-6 outline-none focus:border-cyan-400">
-        <div class="font-bold text-cyan-400 mb-2 uppercase tracking-wide">Nhận Xét Tổng Thể Của Phân Xưởng (Bấm để sửa):</div>
+        <div contenteditable="true" class="font-bold text-cyan-400 mb-2 uppercase tracking-wide outline-none">Nhận Xét Tổng Thể Của Phân Xưởng (Bấm để sửa):</div>
         <div class="whitespace-pre-line">${s8.content || 'Hoàn thành các chỉ tiêu sản xuất theo kế hoạch.'}</div>
-        <div class="mt-3 italic text-slate-400">Trân trọng!</div>
+        <div contenteditable="true" class="mt-3 italic text-slate-400 outline-none">Trân trọng!</div>
       </div>
 
       <!-- Ngày tháng & Chữ ký 6 cấp -->
@@ -6606,7 +6606,7 @@ function renderFormMauContent(d) {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-400 pt-3 border-t border-[#1e3a6a]/60">
-          <div>
+          <div contenteditable="true" class="outline-none focus:bg-slate-900/40 p-1 rounded">
             <span class="font-bold text-slate-300">Nơi gửi:</span>
             <ul class="list-disc pl-4 space-y-0.5 mt-1 text-[11px]">
               <li>Ông Tổng Giám Đốc Cty</li>
@@ -6614,7 +6614,7 @@ function renderFormMauContent(d) {
               <li>Các Phòng ban / Phân xưởng</li>
             </ul>
           </div>
-          <div>
+          <div contenteditable="true" class="outline-none focus:bg-slate-900/40 p-1 rounded">
             <span class="font-bold text-slate-300">Nơi lưu:</span>
             <ul class="list-disc pl-4 space-y-0.5 mt-1 text-[11px]">
               <li>Phòng TC - HC/ Ban ISO</li>
