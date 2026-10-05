@@ -6729,7 +6729,7 @@ function calcGoalFromPlanItem(planItem) {
   // Chuẩn công thức Mục tiêu: Lấy TB/ngày của KH chia 0.98 nhân với 1.02 và nhân với 0.982
   const goalAvg = planAvg > 0 ? Math.round((planAvg / 0.98) * 1.02 * 0.982) : 0;
   const a_ep = 98.2;
-  const c_ep = Number((100 - a_ep).toFixed(2)); // 1.8
+  const c_ep = 0; // C/ép hiển thị '-'
   const huy_ep = Number((100 - a_ep).toFixed(2)); // 1.8
   const rec = Math.round(prodDays * goalAvg);
   const sl_ep = Math.round(rec / (a_ep / 100));
@@ -6773,18 +6773,18 @@ function syncFormMauGoalsFromPlan() {
 function recalcFormMauRow(row, triggerField) {
   // Ensure default percentages and recovery rates if missing or zero
   if (!row.a_ep) row.a_ep = 98.0;
+  if (row.c_ep === undefined || row.c_ep === null) row.c_ep = 0;
+  if (!row.huy_ep) row.huy_ep = Number((100 - row.a_ep - (row.c_ep || 0)).toFixed(2));
   if (row.pct_a1 === undefined || row.pct_a1 === null || (row.pct_a1 === 0 && row.pct_a === 0 && row.pct_b === 0)) {
     row.pct_a1 = 90.0;
     row.pct_a = 0.0;
     row.pct_b = 10.0;
   }
 
-  // Cập nhật quan hệ giữa A/ép, C/ép và Hủy/ép: C/ép = Hủy/ép = 100 - A/ép
+  // Cập nhật quan hệ: Tổng (A/ép + C/ép + Hủy/ép) = 100% -> Hủy/ép = 100 - A/ép - C/ép
   if (triggerField === 'a_ep') {
     row.a_ep = Number(row.a_ep) || 98.0;
-    const remainder = Number((100 - row.a_ep).toFixed(2));
-    row.c_ep = remainder;
-    row.huy_ep = remainder;
+    row.huy_ep = Number((100 - row.a_ep - (row.c_ep || 0)).toFixed(2));
     if (row.recovery_total > 0) {
       row.sl_ep = Math.round(row.recovery_total / (row.a_ep / 100));
     } else if (row.sl_ep > 0) {
@@ -6794,15 +6794,15 @@ function recalcFormMauRow(row, triggerField) {
     row.a = Math.round(row.recovery_total * (row.pct_a / 100));
     row.b = Math.round(row.recovery_total - row.a1 - row.a);
   }
-  else if (triggerField === 'c_ep' || triggerField === 'huy_ep') {
-    const val = Number(row[triggerField]) || 0;
-    row.c_ep = val;
-    row.huy_ep = val;
-    row.a_ep = Number((100 - val).toFixed(2));
+  else if (triggerField === 'c_ep') {
+    row.c_ep = Number(row.c_ep) || 0;
+    row.huy_ep = Number((100 - (row.a_ep || 98.0) - row.c_ep).toFixed(2));
+  }
+  else if (triggerField === 'huy_ep') {
+    row.huy_ep = Number(row.huy_ep) || 0;
+    row.a_ep = Number((100 - (row.c_ep || 0) - row.huy_ep).toFixed(2));
     if (row.recovery_total > 0) {
       row.sl_ep = Math.round(row.recovery_total / (row.a_ep / 100));
-    } else if (row.sl_ep > 0) {
-      row.recovery_total = Math.round(row.sl_ep * (row.a_ep / 100));
     }
     row.a1 = Math.round(row.recovery_total * (row.pct_a1 / 100));
     row.a = Math.round(row.recovery_total * (row.pct_a / 100));
@@ -6891,7 +6891,12 @@ function updateFormMauPlanCell(idx, field, val) {
   if (!currentFormMauPlanItems[idx]) return;
   currentFormMauPlanItems[idx][field] = val;
   recalcFormMauRow(currentFormMauPlanItems[idx], field);
+
+  // TỰ ĐỘNG ĐỒNG BỘ DÒNG TƯƠNG ỨNG SANG MỤC TIÊU THEO CÔNG THỨC CHUẨN
+  currentFormMauGoalItems[idx] = calcGoalFromPlanItem(currentFormMauPlanItems[idx]);
+
   renderFormMauPlanTableDynamic();
+  renderFormMauGoalsTableDynamic();
 }
 
 function renderFormMauPlanTableDynamic() {
@@ -6930,8 +6935,8 @@ function getFormMauPlanTableHtml() {
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${formatNumber(it.prod_days, 2)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40 align-middle">${formatNumber(it.avg_per_day, 0)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle font-bold text-emerald-400">${formatNumber(it.a_ep, 1)}</td>
-        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${it.c_ep ? formatNumber(it.c_ep, 1) : formatNumber(100 - (it.a_ep || 98), 1)}</td>
-        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle text-rose-400">${it.huy_ep ? formatNumber(it.huy_ep, 1) : formatNumber(100 - (it.a_ep || 98), 1)}</td>
+        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${it.c_ep > 0 ? formatNumber(it.c_ep, 1) : '-'}</td>
+        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle text-rose-400">${formatNumber(it.huy_ep || (100 - (it.a_ep || 98) - (it.c_ep || 0)), 1)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40 align-middle">${it.stop_time_2mf || 40}</td>
         <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
           <button type="button" onclick="deleteFormMauPlanRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
@@ -6952,7 +6957,7 @@ function getFormMauPlanTableHtml() {
 
   const avg_per_day_tot = sum_days > 0 ? Math.round(sum_rec / sum_days) : 0;
   const a_ep_tot = sum_sl_ep > 0 ? Number(((sum_rec / sum_sl_ep) * 100).toFixed(1)) : 98.0;
-  const c_ep_tot = Number((100 - a_ep_tot).toFixed(1));
+  const huy_ep_tot = Number((100 - a_ep_tot).toFixed(1));
   const pct_a1_tot = sum_rec > 0 ? Number(((sum_a1 / sum_rec) * 100).toFixed(1)) : 0;
   const pct_a_tot = sum_rec > 0 ? Number(((sum_a / sum_rec) * 100).toFixed(1)) : 0;
   const pct_b_tot = sum_rec > 0 ? Number(((sum_b / sum_rec) * 100).toFixed(1)) : 0;
@@ -6994,8 +6999,8 @@ function getFormMauPlanTableHtml() {
           <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] align-middle">${formatNumber(sum_days, 2)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 align-middle">${formatNumber(avg_per_day_tot, 0)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 align-middle">${formatNumber(a_ep_tot, 1)}</td>
-          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">${formatNumber(c_ep_tot, 1)}</td>
-          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(c_ep_tot, 1)}</td>
+          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">-</td>
+          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(huy_ep_tot, 1)}</td>
           <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 align-middle">40</td>
           <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
         </tr>
@@ -7023,17 +7028,19 @@ function addFormMauPlanRow() {
     recovery_total: 0,
     prod_days: 30,
     avg_per_day: 0,
-    a_ep: 98.0,
-    c_ep: 2.0,
-    huy_ep: 2.0,
+    a_ep: 97.5,
+    c_ep: 0,
+    huy_ep: 2.5,
     stop_time_2mf: 40,
     pct_a1: 90.0,
     pct_a: 0.0,
     pct_b: 10.0
   };
   currentFormMauPlanItems.push(newItem);
+  currentFormMauGoalItems.push(calcGoalFromPlanItem(newItem));
   renderFormMauPlanTableDynamic();
-  if (typeof showToast === "function") showToast("➕ Đã thêm 1 dòng Kế hoạch mới! Bấm vào các ô để nhập số liệu.");
+  renderFormMauGoalsTableDynamic();
+  if (typeof showToast === "function") showToast("➕ Đã thêm 1 dòng Kế hoạch mới & tự động đồng bộ sang Mục tiêu!");
 }
 
 function deleteFormMauPlanRow(idx) {
@@ -7042,7 +7049,11 @@ function deleteFormMauPlanRow(idx) {
     return;
   }
   currentFormMauPlanItems.splice(idx, 1);
+  if (currentFormMauGoalItems.length > idx) {
+    currentFormMauGoalItems.splice(idx, 1);
+  }
   renderFormMauPlanTableDynamic();
+  renderFormMauGoalsTableDynamic();
 }
 
 function clearFormMauPlanTable() {
@@ -7067,6 +7078,7 @@ function clearFormMauPlanTable() {
 function resetFormMauPlanTable() {
   initFormMauPlanAndGoals(null, null);
   renderFormMauPlanTableDynamic();
+  renderFormMauGoalsTableDynamic();
   if (typeof showToast === "function") showToast("🔄 Đã tải lại bảng Kế hoạch sản xuất mẫu!");
 }
 
@@ -7132,8 +7144,8 @@ function getFormMauGoalsTableHtml() {
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${formatNumber(it.prod_days, 2)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40 align-middle">${formatNumber(it.avg_per_day, 0)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle font-bold text-emerald-400">${formatNumber(it.a_ep, 1)}</td>
-        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${it.c_ep ? formatNumber(it.c_ep, 1) : formatNumber(100 - (it.a_ep || 98.2), 1)}</td>
-        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle text-rose-400">${it.huy_ep ? formatNumber(it.huy_ep, 1) : formatNumber(100 - (it.a_ep || 98.2), 1)}</td>
+        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle">${it.c_ep > 0 ? formatNumber(it.c_ep, 1) : '-'}</td>
+        <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40 align-middle text-rose-400">${formatNumber(it.huy_ep || (100 - (it.a_ep || 98.2) - (it.c_ep || 0)), 1)}</td>
         <td rowspan="2" contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40 align-middle">${it.stop_time_2mf || 25}</td>
         <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
           <button type="button" onclick="deleteFormMauGoalRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
@@ -7154,14 +7166,14 @@ function getFormMauGoalsTableHtml() {
 
   const avg_per_day_dc2 = sum_days_dc2 > 0 ? Math.round(sum_rec_dc2 / sum_days_dc2) : 0;
   const a_ep_dc2 = sum_sl_ep_dc2 > 0 ? Number(((sum_rec_dc2 / sum_sl_ep_dc2) * 100).toFixed(1)) : 98.2;
-  const c_ep_dc2 = Number((100 - a_ep_dc2).toFixed(1));
+  const huy_ep_dc2 = Number((100 - a_ep_dc2).toFixed(1));
   const pct_a1_dc2 = sum_rec_dc2 > 0 ? Number(((sum_a1_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
   const pct_a_dc2 = sum_rec_dc2 > 0 ? Number(((sum_a_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
   const pct_b_dc2 = sum_rec_dc2 > 0 ? Number(((sum_b_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
 
   const avg_per_day_all = sum_days_all > 0 ? Math.round(sum_rec_all / sum_days_all) : 0;
   const a_ep_all = sum_sl_ep_all > 0 ? Number(((sum_rec_all / sum_sl_ep_all) * 100).toFixed(1)) : 98.2;
-  const c_ep_all = Number((100 - a_ep_all).toFixed(1));
+  const huy_ep_all = Number((100 - a_ep_all).toFixed(1));
   const pct_a1_all = sum_rec_all > 0 ? Number(((sum_a1_all / sum_rec_all) * 100).toFixed(1)) : 0;
   const pct_a_all = sum_rec_all > 0 ? Number(((sum_a_all / sum_rec_all) * 100).toFixed(1)) : 0;
   const pct_b_all = sum_rec_all > 0 ? Number(((sum_b_all / sum_rec_all) * 100).toFixed(1)) : 0;
@@ -7180,8 +7192,8 @@ function getFormMauGoalsTableHtml() {
         <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] align-middle">${formatNumber(sum_days_dc2, 2)}</td>
         <td rowspan="2" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 align-middle">${formatNumber(avg_per_day_dc2, 0)}</td>
         <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 align-middle">${formatNumber(a_ep_dc2, 1)}</td>
-        <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">${formatNumber(c_ep_dc2, 1)}</td>
-        <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(c_ep_dc2, 1)}</td>
+        <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">-</td>
+        <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(huy_ep_dc2, 1)}</td>
         <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 align-middle">25</td>
         <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
       </tr>
@@ -7234,8 +7246,8 @@ function getFormMauGoalsTableHtml() {
           <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] align-middle">${formatNumber(sum_days_all, 2)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 align-middle">${formatNumber(avg_per_day_all, 0)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 align-middle">${formatNumber(a_ep_all, 1)}</td>
-          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">${formatNumber(c_ep_all, 1)}</td>
-          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(c_ep_all, 1)}</td>
+          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] align-middle">-</td>
+          <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400 align-middle">${formatNumber(huy_ep_all, 1)}</td>
           <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 align-middle">25</td>
           <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
         </tr>
