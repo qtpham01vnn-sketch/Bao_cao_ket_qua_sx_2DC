@@ -35,7 +35,7 @@ def resolve_period(period_type="month", period_value="8", year=2026):
         period_key = f"Y_{year_int}"
         next_period_title = f"Năm {year_int + 1}"
         next_period_full = f"NĂM {year_int + 1}"
-    # 2. Check if comma-separated list of months e.g. "1,3,4,5,6,7,8,9" or "8,9"
+    # 2. Check if comma-separated list or hyphenated range e.g. "1,2,3,4,5,6" or "1-6"
     elif "," in s_val:
         m_list = [int(x.strip()) for x in s_val.split(",") if x.strip().isdigit()]
         months = sorted(list(set(m_list))) if m_list else [8]
@@ -59,6 +59,31 @@ def resolve_period(period_type="month", period_value="8", year=2026):
             next_y = year_int if months[-1] < 12 else year_int + 1
             next_period_title = f"Tháng {next_m:02d}/{next_y}"
             next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
+    elif "-" in s_val and not s_val.startswith("-"):
+        parts = s_val.split("-")
+        if len(parts) == 2 and parts[0].strip().isdigit() and parts[1].strip().isdigit():
+            m_start = int(parts[0].strip())
+            m_end = int(parts[1].strip())
+            months = list(range(min(m_start, m_end), max(m_start, m_end) + 1))
+            if len(months) == 1:
+                period_title = f"THÁNG {months[0]:02d} NĂM {year_int}"
+                period_key = f"M{months[0]:02d}_{year_int}"
+            elif len(months) >= 8:
+                period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+                period_key = f"Y_{year_int}"
+            else:
+                period_title = f"TỪ THÁNG {months[0]:02d} ĐẾN THÁNG {months[-1]:02d} NĂM {year_int}"
+                period_key = f"RANGE_{months[0]}_{months[-1]}_{year_int}"
+            next_m = (months[-1] % 12) + 1
+            next_y = year_int if months[-1] < 12 else year_int + 1
+            next_period_title = f"Tháng {next_m:02d}/{next_y}"
+            next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
+        else:
+            months = [8]
+            period_title = f"THÁNG 08 NĂM {year_int}"
+            period_key = f"M08_{year_int}"
+            next_period_title = f"Tháng 09/{year_int}"
+            next_period_full = f"THÁNG 09 NĂM {year_int}"
     # 3. Quarter
     elif p_type == "quarter":
         q_val = s_val.upper()

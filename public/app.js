@@ -5186,18 +5186,44 @@ let selectedFormMauFile = null;
 
 function setFormMauPeriodType(type) {
   formMauPeriodType = type;
-  ['month', 'quarter', 'half_year', 'full_year'].forEach(t => {
+  ['month', 'quarter', 'half_year', 'full_year', 'custom_range'].forEach(t => {
     const btn = document.getElementById('btn-period-type-' + t);
     if (btn) {
       if (t === type) {
-        btn.className = 'px-2.5 py-1 rounded text-xs font-bold bg-cyan-600 text-white transition shadow';
+        btn.className = t === 'custom_range' 
+          ? 'px-2.5 py-1 rounded text-xs font-bold bg-amber-600 text-white transition shadow flex items-center gap-1' 
+          : 'px-2.5 py-1 rounded text-xs font-bold bg-cyan-600 text-white transition shadow';
       } else {
-        btn.className = 'px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition';
+        btn.className = t === 'custom_range' 
+          ? 'px-2.5 py-1 rounded text-xs font-semibold text-amber-400 hover:text-white hover:bg-amber-600/30 transition flex items-center gap-1'
+          : 'px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition';
       }
     }
   });
 
-  populateFormMauPeriodSelect();
+  const singleBox = document.getElementById('box-form-mau-single-period');
+  const rangeBox = document.getElementById('box-form-mau-range-picker');
+
+  if (type === 'custom_range') {
+    if (singleBox) singleBox.classList.add('hidden');
+    if (rangeBox) rangeBox.classList.remove('hidden');
+    applyFormMauRangeChange();
+  } else {
+    if (singleBox) singleBox.classList.remove('hidden');
+    if (rangeBox) rangeBox.classList.add('hidden');
+    populateFormMauPeriodSelect();
+    loadFormMauData();
+  }
+}
+
+function applyFormMauRangeChange() {
+  const fromEl = document.getElementById('form-mau-range-from');
+  const toEl = document.getElementById('form-mau-range-to');
+  const fromM = fromEl ? parseInt(fromEl.value) || 1 : 1;
+  const toM = toEl ? parseInt(toEl.value) || 6 : 6;
+  
+  GlobalFilterContext.setRange(fromM, toM);
+  formMauPeriodValue = GlobalFilterContext.getPrimaryMonth();
   loadFormMauData();
 }
 
@@ -5272,15 +5298,25 @@ function populateFormMauPeriodSelect() {
 }
 
 async function loadFormMauData() {
-  const selVal = document.getElementById('form-mau-select-value');
   const selYear = document.getElementById('form-mau-select-year');
-  if (selVal && selVal.value) {
-    formMauPeriodValue = selVal.value;
-    GlobalFilterContext.setMonth(selVal.value);
-  } else {
-    formMauPeriodValue = GlobalFilterContext.getPrimaryMonth();
-  }
   if (selYear) formMauYear = parseInt(selYear.value) || 2026;
+
+  if (formMauPeriodType === 'custom_range') {
+    const fromEl = document.getElementById('form-mau-range-from');
+    const toEl = document.getElementById('form-mau-range-to');
+    const fromM = fromEl ? parseInt(fromEl.value) || 1 : 1;
+    const toM = toEl ? parseInt(toEl.value) || 6 : 6;
+    GlobalFilterContext.setRange(fromM, toM);
+    formMauPeriodValue = GlobalFilterContext.getPrimaryMonth();
+  } else {
+    const selVal = document.getElementById('form-mau-select-value');
+    if (selVal && selVal.value) {
+      formMauPeriodValue = selVal.value;
+      GlobalFilterContext.setMonth(selVal.value);
+    } else {
+      formMauPeriodValue = GlobalFilterContext.getPrimaryMonth();
+    }
+  }
 
   const contentDiv = document.getElementById('form-mau-content');
   if (contentDiv) {

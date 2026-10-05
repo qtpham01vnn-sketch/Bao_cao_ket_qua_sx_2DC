@@ -1627,7 +1627,7 @@
           <div class="slicers-bar p-4 bg-[#0f2042] rounded-xl border border-[#1e3a6a]/60 shadow-lg no-print">
             <div class="flex flex-wrap items-center justify-between gap-4">
               
-              <!-- Period Slicers -->
+              <!-- Period Slicers (Có hỗ trợ chọn linh hoạt từ Tháng ... đến Tháng ...) -->
               <div class="flex flex-wrap items-center gap-3">
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Loại Kỳ Báo Cáo</label>
@@ -1644,14 +1644,52 @@
                     <button type="button" onclick="setFormMauPeriodType('full_year')" id="btn-period-type-full_year" class="px-2.5 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white transition">
                       12 Tháng (Năm)
                     </button>
+                    <button type="button" onclick="setFormMauPeriodType('custom_range')" id="btn-period-type-custom_range" class="px-2.5 py-1 rounded text-xs font-semibold text-amber-400 hover:text-white hover:bg-amber-600/30 transition flex items-center gap-1">
+                      <i data-lucide="sliders-horizontal" class="w-3 h-3 text-amber-400"></i>
+                      <span>Từ T... Đến T...</span>
+                    </button>
                   </div>
                 </div>
 
-                <div>
+                <!-- Standard Period Selector -->
+                <div id="box-form-mau-single-period">
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ Cụ Thể</label>
-                  <select id="form-mau-select-value" onchange="loadFormMauData()" class="bg-[#091428] border border-blue-500/30 text-xs font-bold text-cyan-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 min-w-[160px]">
+                  <select id="form-mau-select-value" onchange="loadFormMauData()" class="bg-[#091428] border border-blue-500/30 text-xs font-bold text-cyan-300 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-400 min-w-[170px]">
                     <option value="8" selected>Tháng 08/2026</option>
                   </select>
+                </div>
+
+                <!-- Custom Range Selector (Từ Tháng ... Đến Tháng ...) -->
+                <div id="box-form-mau-range-picker" class="hidden">
+                  <label class="block text-[10px] text-amber-300 uppercase font-semibold mb-1">Khoảng Tháng Tùy Chọn</label>
+                  <div class="flex items-center gap-1.5 bg-[#091428] px-2.5 py-1 rounded-lg border border-amber-500/40">
+                    <span class="text-[11px] text-slate-400 font-semibold">Từ:</span>
+                    <select id="form-mau-range-from" onchange="applyFormMauRangeChange()" class="bg-[#0f2042] border border-slate-700 text-cyan-300 text-xs font-bold rounded px-2 py-0.5 focus:outline-none">
+                      <option value="1" selected>Tháng 01</option>
+                      <option value="2">Tháng 02</option>
+                      <option value="3">Tháng 03</option>
+                      <option value="4">Tháng 04</option>
+                      <option value="5">Tháng 05</option>
+                      <option value="6">Tháng 06</option>
+                      <option value="7">Tháng 07</option>
+                      <option value="8">Tháng 08</option>
+                      <option value="9">Tháng 09</option>
+                    </select>
+                    <span class="text-[11px] text-slate-400 font-semibold">Đến:</span>
+                    <select id="form-mau-range-to" onchange="applyFormMauRangeChange()" class="bg-[#0f2042] border border-slate-700 text-cyan-300 text-xs font-bold rounded px-2 py-0.5 focus:outline-none">
+                      <option value="1">Tháng 01</option>
+                      <option value="3">Tháng 03</option>
+                      <option value="4">Tháng 04</option>
+                      <option value="5">Tháng 05</option>
+                      <option value="6" selected>Tháng 06</option>
+                      <option value="7">Tháng 07</option>
+                      <option value="8">Tháng 08</option>
+                      <option value="9">Tháng 09</option>
+                    </select>
+                    <button type="button" onclick="loadFormMauData()" class="px-2 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-[11px] font-bold transition shadow" title="Nạp dữ liệu báo cáo cho khoảng tháng đã chọn">
+                      Nạp Báo Cáo
+                    </button>
+                  </div>
                 </div>
 
                 <div>
