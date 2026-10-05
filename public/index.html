@@ -266,18 +266,28 @@
             <!-- Left: Interactive Excel-Style Slicers Panel (col-span-4) -->
             <div class="lg:col-span-4 space-y-3.5 bg-[#0f2042] p-4 rounded-xl border border-[#1e3a6a]/60 shadow-lg">
               
-              <!-- Slicer 1: Tháng -->
+              <!-- Slicer 1: Tháng (Hỗ trợ chọn đơn tháng hoặc khoảng T1-T6, T1-T9 tùy ý) -->
               <div>
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-[11px] font-bold text-slate-300 uppercase flex items-center gap-1">
                     <i data-lucide="calendar" class="w-3 h-3 text-cyan-400"></i>
-                    Tháng
+                    Bộ Lọc Thời Gian
                   </span>
                   <button onclick="setDashMonth('all')" id="btn-month-all" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white transition">
                     Tất cả (T1-T9)
                   </button>
                 </div>
-                <div class="grid grid-cols-4 gap-1.5">
+
+                <!-- Quick Presets -->
+                <div class="flex items-center gap-1 mb-2 flex-wrap">
+                  <button type="button" onclick="setDashMonth('9')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-cyan-300 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 transition" title="Xem riêng Tháng 9 mới nhất">Tháng 9</button>
+                  <button type="button" onclick="setDashMonthRange(1, 6)" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition" title="Xem tổng hợp 6 Tháng đầu năm (T1 - T6)">T1 - T6 (6T Đầu)</button>
+                  <button type="button" onclick="setDashMonthRange(7, 9)" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-amber-300 hover:bg-amber-600 hover:text-white border border-amber-500/30 transition" title="Xem tổng hợp Quý 3 (T7 - T9)">T7 - T9 (Quý 3)</button>
+                  <button type="button" onclick="setDashMonth('all')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 transition" title="Xem toàn bộ 9 tháng (T1 - T9)">T1 - T9</button>
+                </div>
+
+                <!-- 12 Individual Month Buttons -->
+                <div class="grid grid-cols-4 gap-1.5 mb-2.5">
                   <button onclick="setDashMonth('1')" id="btn-month-1" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">1</button>
                   <button onclick="setDashMonth('3')" id="btn-month-3" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">3</button>
                   <button onclick="setDashMonth('4')" id="btn-month-4" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">4</button>
@@ -290,6 +300,40 @@
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">10</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">11</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">12</button>
+                </div>
+
+                <!-- Custom Range Selector (Từ Tháng ... Đến Tháng ...) -->
+                <div class="p-2 bg-[#091428] rounded-lg border border-blue-500/30 flex items-center justify-between gap-1.5 text-xs">
+                  <div class="flex items-center gap-1">
+                    <span class="text-[10.5px] text-slate-400 font-semibold">Từ T:</span>
+                    <select id="dash-range-from" class="bg-[#0f2042] border border-slate-700 text-cyan-300 text-xs font-bold rounded px-1.5 py-0.5 focus:outline-none">
+                      <option value="1" selected>1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6">6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-[10.5px] text-slate-400 font-semibold">Đến T:</span>
+                    <select id="dash-range-to" class="bg-[#0f2042] border border-slate-700 text-cyan-300 text-xs font-bold rounded px-1.5 py-0.5 focus:outline-none">
+                      <option value="1">1</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                      <option value="6" selected>6</option>
+                      <option value="7">7</option>
+                      <option value="8">8</option>
+                      <option value="9">9</option>
+                    </select>
+                  </div>
+                  <button type="button" onclick="applyDashMonthRange()" class="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[11px] font-bold transition shadow" title="Xem tổng hợp khoảng tháng đã chọn">
+                    Áp Dụng
+                  </button>
                 </div>
               </div>
 

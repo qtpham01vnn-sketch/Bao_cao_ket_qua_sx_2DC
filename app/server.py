@@ -233,14 +233,30 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         conn = get_db()
         cur = conn.cursor()
 
+        def parse_months_filter(month_val):
+            if not month_val or str(month_val).lower() in ("all", "all_months", "tất cả", "t1-t9", "t1-t12"):
+                return None
+            s = str(month_val).strip()
+            if "," in s:
+                nums = [int(x.strip()) for x in s.split(",") if x.strip().isdigit()]
+                return nums if nums else None
+            elif "-" in s:
+                parts = [int(x.strip()) for x in s.split("-") if x.strip().isdigit()]
+                if len(parts) == 2:
+                    return list(range(parts[0], parts[1] + 1))
+            elif s.isdigit():
+                return [int(s)]
+            return None
+
         # =========================================================================
         # 1. SECTION 1: Summary & Quality (Using p1_* filters)
         # =========================================================================
         where_d1 = ["unit = 'm2'"]
         vals_d1 = []
-        if p1_month != "all":
-            where_d1.append("month = ?")
-            vals_d1.append(int(p1_month))
+        m_list_1 = parse_months_filter(p1_month)
+        if m_list_1:
+            where_d1.append(f"month IN ({','.join(['?']*len(m_list_1))})")
+            vals_d1.extend(m_list_1)
         if p1_line != "all":
             where_d1.append("line = ?")
             vals_d1.append(p1_line)
@@ -377,9 +393,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         # =========================================================================
         where_avail = []
         vals_avail = []
-        if p2_month != "all":
-            where_avail.append("month = ?")
-            vals_avail.append(int(p2_month))
+        m_list_2 = parse_months_filter(p2_month)
+        if m_list_2:
+            where_avail.append(f"month IN ({','.join(['?']*len(m_list_2))})")
+            vals_avail.extend(m_list_2)
         if p2_line != "all":
             where_avail.append("line = ?")
             vals_avail.append(p2_line)
@@ -392,9 +409,9 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
 
         where_d2 = []
         vals_d2 = []
-        if p2_month != "all":
-            where_d2.append("month = ?")
-            vals_d2.append(int(p2_month))
+        if m_list_2:
+            where_d2.append(f"month IN ({','.join(['?']*len(m_list_2))})")
+            vals_d2.extend(m_list_2)
         if p2_line != "all":
             where_d2.append("line = ?")
             vals_d2.append(p2_line)
@@ -449,9 +466,9 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             # Breakdown by glaze or size for this single brand
             where_spec = ["brand_name = ?"]
             vals_spec = [p2_brand]
-            if p2_month != "all":
-                where_spec.append("month = ?")
-                vals_spec.append(int(p2_month))
+            if m_list_2:
+                where_spec.append(f"month IN ({','.join(['?']*len(m_list_2))})")
+                vals_spec.extend(m_list_2)
             if p2_line != "all":
                 where_spec.append("line = ?")
                 vals_spec.append(p2_line)
@@ -473,9 +490,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         # =========================================================================
         where_d3 = []
         vals_d3 = []
-        if p3_month != "all":
-            where_d3.append("month = ?")
-            vals_d3.append(int(p3_month))
+        m_list_3 = parse_months_filter(p3_month)
+        if m_list_3:
+            where_d3.append(f"month IN ({','.join(['?']*len(m_list_3))})")
+            vals_d3.extend(m_list_3)
         if p3_line != "all":
             where_d3.append("line = ?")
             vals_d3.append(p3_line)
@@ -502,15 +520,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         total_vo_dieu_kg = sum(r["used_qty"] for r in raw_mat_rows if "điều" in r["material_name"].lower())
 
         q_mat_chart = f"""
-            SELECT material_name, unit,
+            SELECT material_name, line, size, unit,
                    AVG(norm_value) as norm_val,
                    SUM(used_qty) as total_used,
                    SUM(prod_qty) as total_prod,
                    SUM(reduced_qty) as total_reduced,
-                   SUM(over_qty) as total_over
+                   SUM(over_qty) as total_over,
+                   SUM(diff_qty) as total_diff
             FROM data_material_consumption
             {clause_d3}
-            GROUP BY material_name
+            GROUP BY material_name, line, size, unit
             ORDER BY total_used DESC
         """
         chart_mat_rows = []
@@ -520,12 +539,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             act_r = (d["total_used"] / p_m2) if p_m2 > 0 else 0
             chart_mat_rows.append({
                 "material_name": d["material_name"],
+                "line": d.get("line") or "",
+                "size": d.get("size") or "",
                 "unit": d["unit"],
                 "norm_value": round(d["norm_val"] or 0, 4),
                 "actual_rate": round(act_r, 4),
                 "total_used": round(d["total_used"] or 0, 2),
+                "prod_qty": round(p_m2 or 0, 2),
                 "total_reduced": round(d["total_reduced"] or 0, 2),
-                "total_over": round(d["total_over"] or 0, 2)
+                "total_over": round(d["total_over"] or 0, 2),
+                "diff_qty": round((d.get("total_diff") or (d["total_used"] - (d["norm_val"] or 0) * p_m2)), 2)
             })
 
         # =========================================================================
@@ -533,9 +556,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         # =========================================================================
         where_d4 = []
         vals_d4 = []
-        if p4_month != "all":
-            where_d4.append("month = ?")
-            vals_d4.append(int(p4_month))
+        m_list_4 = parse_months_filter(p4_month)
+        if m_list_4:
+            where_d4.append(f"month IN ({','.join(['?']*len(m_list_4))})")
+            vals_d4.extend(m_list_4)
         if p4_line != "all":
             where_d4.append("line = ?")
             vals_d4.append(p4_line)
@@ -1152,7 +1176,18 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         file_bytes = generate_dashboard_excel_report(conn, month=month, line=line, size=size, brand=brand, year=year)
         conn.close()
 
-        month_label = f"Thang_{int(month):02d}" if month != "all" else "T1_T9"
+        if month == "all":
+            month_label = "T1_T9"
+        elif "," in str(month):
+            parts = [x.strip() for x in str(month).split(",") if x.strip().isdigit()]
+            month_label = f"T{int(parts[0]):02d}_T{int(parts[-1]):02d}" if parts else "TongHop"
+        elif "-" in str(month):
+            parts = [x.strip() for x in str(month).split("-") if x.strip().isdigit()]
+            month_label = f"T{int(parts[0]):02d}_T{int(parts[-1]):02d}" if parts else "TongHop"
+        elif str(month).isdigit():
+            month_label = f"Thang_{int(month):02d}"
+        else:
+            month_label = "TongHop"
         clean_filename = f"Bao_Cao_Tong_Hop_KQSX_2DC_{month_label}_{year}.xlsx"
         self.send_response(200)
         self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

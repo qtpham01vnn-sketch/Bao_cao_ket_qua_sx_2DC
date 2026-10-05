@@ -72,31 +72,64 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
                 if alignment: cell.alignment = alignment
 
     # -------------------------------------------------------------
-    # FETCH DATA FROM SQLITE
+    # FETCH DATA FROM SQLITE WITH MULTI-MONTH PARSING & GROUPING
     # -------------------------------------------------------------
     cur = conn.cursor()
+
+    def parse_months_filter(val):
+        if not val or str(val).lower() in ("all", "tất cả", "t1-t9", "t1-t12", "all_months", "tat ca"):
+            return None
+        if isinstance(val, list):
+            return [int(x) for x in val if str(x).isdigit()]
+        s = str(val).strip()
+        if "-" in s:
+            parts = s.split("-")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                start = int(parts[0])
+                end = int(parts[1])
+                return list(range(min(start, end), max(start, end) + 1))
+        if "," in s:
+            return [int(x.strip()) for x in s.split(",") if x.strip().isdigit()]
+        if s.isdigit():
+            return [int(s)]
+        return None
+
+    m_list = parse_months_filter(month)
     
-    # 1. Part I Data
+    # 1. Part I Data (Aggregated by Line, Size, Product Line, Data Type)
     w_p1 = ["unit = 'm2'"]
     v_p1 = []
-    if month != "all":
-        w_p1.append("month = ?")
-        v_p1.append(int(month))
+    if m_list:
+        w_p1.append(f"month IN ({','.join(['?']*len(m_list))})")
+        v_p1.extend(m_list)
     if line != "all":
         w_p1.append("line = ?")
         v_p1.append(line)
     if size != "all":
         w_p1.append("size = ?")
         v_p1.append(size)
-    q_p1 = f"SELECT * FROM data_production_summary WHERE {' AND '.join(w_p1)} ORDER BY line, size, data_type DESC"
+    q_p1 = f"""
+        SELECT line, size, product_line, data_type,
+               SUM(sl_ep) as sl_ep,
+               SUM(a1) as a1,
+               SUM(a) as a,
+               SUM(b) as b,
+               SUM(recovery_total) as recovery_total,
+               SUM(prod_days) as prod_days,
+               AVG(stop_time_2mf) as stop_time_2mf
+        FROM data_production_summary
+        WHERE {' AND '.join(w_p1)}
+        GROUP BY line, size, product_line, data_type
+        ORDER BY line, size, data_type DESC
+    """
     p1_rows = [dict(r) for r in cur.execute(q_p1, v_p1).fetchall()]
 
-    # 2. Part II Data (Brands)
+    # 2. Part II Data (Brands Aggregated)
     w_p2 = []
     v_p2 = []
-    if month != "all":
-        w_p2.append("month = ?")
-        v_p2.append(int(month))
+    if m_list:
+        w_p2.append(f"month IN ({','.join(['?']*len(m_list))})")
+        v_p2.extend(m_list)
     if line != "all":
         w_p2.append("line = ?")
         v_p2.append(line)
@@ -121,12 +154,12 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     p2_rows = [dict(r) for r in cur.execute(q_p2, v_p2).fetchall()]
     p2_grand_total = sum(r["total_m2"] for r in p2_rows)
 
-    # 3. Part III Data (Materials)
+    # 3. Part III Data (Materials Aggregated)
     w_p3 = []
     v_p3 = []
-    if month != "all":
-        w_p3.append("month = ?")
-        v_p3.append(int(month))
+    if m_list:
+        w_p3.append(f"month IN ({','.join(['?']*len(m_list))})")
+        v_p3.extend(m_list)
     if line != "all":
         w_p3.append("line = ?")
         v_p3.append(line)
@@ -134,15 +167,26 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         w_p3.append("size = ?")
         v_p3.append(size)
     clause_p3 = ("WHERE " + " AND ".join(w_p3)) if w_p3 else ""
-    q_p3 = f"SELECT * FROM data_material_consumption {clause_p3} ORDER BY id ASC"
+    q_p3 = f"""
+        SELECT material_name, line, size, unit,
+               AVG(norm_value) as norm_value,
+               SUM(used_qty) as used_qty,
+               SUM(prod_qty) as prod_qty,
+               (SUM(used_qty) / NULLIF(SUM(prod_qty), 0)) as actual_rate,
+               (SUM(used_qty) - (AVG(norm_value) * SUM(prod_qty))) as diff_qty
+        FROM data_material_consumption
+        {clause_p3}
+        GROUP BY material_name, line, size, unit
+        ORDER BY used_qty DESC
+    """
     p3_rows = [dict(r) for r in cur.execute(q_p3, v_p3).fetchall()]
 
-    # 4. Part IV Data (Coal)
+    # 4. Part IV Data (Coal Aggregated by Supplier, Line, Firing Type)
     w_p4 = []
     v_p4 = []
-    if month != "all":
-        w_p4.append("month = ?")
-        v_p4.append(int(month))
+    if m_list:
+        w_p4.append(f"month IN ({','.join(['?']*len(m_list))})")
+        v_p4.extend(m_list)
     if line != "all":
         w_p4.append("line = ?")
         v_p4.append(line)
@@ -150,7 +194,21 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         w_p4.append("size = ?")
         v_p4.append(size)
     clause_p4 = ("WHERE " + " AND ".join(w_p4)) if w_p4 else ""
-    q_p4 = f"SELECT * FROM data_coal_consumption {clause_p4} ORDER BY id ASC"
+    q_p4 = f"""
+        SELECT coal_supplier, line, firing_type,
+               AVG(heat_value) as heat_value,
+               AVG(ash_rate) as ash_rate,
+               AVG(std_ash_rate) as std_ash_rate,
+               SUM(issued_weight) as issued_weight,
+               SUM(ash_weight) as ash_weight,
+               SUM(compensation_weight) as compensation_weight,
+               SUM(total_used_weight) as total_used_weight,
+               SUM(production_m2) as production_m2
+        FROM data_coal_consumption
+        {clause_p4}
+        GROUP BY coal_supplier, line, firing_type
+        ORDER BY line, coal_supplier ASC
+    """
     p4_rows = [dict(r) for r in cur.execute(q_p4, v_p4).fetchall()]
 
     # Calculate KPIs
@@ -174,7 +232,13 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     tot_prod_days = sum(r.get("prod_days", 0) or 0 for r in act_rows)
 
     # Period Title String
-    month_title_str = f"THÁNG {int(month):02d}/{year}" if month != "all" else f"NĂM {year} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+    if m_list and len(m_list) == 1:
+        month_title_str = f"THÁNG {m_list[0]:02d} NĂM {year}"
+    elif m_list and len(m_list) < 8:
+        month_title_str = f"TỪ THÁNG {min(m_list):02d} ĐẾN THÁNG {max(m_list):02d} NĂM {year}"
+    else:
+        month_title_str = f"NĂM {year} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+        
     now = datetime.datetime.now()
     date_signed_str = f"Đồng Nai, ngày {now.day:02d} tháng {now.month:02d} năm {now.year}"
     

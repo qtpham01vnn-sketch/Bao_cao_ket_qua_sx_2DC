@@ -1900,13 +1900,32 @@ const GlobalFilterContext = {
   year: 2026,
 
   setMonth(m) {
-    if (m === "all" || m === "ALL" || m === "t1-t9") {
+    if (!m || m === "all" || m === "ALL" || m === "t1-t9" || m === "t1-t12") {
       this.selectedMonths = ["all"];
     } else if (Array.isArray(m)) {
       this.selectedMonths = m.map(x => x.toString());
+    } else if (typeof m === "string" && m.includes("-")) {
+      const parts = m.split("-");
+      this.setRange(parts[0], parts[1]);
+      return;
+    } else if (typeof m === "string" && m.includes(",")) {
+      this.selectedMonths = m.split(",").map(x => x.trim()).filter(Boolean);
     } else {
       this.selectedMonths = [m.toString()];
     }
+    currentDashMonth = this.getPrimaryMonth();
+  },
+
+  setRange(fromM, toM) {
+    const f = Math.max(1, Math.min(12, parseInt(fromM) || 1));
+    const t = Math.max(1, Math.min(12, parseInt(toM) || 12));
+    const start = Math.min(f, t);
+    const end = Math.max(f, t);
+    const arr = [];
+    for (let i = start; i <= end; i++) {
+      arr.push(i.toString());
+    }
+    this.selectedMonths = arr;
     currentDashMonth = this.getPrimaryMonth();
   },
 
@@ -2036,10 +2055,26 @@ function updateSizeSlicerAvailability(sec, line) {
 // SECTION 1 HANDLERS (Tổng quan)
 // ==========================================
 function setDashMonth(m) {
-  currentDashMonth = m;
   GlobalFilterContext.setMonth(m);
+  currentDashMonth = GlobalFilterContext.getPrimaryMonth();
   updateSlicerButtonStyles(1);
   loadDashboardData();
+}
+
+function setDashMonthRange(fromM, toM) {
+  GlobalFilterContext.setRange(fromM, toM);
+  currentDashMonth = GlobalFilterContext.getPrimaryMonth();
+  updateSlicerButtonStyles(1);
+  loadDashboardData();
+}
+
+function applyDashMonthRange() {
+  const fromEl = document.getElementById("dash-range-from");
+  const toEl = document.getElementById("dash-range-to");
+  if (!fromEl || !toEl) return;
+  const fromM = parseInt(fromEl.value) || 1;
+  const toM = parseInt(toEl.value) || 12;
+  setDashMonthRange(fromM, toM);
 }
 
 function setDashLine(l) {
@@ -5177,8 +5212,21 @@ function populateFormMauPeriodSelect() {
     const optAll = document.createElement('option');
     optAll.value = "all";
     optAll.innerText = `Tất cả các kỳ (T01 - T09/${formMauYear})`;
-    if (activeM === "all") optAll.selected = true;
+    if (activeM === "all" || activeM === "t1-t9") optAll.selected = true;
     sel.appendChild(optAll);
+
+    // Multi-month presets
+    const optH1 = document.createElement('option');
+    optH1.value = "1,2,3,4,5,6";
+    optH1.innerText = `Từ Tháng 01 đến Tháng 06 (6 Tháng đầu/${formMauYear})`;
+    if (activeM === "1,2,3,4,5,6" || activeM === "1-6") optH1.selected = true;
+    sel.appendChild(optH1);
+
+    const optQ3 = document.createElement('option');
+    optQ3.value = "7,8,9";
+    optQ3.innerText = `Từ Tháng 07 đến Tháng 09 (Quý 3/${formMauYear})`;
+    if (activeM === "7,8,9" || activeM === "7-9") optQ3.selected = true;
+    sel.appendChild(optQ3);
 
     const availableMonths = [9, 8, 7, 6, 5, 4, 3, 1];
     availableMonths.forEach(m => {
@@ -7604,7 +7652,7 @@ async function printDashboardReport() {
     </div>
   `;
 
-  // 2. KHỐI I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI TỔNG HỢP
+  // 2. KHỐI I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI TỔNG HỢP (GOM TỔNG HỢP THEO LOẠI SẢN PHẨM & DC)
   let p1Rows = [];
   try {
     const resP1 = await fetch(`/api/data/summary?month=${month}&line=${line}&size=${size}&unit=m2`);
@@ -7614,13 +7662,54 @@ async function printDashboardReport() {
     p1Rows = rawSummaryData || [];
   }
 
+  // Aggregate Part I rows by key (line, size, product_line, data_type)
+  const p1Map = new Map();
+  p1Rows.forEach(r => {
+    const l = r.line || '';
+    const sz = r.size || '';
+    const pl = r.product_line || 'Phương Nam';
+    const dt = r.data_type || 'Thực hiện';
+    const k = `${l}__${sz}__${pl}__${dt}`;
+
+    if (!p1Map.has(k)) {
+      p1Map.set(k, {
+        line: l,
+        size: sz,
+        product_line: pl,
+        data_type: dt,
+        sl_ep: 0,
+        a1: 0,
+        a: 0,
+        b: 0,
+        recovery_total: 0,
+        prod_days: 0,
+        stop_time_2mf: 0
+      });
+    }
+    const item = p1Map.get(k);
+    item.sl_ep += Number(r.sl_ep || 0);
+    item.a1 += Number(r.a1 || 0);
+    item.a += Number(r.a || 0);
+    item.b += Number(r.b || 0);
+    item.recovery_total += Number(r.recovery_total || (Number(r.a1 || 0) + Number(r.a || 0) + Number(r.b || 0)));
+    item.prod_days += Number(r.prod_days || 0);
+    item.stop_time_2mf += Number(r.stop_time_2mf || 0);
+  });
+
+  const p1AggregatedList = Array.from(p1Map.values()).sort((a, b) => {
+    if (a.line !== b.line) return a.line.localeCompare(b.line);
+    if (a.size !== b.size) return a.size.localeCompare(b.size);
+    if (a.data_type !== b.data_type) return b.data_type.localeCompare(a.data_type);
+    return 0;
+  });
+
   let p1HtmlRows = "";
   let sumEp = 0, sumA1 = 0, sumA = 0, sumB = 0, sumTong = 0, sumDays = 0, sumStop = 0;
   let plnEp = 0, plnA1 = 0, plnA = 0, plnB = 0, plnTong = 0;
   let actEp = 0, actA1 = 0, actA = 0, actB = 0, actTong = 0;
 
-  if (p1Rows.length > 0) {
-    p1Rows.forEach((r, idx) => {
+  if (p1AggregatedList.length > 0) {
+    p1AggregatedList.forEach((r, idx) => {
       const slEp = Number(r.sl_ep || 0);
       const a1 = Number(r.a1 || 0);
       const a = Number(r.a || 0);
@@ -7839,17 +7928,17 @@ async function printDashboardReport() {
     </table>
   `;
 
-  // 4. KHỐI III: TIÊU HAO VẬT TƯ
-  const matList = matSec.materials_list || currentDashRawMaterials || [];
+  // 4. KHỐI III: TIÊU HAO VẬT TƯ (DÙNG BẢNG GOM TỔNG HỢP THEO DANH MỤC)
+  const matList = (matSec.materials_chart && matSec.materials_chart.length > 0) ? matSec.materials_chart : (matSec.materials_list || []);
   let p3HtmlRows = "";
 
   if (matList.length > 0) {
     matList.forEach((r, idx) => {
       const normVal = Number(r.norm_value || 0);
-      const usedQty = Number(r.used_qty || 0);
+      const usedQty = Number(r.total_used !== undefined ? r.total_used : (r.used_qty || 0));
       const prodM2 = Number(r.prod_qty || r.calculated_m2 || 0);
       const actRate = Number(r.actual_rate || (prodM2 > 0 ? usedQty / prodM2 : 0));
-      const diffQty = Number(r.diff_qty || 0);
+      const diffQty = Number(r.diff_qty !== undefined ? r.diff_qty : (usedQty - normVal * prodM2));
       
       const hasData = usedQty > 0 || actRate > 0;
       const isSave = diffQty <= 0;
@@ -7922,13 +8011,89 @@ async function printDashboardReport() {
     </table>
   `;
 
-  // 5. KHỐI IV: SỬ DỤNG THAN KHÍ HÓA
-  const coalList = coalSec.coal_list || currentDashRawCoal || [];
+  // 5. KHỐI IV: SỬ DỤNG THAN KHÍ HÓA (GOM TỔNG HỢP THEO NHÀ CUNG CẤP & CÔNG ĐOẠN)
+  const rawCoal = coalSec.coal_list || [];
+  const coalMap = new Map();
+
+  rawCoal.forEach(r => {
+    const supp = r.coal_supplier || 'Than Khí Hóa';
+    const l = r.line || 'DC1 & DC2';
+    const ft = r.firing_type || 'Nung';
+    const k = `${supp}__${l}__${ft}`;
+
+    if (!coalMap.has(k)) {
+      coalMap.set(k, {
+        coal_supplier: supp,
+        line: l,
+        firing_type: ft,
+        heat_weighted_sum: 0,
+        heat_weight_total: 0,
+        ash_weighted_sum: 0,
+        std_ash_weighted_sum: 0,
+        issued_weight: 0,
+        ash_weight: 0,
+        compensation_weight: 0,
+        total_used_weight: 0,
+        production_m2: 0
+      });
+    }
+    const c = coalMap.get(k);
+    const iss = Number(r.issued_weight || 0);
+    const ashW = Number(r.ash_weight || 0);
+    const comp = Number(r.compensation_weight || 0);
+    const used = Number(r.total_used_weight || (iss + ashW + comp));
+    const m2 = Number(r.production_m2 || 0);
+    const heat = Number(r.heat_value || 0);
+    const ashP = Number(r.ash_rate || 0);
+    const stdAshP = Number(r.std_ash_rate || 0);
+
+    c.issued_weight += iss;
+    c.ash_weight += ashW;
+    c.compensation_weight += comp;
+    c.total_used_weight += used;
+    c.production_m2 += m2;
+
+    if (heat > 0 && iss > 0) {
+      c.heat_weighted_sum += heat * iss;
+      c.heat_weight_total += iss;
+    }
+    if (ashP > 0 && iss > 0) {
+      c.ash_weighted_sum += ashP * iss;
+    }
+    if (stdAshP > 0 && iss > 0) {
+      c.std_ash_weighted_sum += stdAshP * iss;
+    }
+  });
+
+  const p4AggregatedList = Array.from(coalMap.values()).map(c => {
+    const avgHeat = c.heat_weight_total > 0 ? (c.heat_weighted_sum / c.heat_weight_total) : 0;
+    const avgAsh = c.heat_weight_total > 0 ? (c.ash_weighted_sum / c.heat_weight_total) : 0;
+    const avgStdAsh = c.heat_weight_total > 0 ? (c.std_ash_weighted_sum / c.heat_weight_total) : 0;
+    const rLump = c.production_m2 > 0 ? (c.issued_weight / c.production_m2) : 0;
+    const rTot = c.production_m2 > 0 ? (c.total_used_weight / c.production_m2) : 0;
+
+    return {
+      coal_supplier: c.coal_supplier,
+      line: c.line,
+      firing_type: c.firing_type,
+      heat_value: avgHeat,
+      ash_rate: avgAsh,
+      std_ash_rate: avgStdAsh,
+      issued_weight: c.issued_weight,
+      ash_weight: c.ash_weight,
+      compensation_weight: c.compensation_weight,
+      total_used_weight: c.total_used_weight,
+      production_m2: c.production_m2,
+      rate_lump: rLump,
+      rate_total: rTot
+    };
+  });
+
   let p4HtmlRows = "";
   let sumP4Issued = 0, sumP4Ash = 0, sumP4Comp = 0, sumP4Used = 0, sumP4M2 = 0;
 
-  if (coalList.length > 0) {
-    coalList.forEach((r, idx) => {
+  if (p4AggregatedList.length > 0) {
+    p4AggregatedList.forEach((r, idx) => {
       const heat = Number(r.heat_value || 0);
       const ashP = Number(r.ash_rate || 0);
       const stdAshP = Number(r.std_ash_rate || 0);
