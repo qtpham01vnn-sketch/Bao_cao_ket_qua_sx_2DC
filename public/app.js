@@ -7230,7 +7230,7 @@ function getFormMauGoalsTableHtml() {
           <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(sum_a1_all, 0)}</td>
           <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${sum_a_all > 0 ? formatNumber(sum_a_all, 0) : '-'}</td>
           <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(sum_b_all, 0)}</td>
-          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sum_rec, 0)}</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sum_rec_all, 0)}</td>
           <td rowspan="2" class="p-1.5 text-center font-mono border border-[#1e3a6a] align-middle">${formatNumber(sum_days_all, 2)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 align-middle">${formatNumber(avg_per_day_all, 0)}</td>
           <td rowspan="2" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 align-middle">${formatNumber(a_ep_all, 1)}</td>
