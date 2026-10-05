@@ -2193,7 +2193,7 @@ function resetDashFilters() {
 }
 
 function updateSlicerButtonStyles(section = 0) {
-  const months = ["all", "1", "3", "4", "5", "6", "7", "8"];
+  const months = ["all", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const lines = ["all", "DC1", "DC2"];
   const sizes = ["all", "30x60", "50x50", "40x80", "60x60"];
 
@@ -2278,7 +2278,7 @@ async function loadDashboardData() {
 
   // Build badge
   const badge = document.getElementById("dash-badge-period");
-  const monthStr = currentDashMonth === "all" ? "Tất cả các kỳ (T1 - T8)" : ("Tháng " + (currentDashMonth.length === 1 ? "0" + currentDashMonth : currentDashMonth));
+  const monthStr = currentDashMonth === "all" ? "Tất cả các kỳ (T1 - T9)" : ("Tháng " + (currentDashMonth.length === 1 ? "0" + currentDashMonth : currentDashMonth));
   const lineStr = currentDashLine === "all" ? "Tất cả DC" : currentDashLine;
   const sizeStr = currentDashSize === "all" ? "Tất cả KT" : currentDashSize;
   const brandStr = currentDashBrand === "all" ? "" : ` • TH: ${currentDashBrand}`;
@@ -2287,10 +2287,10 @@ async function loadDashboardData() {
   // Date range label
   const dateRangeEl = document.getElementById("dash-date-range");
   if (dateRangeEl) {
-    if (currentDashMonth === "all") dateRangeEl.innerText = "01/01/2026 - 31/08/2026";
+    if (currentDashMonth === "all") dateRangeEl.innerText = "01/01/2026 - 30/09/2026";
     else {
       const m = parseInt(currentDashMonth);
-      dateRangeEl.innerText = `01/${m.toString().padStart(2, '0')}/2026 - 31/${m.toString().padStart(2, '0')}/2026`;
+      dateRangeEl.innerText = `01/${m.toString().padStart(2, '0')}/2026 - 30/${m.toString().padStart(2, '0')}/2026`;
     }
   }
 
@@ -2612,9 +2612,10 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
     return;
   }
 
-  let sumA1 = 0, sumB = 0, sumTotal = 0;
+  let sumA1 = 0, sumA = 0, sumB = 0, sumTotal = 0;
   brandList.forEach(b => {
     sumA1 += b.a1_m2 || 0;
+    sumA += b.a_m2 || 0;
     sumB += b.b_m2 || 0;
     sumTotal += b.total_m2 || 0;
   });
@@ -2634,6 +2635,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
         <td class="p-2 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
+        <td class="p-2 text-right font-bold text-blue-400 border border-[#1e3a6a]/40">${formatNumber(b.a_m2, 2)}</td>
         <td class="p-2 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
         <td class="p-2 text-right font-black text-white border border-[#1e3a6a]/40">${formatNumber(b.total_m2, 2)}</td>
         <td class="p-2 text-right font-bold text-cyan-300 border border-[#1e3a6a]/40">${formatNumber(b.a1_pct, 1)}%</td>
@@ -2659,6 +2661,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
       <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
         <td colspan="4" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
         <td class="p-2 text-right text-emerald-400 text-xs">${formatNumber(sumA1, 2)}</td>
+        <td class="p-2 text-right text-blue-400 text-xs">${formatNumber(sumA, 2)}</td>
         <td class="p-2 text-right text-amber-400 text-xs">${formatNumber(sumB, 2)}</td>
         <td class="p-2 text-right text-white text-xs">${formatNumber(sumTotal, 2)}</td>
         <td class="p-2 text-right text-cyan-300 text-xs">${formatNumber(avgA1Pct, 1)}%</td>

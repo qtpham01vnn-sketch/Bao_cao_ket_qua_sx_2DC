@@ -9,3 +9,7 @@ env/
 node_modules/
 .system_generated/
 app/test.txt
+._*
+*/._*
+app/clean_m9.py
+

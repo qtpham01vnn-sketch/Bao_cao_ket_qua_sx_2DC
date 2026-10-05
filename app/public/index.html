@@ -226,12 +226,12 @@
               </h2>
               <div class="text-xs text-slate-300 mt-0.5 flex items-center gap-2">
                 <span>Báo cáo tổng hợp sản xuất 2 dây chuyền:</span>
-                <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 31/08/2026</b>
+                <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 30/09/2026</b>
               </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
-                • Tất cả các kỳ (T1 - T8) • Tất cả DC
+                • Tất cả các kỳ (T1 - T9) • Tất cả DC
               </span>
               <button onclick="printDashboardReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF toàn bộ Báo cáo Tổng Quan">
                 <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
@@ -270,7 +270,7 @@
                     Tháng
                   </span>
                   <button onclick="setDashMonth('all')" id="btn-month-all" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white transition">
-                    Tất cả (T1-T8)
+                    Tất cả (T1-T9)
                   </button>
                 </div>
                 <div class="grid grid-cols-4 gap-1.5">
@@ -281,8 +281,8 @@
                   <button onclick="setDashMonth('6')" id="btn-month-6" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">6</button>
                   <button onclick="setDashMonth('7')" id="btn-month-7" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">7</button>
                   <button onclick="setDashMonth('8')" id="btn-month-8" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">8</button>
+                  <button onclick="setDashMonth('9')" id="btn-month-9" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">9</button>
                   <button onclick="setDashMonth('2')" id="btn-month-2" class="dash-slicer-btn opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center" title="Tháng 2 nghỉ Tết / bảo dưỡng">2</button>
-                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">9</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">10</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">11</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">12</button>
@@ -513,6 +513,7 @@
                   <button onclick="setDashMonthP2('6')" id="btn-p2-month-6" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
                   <button onclick="setDashMonthP2('7')" id="btn-p2-month-7" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                   <button onclick="setDashMonthP2('8')" id="btn-p2-month-8" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                  <button onclick="setDashMonthP2('9')" id="btn-p2-month-9" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
                 </div>
               </div>
 
@@ -576,8 +577,9 @@
                       <th class="p-2.5 border border-[#1e3a6a]/40">Thương Hiệu</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
-                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng A1 (m²)</th>
-                      <th class="p-2.5 text-right border border-[#1e3a6a]/40">Sản Lượng B (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-emerald-300">Sản Lượng A1 (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-blue-300">Sản Lượng A (m²)</th>
+                      <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-amber-300">Sản Lượng B (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tổng Sản Lượng (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Lệ A1 (%)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40">Tỷ Trọng</th>
@@ -627,6 +629,7 @@
                       <button onclick="setDashMonthP3('6')" id="btn-p3-month-6" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
                       <button onclick="setDashMonthP3('7')" id="btn-p3-month-7" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                       <button onclick="setDashMonthP3('8')" id="btn-p3-month-8" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                      <button onclick="setDashMonthP3('9')" id="btn-p3-month-9" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
                     </div>
                   </div>
 
@@ -794,6 +797,7 @@
                       <button onclick="setDashMonthP4('6')" id="btn-p4-month-6" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">6</button>
                       <button onclick="setDashMonthP4('7')" id="btn-p4-month-7" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                       <button onclick="setDashMonthP4('8')" id="btn-p4-month-8" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
+                      <button onclick="setDashMonthP4('9')" id="btn-p4-month-9" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
                     </div>
                   </div>
 
@@ -1059,7 +1063,8 @@
                     <option value="5">Tháng 05</option>
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
-                    <option value="8" selected>Tháng 08</option>
+                    <option value="8">Tháng 08</option>
+                    <option value="9" selected>Tháng 09</option>
                   </select>
                 </div>
                 <div>
@@ -1162,7 +1167,8 @@
                     <option value="5">Tháng 05</option>
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
-                    <option value="8" selected>Tháng 08</option>
+                    <option value="8">Tháng 08</option>
+                    <option value="9" selected>Tháng 09</option>
                   </select>
                 </div>
                 <div>
@@ -1284,7 +1290,8 @@
                     <option value="5">Tháng 05</option>
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
-                    <option value="8" selected>Tháng 08</option>
+                    <option value="8">Tháng 08</option>
+                    <option value="9" selected>Tháng 09</option>
                   </select>
                 </div>
                 <div>
@@ -1374,14 +1381,15 @@
                 <div>
                   <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Kỳ báo cáo</label>
                   <select id="coal-filter-month" onchange="loadCoalData()" class="bg-[#091428] border border-blue-500/30 text-xs text-cyan-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
-                    <option value="all">Tất cả kỳ (T1-T8)</option>
+                    <option value="all">Tất cả kỳ (T1-T9)</option>
                     <option value="1">Tháng 01</option>
                     <option value="3">Tháng 03</option>
                     <option value="4">Tháng 04</option>
                     <option value="5">Tháng 05</option>
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
-                    <option value="8" selected>Tháng 08</option>
+                    <option value="8">Tháng 08</option>
+                    <option value="9" selected>Tháng 09</option>
                   </select>
                 </div>
                 <div>

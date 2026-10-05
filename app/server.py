@@ -404,6 +404,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             SELECT brand_name, 
                    SUM(quantity_m2) as total_m2, 
                    SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, 
+                   SUM(CASE WHEN grade = 'A' THEN quantity_m2 ELSE 0 END) as a_m2, 
                    SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2,
                    GROUP_CONCAT(DISTINCT line) as lines,
                    GROUP_CONCAT(DISTINCT size) as sizes,
@@ -420,16 +421,20 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         for r in all_brand_rows:
             tot = r["total_m2"]
             a1 = r["a1_m2"]
+            a = r["a_m2"]
             b = r["b_m2"]
             a1_p = (a1 / tot * 100) if tot > 0 else 0
+            a_p = (a / tot * 100) if tot > 0 else 0
             b_p = (b / tot * 100) if tot > 0 else 0
             share_p = (tot / grand_total_brand_m2 * 100) if grand_total_brand_m2 > 0 else 0
             brand_table.append({
                 "brand_name": r["brand_name"],
                 "total_m2": tot,
                 "a1_m2": a1,
+                "a_m2": a,
                 "b_m2": b,
                 "a1_pct": a1_p,
+                "a_pct": a_p,
                 "b_pct": b_p,
                 "share_pct": share_p,
                 "lines": r.get("lines") or "",
@@ -1010,21 +1015,26 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 except:
                     pass
 
-        logs = []
-        for fieldname, finfo in uploaded_files.items():
-            fname = finfo["filename"]
-            fbytes = finfo["bytes"]
-            logs.append(f'Đã nhận file "{fname}" ({len(fbytes):,} bytes)')
-            try:
-                wb = openpyxl.load_workbook(io.BytesIO(fbytes), data_only=True)
-                sheet_list_str = ", ".join(wb.sheetnames)
-                logs.append(f"-> Đọc thành công {len(wb.sheetnames)} sheet: {sheet_list_str}")
-            except Exception as e:
-                logs.append(f"-> Lỗi đọc file: {str(e)}")
+        conn = get_db()
+        from monthly_importer import import_monthly_data
+        
+        f_dc1 = uploaded_files.get("file_dc1", {}).get("bytes")
+        f_dc2 = uploaded_files.get("file_dc2", {}).get("bytes")
+        f_coal = uploaded_files.get("file_coal", {}).get("bytes")
+        
+        logs = import_monthly_data(
+            conn=conn,
+            month=target_month,
+            year=target_year,
+            file_dc1_bytes=f_dc1,
+            file_dc2_bytes=f_dc2,
+            file_coal_bytes=f_coal
+        )
+        conn.close()
 
         self.send_json_response({
             "success": True,
-            "message": f"Đã phân tích và trích xuất thành công dữ liệu Tháng {target_month}/{target_year}",
+            "message": f"Đã phân tích, bóc tách và lưu thành công toàn bộ dữ liệu Tháng {target_month}/{target_year} vào hệ thống!",
             "logs": logs
         })
 
