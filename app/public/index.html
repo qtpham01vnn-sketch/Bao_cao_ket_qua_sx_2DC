@@ -204,10 +204,10 @@
             <span class="hidden sm:inline">In / Tải PDF</span>
           </button>
 
-          <!-- Export Signoff shortcut -->
-          <button onclick="quickExportSignOff()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span>Xuất Excel (T8)</span>
+          <!-- Export Dashboard Excel shortcut -->
+          <button onclick="exportDashboardExcel()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition" title="Xuất toàn bộ Báo cáo Tổng hợp (4 Phần + Raw Data) ra Excel (.xlsx)">
+            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+            <span>Xuất Excel</span>
           </button>
         </div>
       </header>
@@ -233,9 +233,13 @@
               <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
                 • Tất cả các kỳ (T1 - T9) • Tất cả DC
               </span>
-              <button onclick="printDashboardReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF toàn bộ Báo cáo Tổng Quan">
+              <button onclick="printDashboardReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF toàn bộ Báo cáo Tổng Hợp (4 Phần)">
                 <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
                 <span>In / Tải PDF</span>
+              </button>
+              <button onclick="exportDashboardExcel()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition" title="Xuất toàn bộ Báo cáo Tổng Hợp (4 Phần + Raw Data) ra Excel (.xlsx)">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-100"></i>
+                <span>Xuất Excel</span>
               </button>
               <button onclick="syncAllSectionsToP1()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 border border-emerald-400/50 text-xs font-bold text-white shadow transition" title="Áp dụng bộ lọc Phần I cho toàn bộ Phần II, III, IV">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>

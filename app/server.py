@@ -12,6 +12,7 @@ import random
 import datetime
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from form_mau_engine import build_form_mau_payload, save_form_mau_custom_data, parse_form_mau_excel_upload, resolve_period
+from dashboard_excel_exporter import generate_dashboard_excel_report
 
 PORT = 8080
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -96,6 +97,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     self.handle_get_form_mau(params)
                 elif path == "/api/export/sign-off-report" or path == "/api/export/form-mau-excel":
                     self.handle_export_sign_off_report(params)
+                elif path == "/api/export/dashboard-excel":
+                    self.handle_export_dashboard_excel(params)
                 elif path == "/api/metadata":
                     self.handle_metadata()
                 elif path == "/api/access/requests":
@@ -1131,6 +1134,26 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         file_bytes = out_stream.getvalue()
 
         clean_filename = f"Bao_Cao_Tong_Hop_KQSX_2DC_{p_info['period_key']}.xlsx"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        self.send_header("Content-Disposition", f'attachment; filename="{clean_filename}"')
+        self.send_header("Content-Length", str(len(file_bytes)))
+        self.end_headers()
+        self.wfile.write(file_bytes)
+
+    def handle_export_dashboard_excel(self, params):
+        month = params.get("month", [params.get("p1_month", ["all"])[0]])[0]
+        line = params.get("line", [params.get("p1_line", ["all"])[0]])[0]
+        size = params.get("size", [params.get("p1_size", ["all"])[0]])[0]
+        brand = params.get("brand", [params.get("p1_brand", ["all"])[0]])[0]
+        year = int(params.get("year", [2026])[0])
+
+        conn = get_db()
+        file_bytes = generate_dashboard_excel_report(conn, month=month, line=line, size=size, brand=brand, year=year)
+        conn.close()
+
+        month_label = f"Thang_{int(month):02d}" if month != "all" else "T1_T9"
+        clean_filename = f"Bao_Cao_Tong_Hop_KQSX_2DC_{month_label}_{year}.xlsx"
         self.send_response(200)
         self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         self.send_header("Content-Disposition", f'attachment; filename="{clean_filename}"')
