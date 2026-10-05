@@ -5814,98 +5814,17 @@ function renderFormMauContent(d) {
   const sumHienTaiDC1 = hrRows.reduce((acc, r) => acc + (Number(r.hientai_dc1) || 0), 0);
   const sumHienTaiDC2 = hrRows.reduce((acc, r) => acc + (Number(r.hientai_dc2) || 0), 0);
 
-  // --- SECTION VI: KẾ HOẠCH THÁNG TIẾP THEO (PDF PAGE 1) ---
-  const planData = s6.data || get_default_plan_next_period();
-  const planItems = planData.items || [];
-  const planTotal2dc = planData.total_2dc || {};
-  const planNotes = planData.notes || [];
+  // --- SECTION VI & VII: KHỞI TẠO DỮ LIỆU ĐỘNG KẾ HOẠCH & MỤC TIÊU ---
+  initFormMauPlanAndGoals(s6, s7);
 
-  const planRowsHtml = planItems.map(it => {
-    const pm = it.plan_m2 || {};
-    const pp = it.plan_pct || {};
-    return `
-      <tr class="hover:bg-[#13284d]/60">
-        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">${it.line}</td>
-        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">${it.size}</td>
-        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(pm.sl_ep, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(pm.a1, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${pm.a > 0 ? formatNumber(pm.a, 0) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(pm.b, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(pm.recovery_total, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(pm.prod_days, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(pm.avg_per_day, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(pm.a_ep, 1)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${pm.c_ep ? formatNumber(pm.c_ep, 2) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(pm.huy_ep, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${pm.stop_time_2mf || 40}</td>
-      </tr>
-      <tr class="hover:bg-[#13284d]/60 text-slate-400">
-        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
-        <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(pp.a1, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${pp.a > 0 ? formatNumber(pp.a, 2) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(pp.b, 2)}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
-        <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(pm.a_ep, 1)}</td>
-        <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(pm.huy_ep, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${pm.stop_time_2mf || 40}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const pTotM = planTotal2dc.plan_m2 || {};
-  const pTotP = planTotal2dc.plan_pct || {};
-
-  // --- SECTION VII: MỤC TIÊU THÁNG TIẾP THEO (PDF PAGE 2) ---
-  const goalsData = s7.data || get_default_goals_next_period();
-  const goalItems = goalsData.items || [];
-  const goalTotalDC2 = goalsData.total_dc2 || {};
-  const goalTotal2DC = goalsData.total_2dc || {};
-  const deptTasks = goalsData.department_tasks || [];
-
-  const goalRowsHtml = goalItems.map(it => {
-    const gm = it.goal_m2 || {};
-    const gp = it.goal_pct || {};
-    return `
-      <tr class="hover:bg-[#13284d]/60">
-        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">${it.line}</td>
-        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">${it.size}</td>
-        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(gm.sl_ep, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(gm.a1, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${gm.a > 0 ? formatNumber(gm.a, 0) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(gm.b, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(gm.recovery_total, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(gm.prod_days, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(gm.avg_per_day, 0)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(gm.a_ep, 1)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${gm.c_ep ? formatNumber(gm.c_ep, 2) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(gm.huy_ep, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${gm.stop_time_2mf || 25}</td>
-      </tr>
-      <tr class="hover:bg-[#13284d]/60 text-slate-400">
-        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
-        <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(gp.a1, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${gp.a > 0 ? formatNumber(gp.a, 2) : '-'}</td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(gp.b, 2)}</td>
-        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
-        <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(gm.a_ep, 1)}</td>
-        <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(gm.huy_ep, 2)}</td>
-        <td contenteditable="true" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${gm.stop_time_2mf || 25}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const gTotDC2M = goalTotalDC2.goal_m2 || {};
-  const gTotDC2P = goalTotalDC2.goal_pct || {};
-  const gTot2DCM = goalTotal2DC.goal_m2 || {};
-  const gTot2DCP = goalTotal2DC.goal_pct || {};
+  const planNotes = (s6 && s6.data && s6.data.notes) ? s6.data.notes : (s6?.notes || [
+    "Dây chuyền 1: Tổng 30 ngày sản xuất chạy 300x600 mm. Sử dụng BPL Xương PN33 và BPL Men EP17C + GP17A.",
+    "Dây chuyền 2: Tổng 30 ngày sản xuất kích thước 400x800mm sử dụng BPL Xương PN33 và BPL Men EP17C + PSG17A."
+  ]);
+  const deptTasks = (s7 && s7.data && s7.data.department_tasks) ? s7.data.department_tasks : (s7?.department_tasks || [
+    { dept: "1. Phòng Kỹ thuật - Công nghệ:", tasks: "- Theo dõi bám sát chất lượng xương men.\n- Nghiên cứu giảm chi phí bài men, nâng cao tỷ lệ A1." },
+    { dept: "2. Phân xưởng Cơ điện - Năng lượng:", tasks: "- Đảm bảo cấp than khí hóa ổn định.\n- Giảm thiểu sự cố dừng máy 2MF dưới 25 phút/ngày." }
+  ]);
 
   // --- SECTION VIII: CHỮ KÝ 6 CẤP & NƠI NHẬN (PDF PAGE 3) ---
   const sigs = s8.signatures || {};
@@ -6563,72 +6482,25 @@ function renderFormMauContent(d) {
           VI. KẾ HOẠCH THỰC HIỆN ${s6.next_full_title || s6.next_title || 'THÁNG TIẾP THEO'} (LẦN 01)
         </h4>
         <div class="flex items-center gap-2 no-print">
+          <button type="button" onclick="addFormMauPlanRow()" class="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Thêm Dòng KT
+          </button>
           <button type="button" onclick="clearFormMauPlanTable()" class="px-2.5 py-1 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition">
-            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Xóa Trắng Ô Tự Nhập
+            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Xóa Trắng Ô
           </button>
           <button type="button" onclick="resetFormMauPlanTable()" class="px-2.5 py-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1 transition">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Nạp Kế Hoạch Mẫu
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Nạp Mẫu
+          </button>
+          <button type="button" onclick="saveFormMauCustomData()" class="px-2.5 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Lưu Kế Hoạch
           </button>
           <span class="text-xs text-slate-400 italic ml-2">ĐVT: m²</span>
         </div>
       </div>
-      <div class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg mb-3">
-        <table class="table-excel-grid w-full text-center text-[11px]">
-          <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
-            <tr>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">DC</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-20">Kích Thước</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">ĐVT</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">Tổng Sản Lượng Ép</th>
-              <th colspan="3" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-cyan-300">Sản Lượng Thu Hồi</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right bg-[#0c1e3d] text-white">Tổng (A1+A+B)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-16">Số Ngày SX</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">TB / Ngày (m²)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-emerald-400">A/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">C/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-rose-400">Huỷ/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-center w-16 text-amber-300">T/g Dừng 2MF (Phút/ngày)</th>
-            </tr>
-            <tr class="bg-[#0e2246] text-slate-300">
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-emerald-300">A1</th>
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-blue-300">A</th>
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-amber-300">B</th>
-            </tr>
-          </thead>
-          <tbody id="form-mau-plan-tbody" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
-            ${planRowsHtml}
-            <tr class="bg-[#0c1a35] font-bold text-white text-xs">
-              <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black text-amber-300 align-middle">TỔNG KẾ HOẠCH 2 DC</td>
-              <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(pTotM.sl_ep, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(pTotM.a1, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(pTotM.a, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(pTotM.b, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(pTotM.recovery_total, 0)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(pTotM.prod_days, 2)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(pTotM.avg_per_day, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(pTotM.a_ep, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(pTotM.huy_ep, 1)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${pTotM.stop_time_2mf || 40}</td>
-            </tr>
-            <tr class="bg-[#0c1a35] text-slate-400 text-xs">
-              <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(pTotP.a1, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(pTotP.a, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(pTotP.b, 1)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
-              <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(pTotM.a_ep, 1)}</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(pTotM.huy_ep, 1)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${pTotM.stop_time_2mf || 40}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div id="form-mau-plan-table-wrapper" class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg mb-3">
+        ${getFormMauPlanTableHtml()}
       </div>
-      <div contenteditable="true" class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed space-y-1 outline-none focus:border-cyan-400">
+      <div contenteditable="true" id="form-mau-plan-notes" class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed space-y-1 outline-none focus:border-cyan-400">
         <span class="font-bold text-cyan-400 block mb-1">📝 Ghi chú Kế hoạch Sản xuất (Bấm để thêm bớt nội dung):</span>
         ${planNotes.map(n => `<div>• ${n}</div>`).join('')}
       </div>
@@ -6642,100 +6514,23 @@ function renderFormMauContent(d) {
           VII. MỤC TIÊU THỰC HIỆN ${s7.next_full_title || s7.next_title || 'THÁNG TIẾP THEO'} & KẾ HOẠCH CÁC PHÒNG BAN
         </h4>
         <div class="flex items-center gap-2 no-print">
+          <button type="button" onclick="addFormMauGoalRow()" class="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Thêm Dòng KT
+          </button>
           <button type="button" onclick="clearFormMauGoalsTable()" class="px-2.5 py-1 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition">
-            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Xóa Trắng Ô Tự Nhập
+            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Xóa Trắng Ô
           </button>
           <button type="button" onclick="resetFormMauGoalsTable()" class="px-2.5 py-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1 transition">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Nạp Mục Tiêu Mẫu
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Nạp Mẫu
+          </button>
+          <button type="button" onclick="saveFormMauCustomData()" class="px-2.5 py-1 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> Lưu Mục Tiêu
           </button>
           <span class="text-xs text-slate-400 italic ml-2">ĐVT: m²</span>
         </div>
       </div>
-      <div class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg mb-4">
-        <table class="table-excel-grid w-full text-center text-[11px]">
-          <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
-            <tr>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">DC</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-20">Kích Thước</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">ĐVT</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">Tổng Sản Lượng Ép</th>
-              <th colspan="3" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-cyan-300">Sản Lượng Thu Hồi</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right bg-[#0c1e3d] text-white">Tổng (A1+A+B)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] w-16">Số Ngày SX</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">TB / Ngày (m²)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-emerald-400">A/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">C/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-rose-400">Huỷ/ép (%)</th>
-              <th rowspan="2" class="p-2 border border-[#1e3a6a] text-center w-16 text-amber-300">T/g Dừng 2MF (Phút/ngày)</th>
-            </tr>
-            <tr class="bg-[#0e2246] text-slate-300">
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-emerald-300">A1</th>
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-blue-300">A</th>
-              <th class="p-1.5 border border-[#1e3a6a] text-right text-amber-300">B</th>
-            </tr>
-          </thead>
-          <tbody id="form-mau-goals-tbody" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
-            ${goalRowsHtml}
-            <!-- TỔNG MỤC TIÊU DC 2 -->
-            <tr class="bg-[#0c1a35] font-bold text-amber-300 text-xs">
-              <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black align-middle">TỔNG MỤC TIÊU DC 2</td>
-              <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(gTotDC2M.sl_ep, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(gTotDC2M.a1, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">-</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(gTotDC2M.b, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(gTotDC2M.recovery_total, 0)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(gTotDC2M.prod_days, 2)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(gTotDC2M.avg_per_day, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(gTotDC2M.a_ep, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(gTotDC2M.huy_ep, 2)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${gTotDC2M.stop_time_2mf || 25}</td>
-            </tr>
-            <tr class="bg-[#0c1a35] text-slate-400 text-xs">
-              <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(gTotDC2P.a1, 2)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(gTotDC2P.b, 2)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
-              <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(gTotDC2M.a_ep, 1)}</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(gTotDC2M.huy_ep, 2)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${gTotDC2M.stop_time_2mf || 25}</td>
-            </tr>
-            <!-- TỔNG MỤC TIÊU 2 DC -->
-            <tr class="bg-[#0c1a35] font-bold text-white text-xs">
-              <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black text-cyan-300 align-middle">TỔNG MỤC TIÊU 2 DC</td>
-              <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(gTot2DCM.sl_ep, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(gTot2DCM.a1, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${formatNumber(gTot2DCM.a, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(gTot2DCM.b, 0)}</td>
-              <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(gTot2DCM.recovery_total, 0)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(gTot2DCM.prod_days, 2)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(gTot2DCM.avg_per_day, 0)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(gTot2DCM.a_ep, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(gTot2DCM.huy_ep, 1)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${gTot2DCM.stop_time_2mf || 25}</td>
-            </tr>
-            <tr class="bg-[#0c1a35] text-slate-400 text-xs">
-              <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(gTot2DCP.a1, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${formatNumber(gTot2DCP.a, 1)}</td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(gTot2DCP.b, 1)}</td>
-              <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
-              <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(gTot2DCM.a_ep, 1)}</td>
-              <td class="p-1.5 border border-[#1e3a6a]"></td>
-              <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">${formatNumber(gTot2DCM.huy_ep, 1)}</td>
-              <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">${gTot2DCM.stop_time_2mf || 25}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div id="form-mau-goals-table-wrapper" class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg mb-4">
+        ${getFormMauGoalsTableHtml()}
       </div>
 
       <!-- Kế hoạch các phòng ban / phân xưởng thực hiện -->
@@ -6853,44 +6648,581 @@ function resetFormMauHRTable() {
   }
 }
 
-function clearFormMauPlanTable() {
-  const tbody = document.getElementById('form-mau-plan-tbody');
-  if (!tbody) return;
-  tbody.querySelectorAll('td[contenteditable="true"]').forEach(td => {
-    td.innerText = '0';
-  });
-  if (typeof showToast === "function") {
-    showToast("🧹 Đã xóa trắng các ô số liệu Kế hoạch để bạn tự nhập số mới!");
-  } else {
-    alert("🧹 Đã xóa trắng các ô số liệu Kế hoạch để bạn tự nhập số mới!");
+// ====================================================
+// FORM MẪU DYNAMIC ENGINE (SECTION VI & VII: KẾ HOẠCH & MỤC TIÊU)
+// ====================================================
+let currentFormMauPlanItems = [];
+let currentFormMauGoalItems = [];
+
+function parseVietnameseNumber(val) {
+  if (val === undefined || val === null) return 0;
+  let s = String(val).trim();
+  if (!s || s === '-' || s === '0') return 0;
+  if (s.includes('.') && s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (s.includes(',')) {
+    s = s.replace(',', '.');
+  } else if (s.includes('.')) {
+    const parts = s.split('.');
+    if (parts.length > 2) {
+      s = s.replace(/\./g, '');
+    } else if (parts[1] && parts[1].length === 3) {
+      s = s.replace('.', '');
+    }
   }
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function normalizeFormMauItem(it, isGoal = false) {
+  const m = isGoal ? (it.goal_m2 || it) : (it.plan_m2 || it);
+  const p = isGoal ? (it.goal_pct || it) : (it.plan_pct || it);
+  const sl_ep = Number(m.sl_ep) || 0;
+  const a1 = Number(m.a1) || 0;
+  const a = Number(m.a) || 0;
+  const b = Number(m.b) || 0;
+  const rec = Number(m.recovery_total) || (a1 + a + b);
+  return {
+    line: it.line || "DC1",
+    size: it.size || "30x60",
+    sl_ep: sl_ep,
+    a1: a1,
+    a: a,
+    b: b,
+    recovery_total: rec,
+    prod_days: Number(m.prod_days) || 30,
+    avg_per_day: Number(m.avg_per_day) || (sl_ep > 0 ? Math.round(sl_ep / (Number(m.prod_days) || 30)) : 0),
+    a_ep: Number(m.a_ep) || (isGoal ? 98.2 : 98.0),
+    c_ep: Number(m.c_ep) || 0,
+    huy_ep: Number(m.huy_ep) || (isGoal ? 1.8 : 2.0),
+    stop_time_2mf: Number(m.stop_time_2mf) || (isGoal ? 25 : 40),
+    pct_a1: Number(p.a1) || (rec > 0 ? Number(((a1 / rec) * 100).toFixed(2)) : (isGoal ? 92.0 : 90.0)),
+    pct_a: Number(p.a) || (rec > 0 ? Number(((a / rec) * 100).toFixed(2)) : 0.0),
+    pct_b: Number(p.b) || (rec > 0 ? Number(((b / rec) * 100).toFixed(2)) : (isGoal ? 8.0 : 10.0)),
+  };
+}
+
+function initFormMauPlanAndGoals(s6, s7) {
+  const pData = s6?.data || {};
+  const gData = s7?.data || {};
+
+  const pRaw = (pData.items && pData.items.length > 0) ? pData.items : [
+    { line: "DC1", size: "30x60", plan_m2: { sl_ep: 471744, a1: 416078, a: 32362, b: 13869, recovery_total: 462309, prod_days: 30, avg_per_day: 15410, a_ep: 98.0, c_ep: 2.0, huy_ep: 2.0, stop_time_2mf: 40 }, plan_pct: { a1: 90.0, a: 7.0, b: 3.0 } },
+    { line: "DC2", size: "40x80", plan_m2: { sl_ep: 439488, a1: 387628, a: 0, b: 43070, recovery_total: 430698, prod_days: 30, avg_per_day: 14357, a_ep: 98.0, c_ep: 2.0, huy_ep: 2.0, stop_time_2mf: 40 }, plan_pct: { a1: 90.0, a: 0.0, b: 10.0 } }
+  ];
+
+  const gRaw = (gData.items && gData.items.length > 0) ? gData.items : [
+    { line: "DC1", size: "30x60", goal_m2: { sl_ep: 481179, a1: 434716, a: 23626, b: 14176, recovery_total: 472518, prod_days: 30, avg_per_day: 15751, a_ep: 98.2, c_ep: 1.8, huy_ep: 1.8, stop_time_2mf: 25 }, goal_pct: { a1: 92.0, a: 5.0, b: 3.0 } },
+    { line: "DC2", size: "40x80", goal_m2: { sl_ep: 448278, a1: 404992, a: 0, b: 35217, recovery_total: 440209, prod_days: 30, avg_per_day: 14674, a_ep: 98.2, c_ep: 1.8, huy_ep: 1.8, stop_time_2mf: 25 }, goal_pct: { a1: 92.0, a: 0.0, b: 8.0 } }
+  ];
+
+  currentFormMauPlanItems = pRaw.map(it => normalizeFormMauItem(it, false));
+  currentFormMauGoalItems = gRaw.map(it => normalizeFormMauItem(it, true));
+}
+
+function recalcFormMauRow(row, triggerField) {
+  // 1. Tự động tính SL ép <-> Ngày SX & TB/Ngày:
+  if (triggerField === 'prod_days' || triggerField === 'avg_per_day') {
+    if (row.prod_days > 0 && row.avg_per_day > 0) {
+      row.sl_ep = Math.round(row.prod_days * row.avg_per_day);
+    }
+  } else if (triggerField === 'sl_ep') {
+    if (row.prod_days > 0) {
+      row.avg_per_day = Math.round(row.sl_ep / row.prod_days);
+    } else if (row.avg_per_day > 0) {
+      row.prod_days = Number((row.sl_ep / row.avg_per_day).toFixed(2));
+    }
+  }
+
+  // 2. Thu hồi tổng & A/ép:
+  if (triggerField === 'a_ep') {
+    if (row.sl_ep > 0 && row.a_ep > 0) {
+      row.recovery_total = Math.round(row.sl_ep * (row.a_ep / 100));
+      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 90) / 100));
+      row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
+      row.b = Math.round(row.recovery_total - row.a1 - row.a);
+    }
+  } else if (triggerField === 'a1' || triggerField === 'a' || triggerField === 'b') {
+    row.recovery_total = (Number(row.a1) || 0) + (Number(row.a) || 0) + (Number(row.b) || 0);
+    if (row.recovery_total > 0) {
+      row.pct_a1 = Number(((row.a1 / row.recovery_total) * 100).toFixed(2));
+      row.pct_a = Number(((row.a / row.recovery_total) * 100).toFixed(2));
+      row.pct_b = Number(((row.b / row.recovery_total) * 100).toFixed(2));
+    }
+    if (row.sl_ep > 0) {
+      row.a_ep = Number(((row.recovery_total / row.sl_ep) * 100).toFixed(1));
+    }
+  } else if (triggerField === 'pct_a1' || triggerField === 'pct_a' || triggerField === 'pct_b') {
+    if (!row.recovery_total && row.sl_ep > 0) {
+      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98) / 100));
+    }
+    if (row.recovery_total > 0) {
+      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 0) / 100));
+      row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
+      row.b = Math.round(row.recovery_total - row.a1 - row.a);
+    }
+  } else {
+    if (row.sl_ep > 0 && !row.recovery_total) {
+      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98) / 100));
+      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 90) / 100));
+      row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
+      row.b = Math.round(row.recovery_total - row.a1 - row.a);
+    }
+    if (row.prod_days > 0 && row.sl_ep > 0 && !row.avg_per_day) {
+      row.avg_per_day = Math.round(row.sl_ep / row.prod_days);
+    }
+  }
+}
+
+function handleFormMauPlanBlur(idx, field, el) {
+  const rawText = el.innerText.trim();
+  let val = (field === 'line' || field === 'size') ? rawText : parseVietnameseNumber(rawText);
+  updateFormMauPlanCell(idx, field, val);
+}
+
+function updateFormMauPlanCell(idx, field, val) {
+  if (!currentFormMauPlanItems[idx]) return;
+  currentFormMauPlanItems[idx][field] = val;
+  recalcFormMauRow(currentFormMauPlanItems[idx], field);
+  renderFormMauPlanTableDynamic();
+}
+
+function renderFormMauPlanTableDynamic() {
+  const wrapper = document.getElementById('form-mau-plan-table-wrapper');
+  if (wrapper) {
+    wrapper.innerHTML = getFormMauPlanTableHtml();
+    if (window.lucide) lucide.createIcons();
+  }
+}
+
+function getFormMauPlanTableHtml() {
+  let sum_sl_ep = 0, sum_a1 = 0, sum_a = 0, sum_b = 0, sum_rec = 0, sum_days = 0;
+  
+  const rows = currentFormMauPlanItems.map((it, idx) => {
+    sum_sl_ep += it.sl_ep || 0;
+    sum_a1 += it.a1 || 0;
+    sum_a += it.a || 0;
+    sum_b += it.b || 0;
+    sum_rec += it.recovery_total || 0;
+    sum_days += it.prod_days || 0;
+
+    return `
+      <tr class="hover:bg-[#13284d]/60">
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">
+          <span contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
+        </td>
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">
+          <span contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
+        </td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
+        <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
+          <button type="button" onclick="deleteFormMauPlanRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </td>
+      </tr>
+      <tr class="hover:bg-[#13284d]/60 text-slate-400">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
+        <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const avg_per_day_tot = sum_days > 0 ? Math.round(sum_sl_ep / sum_days) : 0;
+  const a_ep_tot = sum_sl_ep > 0 ? Number(((sum_rec / sum_sl_ep) * 100).toFixed(1)) : 0;
+  const pct_a1_tot = sum_rec > 0 ? Number(((sum_a1 / sum_rec) * 100).toFixed(1)) : 0;
+  const pct_a_tot = sum_rec > 0 ? Number(((sum_a / sum_rec) * 100).toFixed(1)) : 0;
+  const pct_b_tot = sum_rec > 0 ? Number(((sum_b / sum_rec) * 100).toFixed(1)) : 0;
+
+  return `
+    <table class="table-excel-grid w-full text-center text-[11px]">
+      <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+        <tr>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">DC</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-20">Kích Thước</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">ĐVT</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">Tổng Sản Lượng Ép</th>
+          <th colspan="3" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-cyan-300">Sản Lượng Thu Hồi</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right bg-[#0c1e3d] text-white">Tổng (A1+A+B)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-16">Số Ngày SX</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">TB / Ngày (m²)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-emerald-400">A/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">C/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-rose-400">Huỷ/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-center w-16 text-amber-300">T/g Dừng 2MF (Phút/ngày)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-10 no-print text-slate-400">Xóa</th>
+        </tr>
+        <tr class="bg-[#0e2246] text-slate-300">
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-emerald-300">A1</th>
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-blue-300">A</th>
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-amber-300">B</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+        ${rows}
+        <tr class="bg-[#0c1a35] font-bold text-white text-xs">
+          <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black text-amber-300 align-middle">TỔNG KẾ HOẠCH 2 DC</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(sum_sl_ep, 0)}</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(sum_a1, 0)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${sum_a > 0 ? formatNumber(sum_a, 0) : '-'}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(sum_b, 0)}</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sum_rec, 0)}</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(sum_days, 2)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(avg_per_day_tot, 0)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_tot, 1)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">2,0</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">40</td>
+          <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
+        </tr>
+        <tr class="bg-[#0c1a35] text-slate-400 text-xs">
+          <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+          <td class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(pct_a1_tot, 1)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${pct_a_tot > 0 ? formatNumber(pct_a_tot, 1) : '-'}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(pct_b_tot, 1)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
+          <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_tot, 1)}</td>
+          <td class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">2,0</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">40</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function addFormMauPlanRow() {
+  const newItem = {
+    line: "DC2",
+    size: "50x50",
+    sl_ep: 0,
+    a1: 0,
+    a: 0,
+    b: 0,
+    recovery_total: 0,
+    prod_days: 30,
+    avg_per_day: 0,
+    a_ep: 98.0,
+    c_ep: 2.0,
+    huy_ep: 2.0,
+    stop_time_2mf: 40,
+    pct_a1: 90.0,
+    pct_a: 0.0,
+    pct_b: 10.0
+  };
+  currentFormMauPlanItems.push(newItem);
+  renderFormMauPlanTableDynamic();
+  if (typeof showToast === "function") showToast("➕ Đã thêm 1 dòng Kế hoạch mới! Bấm vào các ô để nhập số liệu.");
+}
+
+function deleteFormMauPlanRow(idx) {
+  if (currentFormMauPlanItems.length <= 1) {
+    alert("Bảng Kế hoạch phải có ít nhất 1 dòng!");
+    return;
+  }
+  currentFormMauPlanItems.splice(idx, 1);
+  renderFormMauPlanTableDynamic();
+}
+
+function clearFormMauPlanTable() {
+  currentFormMauPlanItems.forEach(it => {
+    it.sl_ep = 0;
+    it.a1 = 0;
+    it.a = 0;
+    it.b = 0;
+    it.recovery_total = 0;
+    it.prod_days = 0;
+    it.avg_per_day = 0;
+    it.pct_a1 = 0;
+    it.pct_a = 0;
+    it.pct_b = 0;
+    it.c_ep = 0;
+    it.huy_ep = 0;
+  });
+  renderFormMauPlanTableDynamic();
+  if (typeof showToast === "function") showToast("🧹 Đã xóa trắng các ô số liệu Kế hoạch để bạn tự nhập số mới!");
 }
 
 function resetFormMauPlanTable() {
-  loadFormMauData();
-  if (typeof showToast === "function") {
-    showToast("🔄 Đã tải lại bảng Kế hoạch sản xuất mẫu!");
+  initFormMauPlanAndGoals(null, null);
+  renderFormMauPlanTableDynamic();
+  if (typeof showToast === "function") showToast("🔄 Đã tải lại bảng Kế hoạch sản xuất mẫu!");
+}
+
+function handleFormMauGoalBlur(idx, field, el) {
+  const rawText = el.innerText.trim();
+  let val = (field === 'line' || field === 'size') ? rawText : parseVietnameseNumber(rawText);
+  updateFormMauGoalCell(idx, field, val);
+}
+
+function updateFormMauGoalCell(idx, field, val) {
+  if (!currentFormMauGoalItems[idx]) return;
+  currentFormMauGoalItems[idx][field] = val;
+  recalcFormMauRow(currentFormMauGoalItems[idx], field);
+  renderFormMauGoalsTableDynamic();
+}
+
+function renderFormMauGoalsTableDynamic() {
+  const wrapper = document.getElementById('form-mau-goals-table-wrapper');
+  if (wrapper) {
+    wrapper.innerHTML = getFormMauGoalsTableHtml();
+    if (window.lucide) lucide.createIcons();
   }
+}
+
+function getFormMauGoalsTableHtml() {
+  let sum_sl_ep_all = 0, sum_a1_all = 0, sum_a_all = 0, sum_b_all = 0, sum_rec_all = 0, sum_days_all = 0;
+  let sum_sl_ep_dc2 = 0, sum_a1_dc2 = 0, sum_a_dc2 = 0, sum_b_dc2 = 0, sum_rec_dc2 = 0, sum_days_dc2 = 0;
+  let count_dc2 = 0;
+
+  const rows = currentFormMauGoalItems.map((it, idx) => {
+    sum_sl_ep_all += it.sl_ep || 0;
+    sum_a1_all += it.a1 || 0;
+    sum_a_all += it.a || 0;
+    sum_b_all += it.b || 0;
+    sum_rec_all += it.recovery_total || 0;
+    sum_days_all += it.prod_days || 0;
+
+    const isDC2 = (it.line || '').toUpperCase().includes('DC2') || (it.line || '') === '2';
+    if (isDC2) {
+      count_dc2++;
+      sum_sl_ep_dc2 += it.sl_ep || 0;
+      sum_a1_dc2 += it.a1 || 0;
+      sum_a_dc2 += it.a || 0;
+      sum_b_dc2 += it.b || 0;
+      sum_rec_dc2 += it.recovery_total || 0;
+      sum_days_dc2 += it.prod_days || 0;
+    }
+
+    return `
+      <tr class="hover:bg-[#13284d]/60">
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">
+          <span contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
+        </td>
+        <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">
+          <span contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
+        </td>
+        <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
+        <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
+          <button type="button" onclick="deleteFormMauGoalRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </td>
+      </tr>
+      <tr class="hover:bg-[#13284d]/60 text-slate-400">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
+        <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const avg_per_day_dc2 = sum_days_dc2 > 0 ? Math.round(sum_sl_ep_dc2 / sum_days_dc2) : 0;
+  const a_ep_dc2 = sum_sl_ep_dc2 > 0 ? Number(((sum_rec_dc2 / sum_sl_ep_dc2) * 100).toFixed(1)) : 0;
+  const pct_a1_dc2 = sum_rec_dc2 > 0 ? Number(((sum_a1_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
+  const pct_a_dc2 = sum_rec_dc2 > 0 ? Number(((sum_a_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
+  const pct_b_dc2 = sum_rec_dc2 > 0 ? Number(((sum_b_dc2 / sum_rec_dc2) * 100).toFixed(1)) : 0;
+
+  const avg_per_day_all = sum_days_all > 0 ? Math.round(sum_sl_ep_all / sum_days_all) : 0;
+  const a_ep_all = sum_sl_ep_all > 0 ? Number(((sum_rec_all / sum_sl_ep_all) * 100).toFixed(1)) : 0;
+  const pct_a1_all = sum_rec_all > 0 ? Number(((sum_a1_all / sum_rec_all) * 100).toFixed(1)) : 0;
+  const pct_a_all = sum_rec_all > 0 ? Number(((sum_a_all / sum_rec_all) * 100).toFixed(1)) : 0;
+  const pct_b_all = sum_rec_all > 0 ? Number(((sum_b_all / sum_rec_all) * 100).toFixed(1)) : 0;
+
+  let totalDC2Html = '';
+  if (count_dc2 > 0) {
+    totalDC2Html = `
+      <tr class="bg-[#0c1a35] font-bold text-amber-300 text-xs">
+        <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black align-middle">TỔNG MỤC TIÊU DC 2</td>
+        <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(sum_sl_ep_dc2, 0)}</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(sum_a1_dc2, 0)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${sum_a_dc2 > 0 ? formatNumber(sum_a_dc2, 0) : '-'}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(sum_b_dc2, 0)}</td>
+        <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sum_rec_dc2, 0)}</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(sum_days_dc2, 2)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(avg_per_day_dc2, 0)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_dc2, 1)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">1,8</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">25</td>
+        <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
+      </tr>
+      <tr class="bg-[#0c1a35] text-slate-400 text-xs">
+        <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(pct_a1_dc2, 1)}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${pct_a_dc2 > 0 ? formatNumber(pct_a_dc2, 1) : '-'}</td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(pct_b_dc2, 1)}</td>
+        <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
+        <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_dc2, 1)}</td>
+        <td class="p-1.5 border border-[#1e3a6a]"></td>
+        <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">1,8</td>
+        <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">25</td>
+      </tr>
+    `;
+  }
+
+  return `
+    <table class="table-excel-grid w-full text-center text-[11px]">
+      <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+        <tr>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">DC</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-20">Kích Thước</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-12">ĐVT</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">Tổng Sản Lượng Ép</th>
+          <th colspan="3" class="p-1.5 border border-[#1e3a6a] bg-[#0c1e3d] text-cyan-300">Sản Lượng Thu Hồi</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right bg-[#0c1e3d] text-white">Tổng (A1+A+B)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-16">Số Ngày SX</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">TB / Ngày (m²)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-emerald-400">A/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right">C/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-right text-rose-400">Huỷ/ép (%)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] text-center w-16 text-amber-300">T/g Dừng 2MF (Phút/ngày)</th>
+          <th rowspan="2" class="p-2 border border-[#1e3a6a] w-10 no-print text-slate-400">Xóa</th>
+        </tr>
+        <tr class="bg-[#0e2246] text-slate-300">
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-emerald-300">A1</th>
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-blue-300">A</th>
+          <th class="p-1.5 border border-[#1e3a6a] text-right text-amber-300">B</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+        ${rows}
+        ${totalDC2Html}
+        <tr class="bg-[#0c1a35] font-bold text-white text-xs">
+          <td rowspan="2" colspan="2" class="p-2 text-center uppercase border border-[#1e3a6a] font-black text-cyan-300 align-middle">TỔNG MỤC TIÊU 2 DC</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a]">m²</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(sum_sl_ep_all, 0)}</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(sum_a1_all, 0)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400">${sum_a_all > 0 ? formatNumber(sum_a_all, 0) : '-'}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(sum_b_all, 0)}</td>
+          <td class="p-1.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(sum_rec_all, 0)}</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a]">${formatNumber(sum_days_all, 2)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300">${formatNumber(avg_per_day_all, 0)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_all, 1)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">-</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">1,8</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">25</td>
+          <td rowspan="2" class="p-1 border border-[#1e3a6a] no-print"></td>
+        </tr>
+        <tr class="bg-[#0c1a35] text-slate-400 text-xs">
+          <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
+          <td class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-400">${formatNumber(pct_a1_all, 1)}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a]">${pct_a_all > 0 ? formatNumber(pct_a_all, 1) : '-'}</td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400">${formatNumber(pct_b_all, 1)}</td>
+          <td class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300">100,00</td>
+          <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400">${formatNumber(a_ep_all, 1)}</td>
+          <td class="p-1.5 border border-[#1e3a6a]"></td>
+          <td class="p-1.5 text-right font-mono border border-[#1e3a6a] text-rose-400">1,8</td>
+          <td class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400">25</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function addFormMauGoalRow() {
+  const newItem = {
+    line: "DC2",
+    size: "50x50",
+    sl_ep: 0,
+    a1: 0,
+    a: 0,
+    b: 0,
+    recovery_total: 0,
+    prod_days: 30,
+    avg_per_day: 0,
+    a_ep: 98.2,
+    c_ep: 1.8,
+    huy_ep: 1.8,
+    stop_time_2mf: 25,
+    pct_a1: 92.0,
+    pct_a: 0.0,
+    pct_b: 8.0
+  };
+  currentFormMauGoalItems.push(newItem);
+  renderFormMauGoalsTableDynamic();
+  if (typeof showToast === "function") showToast("➕ Đã thêm 1 dòng Mục tiêu mới! Bấm vào các ô để nhập số liệu.");
+}
+
+function deleteFormMauGoalRow(idx) {
+  if (currentFormMauGoalItems.length <= 1) {
+    alert("Bảng Mục tiêu phải có ít nhất 1 dòng!");
+    return;
+  }
+  currentFormMauGoalItems.splice(idx, 1);
+  renderFormMauGoalsTableDynamic();
 }
 
 function clearFormMauGoalsTable() {
-  const tbody = document.getElementById('form-mau-goals-tbody');
-  if (!tbody) return;
-  tbody.querySelectorAll('td[contenteditable="true"]').forEach(td => {
-    td.innerText = '0';
+  currentFormMauGoalItems.forEach(it => {
+    it.sl_ep = 0;
+    it.a1 = 0;
+    it.a = 0;
+    it.b = 0;
+    it.recovery_total = 0;
+    it.prod_days = 0;
+    it.avg_per_day = 0;
+    it.pct_a1 = 0;
+    it.pct_a = 0;
+    it.pct_b = 0;
+    it.c_ep = 0;
+    it.huy_ep = 0;
   });
-  if (typeof showToast === "function") {
-    showToast("🧹 Đã xóa trắng các ô số liệu Mục tiêu để bạn tự nhập số mới!");
-  } else {
-    alert("🧹 Đã xóa trắng các ô số liệu Mục tiêu để bạn tự nhập số mới!");
-  }
+  renderFormMauGoalsTableDynamic();
+  if (typeof showToast === "function") showToast("🧹 Đã xóa trắng các ô số liệu Mục tiêu để bạn tự nhập số mới!");
 }
 
 function resetFormMauGoalsTable() {
-  loadFormMauData();
-  if (typeof showToast === "function") {
-    showToast("🔄 Đã tải lại bảng Mục tiêu sản xuất mẫu!");
-  }
+  initFormMauPlanAndGoals(null, null);
+  renderFormMauGoalsTableDynamic();
+  if (typeof showToast === "function") showToast("🔄 Đã tải lại bảng Mục tiêu sản xuất mẫu!");
 }
 
 function toggleFormMauSection(secId, btnId, secTitle) {
@@ -6916,68 +7248,71 @@ function toggleFormMauSection(secId, btnId, secTitle) {
   if (window.lucide) lucide.createIcons();
 }
 
-// ----------------------------------------------------
-// INLINE EDIT & SAVE CUSTOM FORM MẪU DATA
-// ----------------------------------------------------
-function toggleFormMauEditMode() {
-  isFormMauEditMode = !isFormMauEditMode;
-  const btn = document.getElementById('btn-toggle-edit-form-mau') || document.getElementById('btn-form-mau-edit');
-  const btnText = document.getElementById('btn-text-edit-form-mau');
-
-  if (isFormMauEditMode) {
-    if (btn) {
-      btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 text-xs font-bold shadow-lg transition';
-      btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span id="btn-text-edit-form-mau">Khóa & Lưu Bản Sửa</span>`;
-    }
-    makeFormMauEditable(true);
-    if (typeof showToast === "function") {
-      showToast("✏️ Đã bật chế độ Chỉnh sửa trực tiếp. Bấm vào bất kỳ ô số liệu/chữ nào để chỉnh sửa giải trình!");
-    } else {
-      alert("✏️ Đã bật chế độ Chỉnh sửa trực tiếp! Bạn có thể bấm vào bất kỳ ô số liệu hoặc dòng chữ nào trên bảng để chỉnh sửa trước khi In/Xuất PDF.");
-    }
-  } else {
-    makeFormMauEditable(false);
-    if (btn) {
-      btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition';
-      btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i><span id="btn-text-edit-form-mau">Chỉnh Sửa Trực Tiếp</span>`;
-    }
-    if (typeof showToast === "function") {
-      showToast("🔒 Đã khóa chế độ chỉnh sửa.");
-    }
-  }
-  if (window.lucide) lucide.createIcons();
-}
-
-function makeFormMauEditable(isEditable) {
-  const container = document.getElementById('form-mau-printable');
-  if (!container) return;
-
-  const editableSelectors = 'td, th, p, h2, h3, h4, h5, div.editable-text, span.editable-text';
-  container.querySelectorAll(editableSelectors).forEach(el => {
-    if (el.tagName !== 'BUTTON' && el.tagName !== 'I' && !el.closest('.no-edit')) {
-      el.contentEditable = isEditable ? 'true' : 'false';
-      if (isEditable) {
-        el.style.outline = '1px dashed rgba(245, 158, 11, 0.4)';
-        el.style.cursor = 'text';
-      } else {
-        el.style.outline = 'none';
-        el.style.cursor = '';
-      }
-    }
-  });
-}
-
 async function saveFormMauCustomData() {
   if (!currentFormMauData) return;
   try {
+    const planPayload = {
+      items: currentFormMauPlanItems.map(it => ({
+        line: it.line,
+        size: it.size,
+        plan_m2: {
+          sl_ep: it.sl_ep,
+          a1: it.a1,
+          a: it.a,
+          b: it.b,
+          recovery_total: it.recovery_total,
+          prod_days: it.prod_days,
+          avg_per_day: it.avg_per_day,
+          a_ep: it.a_ep,
+          c_ep: it.c_ep,
+          huy_ep: it.huy_ep,
+          stop_time_2mf: it.stop_time_2mf
+        },
+        plan_pct: {
+          a1: it.pct_a1,
+          a: it.pct_a,
+          b: it.pct_b,
+          recovery_total: 100.0
+        }
+      })),
+      notes: currentFormMauData.section_6_plan?.data?.notes || []
+    };
+
+    const goalPayload = {
+      items: currentFormMauGoalItems.map(it => ({
+        line: it.line,
+        size: it.size,
+        goal_m2: {
+          sl_ep: it.sl_ep,
+          a1: it.a1,
+          a: it.a,
+          b: it.b,
+          recovery_total: it.recovery_total,
+          prod_days: it.prod_days,
+          avg_per_day: it.avg_per_day,
+          a_ep: it.a_ep,
+          c_ep: it.c_ep,
+          huy_ep: it.huy_ep,
+          stop_time_2mf: it.stop_time_2mf
+        },
+        goal_pct: {
+          a1: it.pct_a1,
+          a: it.pct_a,
+          b: it.pct_b,
+          recovery_total: 100.0
+        }
+      })),
+      department_tasks: currentFormMauData.section_7_goals?.data?.department_tasks || []
+    };
+
     const payload = {
       period_type: formMauPeriodType,
       period_value: formMauPeriodValue,
       year: formMauYear,
       hr_data: currentFormMauData.section_5_hr?.table || [],
       notes_data: { hr_notes: currentFormMauData.section_5_hr?.notes },
-      plan_data: currentFormMauData.section_6_plan?.data || {},
-      goals_data: currentFormMauData.section_7_goals?.data || {},
+      plan_data: planPayload,
+      goals_data: goalPayload,
       evaluation_data: currentFormMauData.section_8_evaluation?.content || '',
       signatures_data: currentFormMauData.section_8_evaluation?.signatures || {}
     };
@@ -6989,8 +7324,11 @@ async function saveFormMauCustomData() {
     });
     const json = await res.json();
     if (json.success) {
-      alert('Đã lưu dữ liệu Form Mẫu thành công!');
-      loadFormMauData();
+      if (typeof showToast === "function") {
+        showToast("💾 Đã lưu dữ liệu Kế hoạch & Mục tiêu thành công!");
+      } else {
+        alert('Đã lưu dữ liệu Kế hoạch & Mục tiêu thành công!');
+      }
     } else {
       alert('Lỗi khi lưu: ' + (json.error || ''));
     }
