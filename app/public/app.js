@@ -6721,28 +6721,50 @@ function initFormMauPlanAndGoals(s6, s7) {
 }
 
 function recalcFormMauRow(row, triggerField) {
-  // 1. Tự động tính SL ép <-> Ngày SX & TB/Ngày:
+  // Ensure default percentages and recovery rates if missing or zero
+  if (!row.a_ep) row.a_ep = 98.0;
+  if (row.pct_a1 === undefined || row.pct_a1 === null || (row.pct_a1 === 0 && row.pct_a === 0 && row.pct_b === 0)) {
+    row.pct_a1 = 90.0;
+    row.pct_a = 0.0;
+    row.pct_b = 10.0;
+  }
+
+  // 1. If user edited prod_days or avg_per_day:
   if (triggerField === 'prod_days' || triggerField === 'avg_per_day') {
     if (row.prod_days > 0 && row.avg_per_day > 0) {
       row.sl_ep = Math.round(row.prod_days * row.avg_per_day);
+    } else if (row.sl_ep > 0 && row.prod_days > 0) {
+      row.avg_per_day = Math.round(row.sl_ep / row.prod_days);
     }
-  } else if (triggerField === 'sl_ep') {
+    // Automatically recalculate recovery
+    row.recovery_total = Math.round(row.sl_ep * (row.a_ep / 100));
+    row.a1 = Math.round(row.recovery_total * (row.pct_a1 / 100));
+    row.a = Math.round(row.recovery_total * (row.pct_a / 100));
+    row.b = Math.round(row.recovery_total - row.a1 - row.a);
+  }
+  // 2. If user edited sl_ep:
+  else if (triggerField === 'sl_ep') {
     if (row.prod_days > 0) {
       row.avg_per_day = Math.round(row.sl_ep / row.prod_days);
     } else if (row.avg_per_day > 0) {
       row.prod_days = Number((row.sl_ep / row.avg_per_day).toFixed(2));
     }
+    row.recovery_total = Math.round(row.sl_ep * (row.a_ep / 100));
+    row.a1 = Math.round(row.recovery_total * (row.pct_a1 / 100));
+    row.a = Math.round(row.recovery_total * (row.pct_a / 100));
+    row.b = Math.round(row.recovery_total - row.a1 - row.a);
   }
-
-  // 2. Thu hồi tổng & A/ép:
-  if (triggerField === 'a_ep') {
-    if (row.sl_ep > 0 && row.a_ep > 0) {
+  // 3. If user edited a_ep:
+  else if (triggerField === 'a_ep') {
+    if (row.sl_ep > 0) {
       row.recovery_total = Math.round(row.sl_ep * (row.a_ep / 100));
-      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 90) / 100));
-      row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
+      row.a1 = Math.round(row.recovery_total * (row.pct_a1 / 100));
+      row.a = Math.round(row.recovery_total * (row.pct_a / 100));
       row.b = Math.round(row.recovery_total - row.a1 - row.a);
     }
-  } else if (triggerField === 'a1' || triggerField === 'a' || triggerField === 'b') {
+  }
+  // 4. If user edited A1, A, or B (m2):
+  else if (triggerField === 'a1' || triggerField === 'a' || triggerField === 'b') {
     row.recovery_total = (Number(row.a1) || 0) + (Number(row.a) || 0) + (Number(row.b) || 0);
     if (row.recovery_total > 0) {
       row.pct_a1 = Number(((row.a1 / row.recovery_total) * 100).toFixed(2));
@@ -6751,21 +6773,33 @@ function recalcFormMauRow(row, triggerField) {
     }
     if (row.sl_ep > 0) {
       row.a_ep = Number(((row.recovery_total / row.sl_ep) * 100).toFixed(1));
+    } else if (row.recovery_total > 0) {
+      row.sl_ep = Math.round(row.recovery_total / ((row.a_ep || 98.0) / 100));
+      if (row.prod_days > 0) {
+        row.avg_per_day = Math.round(row.sl_ep / row.prod_days);
+      }
     }
-  } else if (triggerField === 'pct_a1' || triggerField === 'pct_a' || triggerField === 'pct_b') {
+  }
+  // 5. If user edited pct_a1, pct_a, or pct_b (%):
+  else if (triggerField === 'pct_a1' || triggerField === 'pct_a' || triggerField === 'pct_b') {
     if (!row.recovery_total && row.sl_ep > 0) {
-      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98) / 100));
+      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98.0) / 100));
     }
     if (row.recovery_total > 0) {
       row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 0) / 100));
       row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
       row.b = Math.round(row.recovery_total - row.a1 - row.a);
     }
-  } else {
+  }
+  // 6. Default fallback calculation:
+  else {
+    if (row.prod_days > 0 && row.avg_per_day > 0 && !row.sl_ep) {
+      row.sl_ep = Math.round(row.prod_days * row.avg_per_day);
+    }
     if (row.sl_ep > 0 && !row.recovery_total) {
-      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98) / 100));
-      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 90) / 100));
-      row.a = Math.round(row.recovery_total * ((row.pct_a || 0) / 100));
+      row.recovery_total = Math.round(row.sl_ep * ((row.a_ep || 98.0) / 100));
+      row.a1 = Math.round(row.recovery_total * ((row.pct_a1 || 90.0) / 100));
+      row.a = Math.round(row.recovery_total * ((row.pct_a || 0.0) / 100));
       row.b = Math.round(row.recovery_total - row.a1 - row.a);
     }
     if (row.prod_days > 0 && row.sl_ep > 0 && !row.avg_per_day) {
@@ -6809,23 +6843,23 @@ function getFormMauPlanTableHtml() {
     return `
       <tr class="hover:bg-[#13284d]/60">
         <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">
-          <span contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
+          <span contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
         </td>
         <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">
-          <span contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
+          <span contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
         </td>
         <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
         <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
           <button type="button" onclick="deleteFormMauPlanRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -6835,15 +6869,15 @@ function getFormMauPlanTableHtml() {
       <tr class="hover:bg-[#13284d]/60 text-slate-400">
         <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
         <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
         <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
         <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
         <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauPlanBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 40}</td>
       </tr>
     `;
   }).join('');
@@ -7020,23 +7054,23 @@ function getFormMauGoalsTableHtml() {
     return `
       <tr class="hover:bg-[#13284d]/60">
         <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">
-          <span contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
+          <span contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'line', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.line}</span>
         </td>
         <td rowspan="2" class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">
-          <span contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
+          <span contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'size', this)" class="outline-none focus:bg-cyan-900/40 px-1 font-bold">${it.size}</span>
         </td>
         <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-400">m²</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'sl_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-white outline-none focus:bg-cyan-900/40">${formatNumber(it.sl_ep, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-emerald-400 font-bold outline-none focus:bg-cyan-900/40">${formatNumber(it.a1, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-blue-400 outline-none focus:bg-cyan-900/40">${it.a > 0 ? formatNumber(it.a, 0) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.b, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'recovery_total', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-cyan-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.recovery_total, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'prod_days', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.prod_days, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'avg_per_day', this)" class="p-1.5 text-right font-mono font-bold border border-[#1e3a6a] text-emerald-300 outline-none focus:bg-cyan-900/40">${formatNumber(it.avg_per_day, 0)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'c_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.c_ep ? formatNumber(it.c_ep, 2) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 font-bold outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
         <td rowspan="2" class="p-1 border border-[#1e3a6a] text-center no-print align-middle">
           <button type="button" onclick="deleteFormMauGoalRow(${idx})" class="p-1 rounded hover:bg-rose-600/30 text-rose-400 hover:text-rose-200 transition" title="Xóa dòng kích thước này">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -7046,15 +7080,15 @@ function getFormMauGoalsTableHtml() {
       <tr class="hover:bg-[#13284d]/60 text-slate-400">
         <td class="p-1.5 text-center border border-[#1e3a6a]">%</td>
         <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'pct_a1', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-emerald-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_a1, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'pct_a', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${it.pct_a > 0 ? formatNumber(it.pct_a, 2) : '-'}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'pct_b', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${formatNumber(it.pct_b, 2)}</td>
         <td class="p-1.5 text-right font-mono border border-[#1e3a6a] font-bold text-cyan-300">100,00</td>
         <td colspan="3" class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'a_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.a_ep, 1)}</td>
         <td class="p-1.5 border border-[#1e3a6a]"></td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
-        <td contenteditable="true" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'huy_ep', this)" class="p-1.5 text-right font-mono border border-[#1e3a6a] outline-none focus:bg-cyan-900/40">${formatNumber(it.huy_ep, 2)}</td>
+        <td contenteditable="true" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" onblur="handleFormMauGoalBlur(${idx}, 'stop_time_2mf', this)" class="p-1.5 text-center font-mono border border-[#1e3a6a] text-amber-400 outline-none focus:bg-cyan-900/40">${it.stop_time_2mf || 25}</td>
       </tr>
     `;
   }).join('');
