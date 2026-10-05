@@ -363,52 +363,92 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
 
         cur_line = "DC1"
         cur_size = "30x60"
+        last_sup_name = ""
+        last_heat = 0.0
+        last_ash = 0.0
+        last_std_ash = 0.0
+        last_stone = 0.0
 
         for r in range(1, ws_c.max_row + 1):
             c1_val = str(ws_c.cell(r, 1).value or "").strip().lower()
             c2_val = str(ws_c.cell(r, 2).value or "").strip().lower()
-            c3_val = str(ws_c.cell(r, 3).value or "").strip()
+            c3_raw = str(ws_c.cell(r, 3).value or "").strip()
+            c3_val = c3_raw.lower()
 
-            line_check = f"{c1_val} {c2_val} {c3_val.lower()}"
+            line_check = f"{c1_val} {c2_val} {c3_val}"
 
-            # Section detection
-            if "i. dây chuyền 1" in line_check or "dây chuyền 1" in line_check:
-                cur_line = "DC1"
-                cur_size = "30x60"
-                continue
-            elif "500*500" in line_check or "50x50" in line_check:
-                cur_line = "DC2"
-                cur_size = "50x50"
-                continue
-            elif "400*800" in line_check or "40x80" in line_check:
-                cur_line = "DC2"
-                cur_size = "40x80"
-                continue
-            elif "iii. tổng dây chuyền 2" in line_check or "iv. tổng 2 dây chuyền" in line_check or "ghi chú :" in line_check:
-                # Reached summary tables or notes, stop scanning detail rows
+            # FIRST: Stop when reaching Summary Tables or Notes
+            if any(kw in line_check for kw in ["iii.", "iv.", "tổng dây chuyền 2", "tổng 2 dây chuyền", "tổng hợp 2 dc", "ghi chú"]):
                 break
 
-            supplier_name = c3_val
-            if not supplier_name or supplier_name.lower().startswith("tên") or supplier_name.lower().startswith("tổng") or supplier_name.lower().startswith("cộng") or supplier_name.lower().startswith("stt"):
+            # SECOND: Section & Size detection
+            if "dây chuyền 1" in line_check or "i. dc1" in line_check:
+                cur_line = "DC1"
+                cur_size = "30x60"
+                last_sup_name = ""
+                continue
+            elif "500*500" in line_check or "500x500" in line_check or "50x50" in line_check:
+                cur_line = "DC2"
+                cur_size = "50x50"
+                last_sup_name = ""
+                continue
+            elif "400*800" in line_check or "400x800" in line_check or "40x80" in line_check:
+                cur_line = "DC2"
+                cur_size = "40x80"
+                last_sup_name = ""
+                continue
+            elif "600*600" in line_check or "600x600" in line_check or "60x60" in line_check:
+                cur_line = "DC2"
+                cur_size = "60x60"
+                last_sup_name = ""
                 continue
 
-            heat = parse_number(ws_c.cell(r, 7).value)
-            ash = parse_number(ws_c.cell(r, 8).value)
-            std_ash = parse_number(ws_c.cell(r, 9).value)
-            stone = parse_number(ws_c.cell(r, 10).value)
+            # Skip header or total rows
+            if any(kw in line_check for kw in ["tên loại than", "chất lượng", "nhiệt trị", "tổng sấy lò", "tổng tiêu hao", "tổng + sấy lò", "cộng"]):
+                continue
+
+            supplier_name = c3_raw
             issued = parse_number(ws_c.cell(r, 11).value)
             ash_w = parse_number(ws_c.cell(r, 13).value)
             ash_rate = parse_number(ws_c.cell(r, 14).value)
             comp = parse_number(ws_c.cell(r, 15).value)
             excess = parse_number(ws_c.cell(r, 16).value)
             tot_used = parse_number(ws_c.cell(r, 17).value)
-            prod_m2 = parse_number(ws_c.cell(r, 18).value)
+            prod_val = ws_c.cell(r, 18).value
+            prod_m2 = parse_number(prod_val)
             r_lump = parse_number(ws_c.cell(r, 19).value)
             r_with_ash = parse_number(ws_c.cell(r, 20).value)
             r_tot = parse_number(ws_c.cell(r, 21).value)
             note = str(ws_c.cell(r, 22).value or "").strip()
 
-            firing = "Có tính tiêu hao" if prod_m2 > 0 else "Không tính tiêu hao"
+            heat = parse_number(ws_c.cell(r, 7).value)
+            ash = parse_number(ws_c.cell(r, 8).value)
+            std_ash = parse_number(ws_c.cell(r, 9).value)
+            stone = parse_number(ws_c.cell(r, 10).value)
+
+            if supplier_name:
+                last_sup_name = supplier_name
+                last_heat = heat
+                last_ash = ash
+                last_std_ash = std_ash
+                last_stone = stone
+            elif issued > 0 and last_sup_name:
+                supplier_name = last_sup_name
+                heat = last_heat
+                ash = last_ash
+                std_ash = last_std_ash
+                stone = last_stone
+            else:
+                continue
+
+            is_drying = (prod_m2 == 0) or ("sấy" in str(prod_val or "").lower()) or ("sấy" in note.lower())
+            firing = "Không tính tiêu hao" if is_drying else "Có tính tiêu hao"
+            if is_drying:
+                prod_m2 = 0.0
+                r_lump = 0.0
+                r_with_ash = 0.0
+                r_tot = 0.0
+
             if issued > 0 or tot_used > 0:
                 cur.execute("""
                     INSERT INTO data_coal_consumption (
