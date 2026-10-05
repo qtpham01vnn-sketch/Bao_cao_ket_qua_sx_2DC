@@ -5555,10 +5555,29 @@ function renderFormMauContent(d) {
 
   // --- SECTION I: SẢN LƯỢNG - CHẤT LƯỢNG - THU HỒI ---
   const s1ItemsHtml = s1.items.map(it => {
-    const p = it.plan;
-    const a = it.actual;
-    const diff = it.diff_m2;
-    const rate = it.rate_pct;
+    const p = it.plan || {};
+    const a = it.actual || {};
+    const diff = it.diff_m2 || {};
+    const rate = it.rate_pct || {};
+
+    const isNotProduced = (!a.sl_ep || a.sl_ep === 0) && (!a.recovery_total || a.recovery_total === 0) && (!p.sl_ep || p.sl_ep === 0) && (!p.recovery_total || p.recovery_total === 0);
+
+    if (isNotProduced) {
+      return `
+        <tr class="hover:bg-[#13284d]/60 text-slate-400 italic">
+          <td class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-cyan-300 align-middle">${it.line}</td>
+          <td class="p-2 font-bold text-center border border-[#1e3a6a] bg-[#0c1a35] text-white align-middle">${it.size}</td>
+          <td class="p-2 text-center border border-[#1e3a6a] text-slate-500">-</td>
+          <td class="p-1.5 text-center border border-[#1e3a6a] text-slate-500">m²</td>
+          <td colspan="11" class="p-2.5 text-center border border-[#1e3a6a] text-slate-400 font-semibold bg-[#091528]/80">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs">
+              <i data-lucide="minus-circle" class="w-3.5 h-3.5 text-amber-400"></i>
+              Không sản xuất trong kỳ
+            </span>
+          </td>
+        </tr>
+      `;
+    }
 
     return `
       <!-- Row Kế hoạch (m2) -->
@@ -5743,6 +5762,44 @@ function renderFormMauContent(d) {
 
   const s2_40_list = s2.dc2_40x80 || [];
   const s2_40_sum = s2.dc2_40x80_sum || {};
+  const s2_60_list = s2.dc2_60x60 || [];
+  const s2_60_sum = s2.dc2_60x60_sum || {};
+
+  // Consolidated 2DC Totals for Section II
+  const dc1_tot_a1 = s2_dc1_sum.a1 || s2_dc1_sum.total || 0;
+  const dc1_tot_a = s2_dc1_sum.a || 0;
+  const dc1_tot_b = s2_dc1_sum.b || 0;
+  const dc1_tot_m2 = s2_dc1_sum.total || 0;
+
+  const b50_a1 = sum_bong_50.a1 || 0;
+  const b50_a = sum_bong_50.a || 0;
+  const b50_b = sum_bong_50.b || 0;
+  const b50_m2 = sum_bong_50.total || 0;
+
+  const s50_a1 = sum_sugar_50.a1 || 0;
+  const s50_a = sum_sugar_50.a || 0;
+  const s50_b = sum_sugar_50.b || 0;
+  const s50_m2 = sum_sugar_50.total || 0;
+
+  const p40_a1 = s2_40_sum.a1 || 0;
+  const p40_a = s2_40_sum.a || 0;
+  const p40_b = s2_40_sum.b || 0;
+  const p40_m2 = s2_40_sum.total || 0;
+
+  const k60_a1 = s2_60_sum.a1 || 0;
+  const k60_a = s2_60_sum.a || 0;
+  const k60_b = s2_60_sum.b || 0;
+  const k60_m2 = s2_60_sum.total || 0;
+
+  const dc2_tot_a1 = b50_a1 + s50_a1 + p40_a1 + k60_a1;
+  const dc2_tot_a = b50_a + s50_a + p40_a + k60_a;
+  const dc2_tot_b = b50_b + s50_b + p40_b + k60_b;
+  const dc2_tot_m2 = b50_m2 + s50_m2 + p40_m2 + k60_m2;
+
+  const all_tot_a1 = dc1_tot_a1 + dc2_tot_a1;
+  const all_tot_a = dc1_tot_a + dc2_tot_a;
+  const all_tot_b = dc1_tot_b + dc2_tot_b;
+  const all_tot_m2 = dc1_tot_m2 + dc2_tot_m2;
 
   // --- SECTION V: NHÂN SỰ ---
   const hrRows = s5.table || [];
@@ -5853,10 +5910,48 @@ function renderFormMauContent(d) {
   // --- SECTION VIII: CHỮ KÝ 6 CẤP & NƠI NHẬN (PDF PAGE 3) ---
   const sigs = s8.signatures || {};
 
+  const coalSuppliers = s4.supplier_summary || [];
+  const coalSuppliersHtml = coalSuppliers.map((sup, idx) => `
+    <tr class="hover:bg-[#13284d]/60">
+      <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${idx + 1}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-left font-bold text-white">${sup.supplier_name}</td>
+      <td class="p-1.5 border border-[#1e3a6a] font-mono text-center">${sup.avg_heat_value > 0 ? formatNumber(sup.avg_heat_value, 0) : '-'}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-white">${formatNumber(sup.issued_weight, 0)}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-200">${formatNumber(sup.ash_weight, 0)}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono">${formatNumber(sup.ash_pct, 2)}%</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-emerald-400">${sup.compensation_weight > 0 ? formatNumber(sup.compensation_weight, 0) : '-'}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-rose-400">${sup.excess_ash_weight > 0 ? formatNumber(sup.excess_ash_weight, 0) : '-'}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-black text-cyan-300">${formatNumber(sup.total_used_weight, 0)}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-white">${sup.production_m2 > 0 ? formatNumber(sup.production_m2, 2) : '-'}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-black text-emerald-400">${sup.rate_total > 0 ? formatNumber(sup.rate_total, 2) : '-'}</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-cyan-300">${formatNumber(sup.pct_share, 2)}%</td>
+      <td class="p-1.5 border border-[#1e3a6a] text-center text-[10px] ${sup.evaluation.includes('✓') ? 'text-emerald-400' : 'text-slate-300'}">${sup.evaluation}</td>
+    </tr>
+  `).join('');
+
   const contentDiv = document.getElementById('form-mau-content');
   if (!contentDiv) return;
 
   contentDiv.innerHTML = `
+    <!-- THANH ĐIỀU KHIỂN TÙY CHỌN HIỂN THỊ (ẨN KHI IN) -->
+    <div class="mb-6 bg-[#0a182f] p-3 rounded-xl border border-[#1e3a6a] no-print flex flex-wrap items-center justify-between gap-3 shadow-md">
+      <div class="flex items-center gap-2 text-xs text-slate-300 font-semibold">
+        <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i>
+        <span>Tùy chọn ẩn/hiện khối bổ sung trước khi In/Xuất PDF:</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" id="btn-toggle-sec6" onclick="toggleFormMauSection('sec-vi-container', 'btn-toggle-sec6', 'VI. Kế Hoạch')" class="px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1 transition">
+          <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Hiện Phần VI (Kế hoạch)
+        </button>
+        <button type="button" id="btn-toggle-sec7" onclick="toggleFormMauSection('sec-vii-container', 'btn-toggle-sec7', 'VII. Mục Tiêu')" class="px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1 transition">
+          <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Hiện Phần VII (Mục tiêu)
+        </button>
+        <button type="button" id="btn-toggle-sec8" onclick="toggleFormMauSection('sec-viii-container', 'btn-toggle-sec8', 'VIII. Đánh Giá')" class="px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1 transition">
+          <i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Hiện Phần VIII (Đánh giá & Ký)
+        </button>
+      </div>
+    </div>
+
     <!-- PHẦN I: KẾT QUẢ SẢN XUẤT TỔNG HỢP 2 DC -->
     <div class="mb-8">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
@@ -6090,6 +6185,127 @@ function renderFormMauContent(d) {
           </table>
         </div>
       </div>
+
+      <!-- 4. BẢNG TỔNG HỢP CƠ CẤU 2 DÂY CHUYỀN (QUAN TRỌNG: TÓM TẮT ĐẦY ĐỦ DC1 + DC2 -> TỔNG 2 DC) -->
+      <div class="mb-6">
+        <h5 class="text-xs font-bold text-amber-300 mb-2 flex items-center gap-2">
+          <span>★ Bảng tổng hợp cơ cấu sản lượng toàn bộ 2 Dây chuyền (DC1 & DC2):</span>
+        </h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 shadow">
+          <table class="table-excel-grid w-full text-center text-[11px]">
+            <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 border border-[#1e3a6a] w-12">STT</th>
+                <th class="p-2 border border-[#1e3a6a] w-20">Dây Chuyền</th>
+                <th class="p-2 border border-[#1e3a6a] text-left">Kích Thước / Nhóm Men Sản Xuất</th>
+                <th class="p-2 border border-[#1e3a6a] w-12">ĐVT</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-emerald-300">A1 (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-blue-300">A (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-amber-300">B (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right font-bold text-white">Tổng Sản Lượng (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right w-20">Tỷ Lệ A1 (%)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right w-24">Tỷ Trọng Toàn NM (%)</th>
+                <th class="p-2 border border-[#1e3a6a] text-left">Ghi Chú</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              <!-- DC1 30x60 -->
+              <tr class="hover:bg-[#13284d]/60 bg-cyan-950/20">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">1</td>
+                <td class="p-1.5 border border-[#1e3a6a] font-bold text-cyan-300">DC 1</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">Gạch ốp 300x600 mm</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">m²</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-400">${formatNumber(dc1_tot_a1, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-blue-300">${formatNumber(dc1_tot_a, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-300">${formatNumber(dc1_tot_b, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-black text-white">${formatNumber(dc1_tot_m2, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-300">${dc1_tot_m2 > 0 ? formatNumber(dc1_tot_a1 / dc1_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-cyan-300">${all_tot_m2 > 0 ? formatNumber(dc1_tot_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left text-slate-400 text-[10px]">Chạy ổn định</td>
+              </tr>
+              <!-- DC2 50x50 Bong -->
+              <tr class="hover:bg-[#13284d]/60">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">2</td>
+                <td class="p-1.5 border border-[#1e3a6a] font-bold text-amber-300">DC 2</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">Gạch lát 500x500 mm (Men Bóng)</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">m²</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-emerald-400">${formatNumber(b50_a1, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-blue-400">${formatNumber(b50_a, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-400">${formatNumber(b50_b, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-white">${formatNumber(b50_m2, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-300">${b50_m2 > 0 ? formatNumber(b50_a1 / b50_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${all_tot_m2 > 0 ? formatNumber(b50_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left text-slate-400 text-[10px]">Bóng</td>
+              </tr>
+              <!-- DC2 50x50 Sugar -->
+              <tr class="hover:bg-[#13284d]/60">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">3</td>
+                <td class="p-1.5 border border-[#1e3a6a] font-bold text-amber-300">DC 2</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">Gạch lát 500x500 mm (Sugar Sân Vườn)</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">m²</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-emerald-400">${formatNumber(s50_a1, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-blue-400">${formatNumber(s50_a, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-400">${formatNumber(s50_b, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-white">${formatNumber(s50_m2, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-300">${s50_m2 > 0 ? formatNumber(s50_a1 / s50_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${all_tot_m2 > 0 ? formatNumber(s50_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left text-slate-400 text-[10px]">Sugar Sân vườn</td>
+              </tr>
+              <!-- DC2 40x80 -->
+              <tr class="hover:bg-[#13284d]/60">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">4</td>
+                <td class="p-1.5 border border-[#1e3a6a] font-bold text-amber-300">DC 2</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">Gạch ốp 400x800 mm (Men Panson)</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">m²</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-emerald-400">${formatNumber(p40_a1, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-blue-400">${formatNumber(p40_a, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-400">${formatNumber(p40_b, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-white">${formatNumber(p40_m2, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-300">${p40_m2 > 0 ? formatNumber(p40_a1 / p40_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${all_tot_m2 > 0 ? formatNumber(p40_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left text-slate-400 text-[10px]">Men Panson</td>
+              </tr>
+              ${k60_m2 > 0 ? `
+              <!-- DC2 60x60 -->
+              <tr class="hover:bg-[#13284d]/60">
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">5</td>
+                <td class="p-1.5 border border-[#1e3a6a] font-bold text-amber-300">DC 2</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">Gạch lát 600x600 mm</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-slate-400">m²</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-emerald-400">${formatNumber(k60_a1, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-blue-400">${formatNumber(k60_a, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-amber-400">${formatNumber(k60_b, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-white">${formatNumber(k60_m2, 1)}</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono font-bold text-emerald-300">${k60_m2 > 0 ? formatNumber(k60_a1 / k60_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-right font-mono text-slate-300">${all_tot_m2 > 0 ? formatNumber(k60_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-1.5 border border-[#1e3a6a] text-left text-slate-400 text-[10px]">600x600</td>
+              </tr>` : ''}
+              <!-- TỔNG CỘNG DC 2 -->
+              <tr class="bg-[#1a2d54] font-bold text-amber-300 text-xs">
+                <td colspan="4" class="p-2 text-center uppercase border border-[#1e3a6a] font-black">TỔNG CỘNG DÂY CHUYỀN 2 (50x50 + 40x80):</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${formatNumber(dc2_tot_a1, 1)}</td>
+                <td class="p-2 text-right font-mono border border-[#1e3a6a] text-blue-300">${formatNumber(dc2_tot_a, 1)}</td>
+                <td class="p-2 text-right font-mono border border-[#1e3a6a] text-amber-300">${formatNumber(dc2_tot_b, 1)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(dc2_tot_m2, 1)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${dc2_tot_m2 > 0 ? formatNumber(dc2_tot_a1 / dc2_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-amber-300">${all_tot_m2 > 0 ? formatNumber(dc2_tot_m2 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-2 border border-[#1e3a6a] text-left text-[10px] text-amber-200">Tổng DC2</td>
+              </tr>
+              <!-- TỔNG TOÀN NHÀ MÁY (2 DÂY CHUYỀN) -->
+              <tr class="bg-[#051c2c] font-bold text-white text-xs">
+                <td colspan="4" class="p-2.5 text-center uppercase border border-[#1e3a6a] font-black text-cyan-300 tracking-wider">TỔNG CỘNG TOÀN NHÀ MÁY (DC1 + DC2):</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(all_tot_a1, 1)}</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-blue-300">${formatNumber(all_tot_a, 1)}</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-amber-300">${formatNumber(all_tot_b, 1)}</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300 text-sm">${formatNumber(all_tot_m2, 1)}</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${all_tot_m2 > 0 ? formatNumber(all_tot_a1 / all_tot_m2 * 100, 2) : 0}%</td>
+                <td class="p-2.5 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">100.00%</td>
+                <td class="p-2.5 border border-[#1e3a6a] text-center text-xs text-emerald-400 font-bold">Khớp 100% P.I ✓</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- PHẦN III: TIÊU HAO VẬT TƯ (ĐẦY ĐỦ 30x60, 50x50, 40x80) -->
@@ -6114,7 +6330,7 @@ function renderFormMauContent(d) {
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           IV. SỬ DỤNG THAN TRẠM KHÍ HÓA KHÍ TRONG KỲ
         </h4>
-        <span class="text-xs text-slate-400 italic">Chi tiết từng lô than, sấy lò và tổng hợp cho 2 dây chuyền</span>
+        <span class="text-xs text-slate-400 italic">Chi tiết từng lô than, nhà cung cấp và tổng hợp toàn nhà máy</span>
       </div>
 
       <!-- 1. DC1 30x60 -->
@@ -6128,6 +6344,52 @@ function renderFormMauContent(d) {
 
       <!-- 4. DC2 60x60 nếu có -->
       ${s4.dc2_60x60 && (s4.dc2_60x60.all_rows || []).length > 0 ? renderCoalDetailBlock(s4.dc2_60x60, '4. Dây chuyền số 2 - Kích thước 600x600 mm:') : ''}
+
+      <!-- BẢNG TỔNG HỢP THEO NHÀ CUNG CẤP & LOẠI THAN -->
+      ${coalSuppliers.length > 0 ? `
+      <div class="mb-6">
+        <h5 class="text-xs font-bold text-amber-300 mb-2 flex items-center justify-between">
+          <span>★ Bảng tổng hợp khối lượng & tiêu hao theo Nhà Cung Cấp / Chủng loại Than:</span>
+          <span class="text-[11px] text-slate-400 font-normal italic">Đơn vị tính: Kg, m², Kg/m²</span>
+        </h5>
+        <div class="overflow-x-auto rounded-lg border border-[#1e3a6a]/60 shadow">
+          <table class="table-excel-grid w-full text-center text-[11px]">
+            <thead class="bg-[#0b172a] text-slate-200 font-bold border-b border-[#1e3a6a]">
+              <tr>
+                <th class="p-2 border border-[#1e3a6a] w-10">STT</th>
+                <th class="p-2 border border-[#1e3a6a] text-left">Nhà Cung Cấp / Loại Than</th>
+                <th class="p-2 border border-[#1e3a6a] text-center w-20">Nhiệt Trị BQ</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-white">KL Lĩnh (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-amber-200">Xuất Cám (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right w-16">% Cám</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-emerald-400">Lĩnh Bù (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-rose-400">Cám Vượt</th>
+                <th class="p-2 border border-[#1e3a6a] text-right font-bold text-cyan-300">Tổng Sử Dụng (Kg)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right text-white">Sản Lượng (m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right font-black text-emerald-300">Suất Tiêu Hao (Kg/m²)</th>
+                <th class="p-2 border border-[#1e3a6a] text-right w-20">Tỷ Trọng (%)</th>
+                <th class="p-2 border border-[#1e3a6a] text-center w-24">Đánh Giá</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+              ${coalSuppliersHtml}
+              <tr class="bg-[#051c2c] text-white font-bold text-xs">
+                <td colspan="3" class="p-2 text-center uppercase border border-[#1e3a6a] font-black text-cyan-300">TỔNG CỘNG CÁC LOẠI THAN TOÀN NHÀ MÁY:</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(s4.total_2dc?.sum_all?.issued_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-amber-200">${formatNumber(s4.total_2dc?.sum_all?.ash_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a]">${formatNumber(s4.total_2dc?.sum_all?.ash_pct, 2)}%</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-400">${formatNumber(s4.total_2dc?.sum_all?.compensation_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-rose-400">${formatNumber(s4.total_2dc?.sum_all?.excess_ash_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">${formatNumber(s4.total_2dc?.sum_all?.total_used_weight, 0)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-white">${formatNumber(s4.total_2dc?.sum_all?.production_m2, 2)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-emerald-300">${formatNumber(s4.total_2dc?.sum_all?.rate_total, 2)}</td>
+                <td class="p-2 text-right font-mono font-black border border-[#1e3a6a] text-cyan-300">100%</td>
+                <td class="p-2 border border-[#1e3a6a] text-center text-xs text-emerald-400 font-bold">Toàn bộ ✓</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>` : ''}
 
       <!-- TỔNG HỢP DC2 & TOÀN NHÀ MÁY -->
       <div class="mb-6">
@@ -6212,14 +6474,22 @@ function renderFormMauContent(d) {
       </div>
     </div>
 
-    <!-- PHẦN V: TÌNH HÌNH NHÂN SỰ & ĐỊNH BIÊN -->
-    <div class="mb-8">
+    <!-- PHẦN V: TÌNH HÌNH NHÂN SỰ & ĐỊNH BIÊN (CHO PHÉP ĐỂ TRỐNG HOẶC ĐIỀN TỰ DO) -->
+    <div class="mb-8" id="sec-v-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
           V. TÌNH HÌNH NHÂN SỰ & BIẾN ĐỘNG ĐỊNH BIÊN
         </h4>
-        <span class="text-xs text-slate-400 italic">Đơn vị tính: Người</span>
+        <div class="flex items-center gap-2 no-print">
+          <button type="button" onclick="clearFormMauHRTable()" class="px-2.5 py-1 rounded bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="eraser" class="w-3.5 h-3.5"></i> Xóa Trắng Để Điền Sau
+          </button>
+          <button type="button" onclick="resetFormMauHRTable()" class="px-2.5 py-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1 transition">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Nạp Định Biên Mẫu
+          </button>
+          <span class="text-xs text-slate-400 italic ml-2">ĐVT: Người</span>
+        </div>
       </div>
       <div class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-lg mb-3">
         <table class="table-excel-grid w-full text-center text-[11px]">
@@ -6246,21 +6516,21 @@ function renderFormMauContent(d) {
               <th class="p-1.5 border border-[#1e3a6a] w-14 text-cyan-300 font-bold">DC2</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+          <tbody id="form-mau-hr-tbody" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
             ${hrRows.map((r, i) => `
               <tr class="hover:bg-[#13284d]/60">
                 <td class="p-1.5 border border-[#1e3a6a] text-slate-400">${r.stt || i + 1}</td>
                 <td class="p-1.5 border border-[#1e3a6a] text-left font-semibold text-white">${r.position}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono">${r.dinhbien_dc1 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono">${r.dinhbien_dc2 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-emerald-400">${r.tuyenmoi_dc1 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-emerald-400">${r.tuyenmoi_dc2 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-amber-400">${r.chuyen_dc1 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-amber-400">${r.chuyen_dc2 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-rose-400">${r.nghi_dc1 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono text-rose-400">${r.nghi_dc2 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono font-bold text-cyan-300">${r.hientai_dc1 || 0}</td>
-                <td class="p-1.5 border border-[#1e3a6a] font-mono font-bold text-cyan-300">${r.hientai_dc2 || 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono outline-none focus:bg-cyan-900/40">${r.dinhbien_dc1 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono outline-none focus:bg-cyan-900/40">${r.dinhbien_dc2 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-emerald-400 outline-none focus:bg-cyan-900/40">${r.tuyenmoi_dc1 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-emerald-400 outline-none focus:bg-cyan-900/40">${r.tuyenmoi_dc2 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-amber-400 outline-none focus:bg-cyan-900/40">${r.chuyen_dc1 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-amber-400 outline-none focus:bg-cyan-900/40">${r.chuyen_dc2 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-rose-400 outline-none focus:bg-cyan-900/40">${r.nghi_dc1 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono text-rose-400 outline-none focus:bg-cyan-900/40">${r.nghi_dc2 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono font-bold text-cyan-300 outline-none focus:bg-cyan-900/40">${r.hientai_dc1 ?? 0}</td>
+                <td contenteditable="true" class="p-1.5 border border-[#1e3a6a] font-mono font-bold text-cyan-300 outline-none focus:bg-cyan-900/40">${r.hientai_dc2 ?? 0}</td>
               </tr>
             `).join('')}
             <tr class="bg-[#0c1a35] font-bold text-white text-xs">
@@ -6279,14 +6549,14 @@ function renderFormMauContent(d) {
           </tbody>
         </table>
       </div>
-      <div class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed whitespace-pre-line">
-        <span class="font-bold text-cyan-400 block mb-1">📌 Đánh giá & Ghi chú tình hình nhân sự:</span>
+      <div contenteditable="true" class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed whitespace-pre-line outline-none focus:border-cyan-400">
+        <span class="font-bold text-cyan-400 block mb-1">📌 Đánh giá & Ghi chú tình hình nhân sự (Bấm để sửa):</span>
         ${s5.notes || 'Không có ghi chú.'}
       </div>
     </div>
 
-    <!-- PHẦN VI: KẾ HOẠCH SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 1 PDF) -->
-    <div class="mb-8">
+    <!-- PHẦN VI: KẾ HOẠCH SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 1 PDF - TÙY CHỌN ẨN/HIỆN) -->
+    <div class="mb-8 transition" id="sec-vi-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
@@ -6350,14 +6620,14 @@ function renderFormMauContent(d) {
           </tbody>
         </table>
       </div>
-      <div class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed space-y-1">
-        <span class="font-bold text-cyan-400 block mb-1">📝 Ghi chú Kế hoạch Sản xuất:</span>
+      <div contenteditable="true" class="bg-[#0c1a35]/70 p-3 rounded-xl border border-[#1e3a6a] text-slate-300 text-xs leading-relaxed space-y-1 outline-none focus:border-cyan-400">
+        <span class="font-bold text-cyan-400 block mb-1">📝 Ghi chú Kế hoạch Sản xuất (Bấm để thêm bớt nội dung):</span>
         ${planNotes.map(n => `<div>• ${n}</div>`).join('')}
       </div>
     </div>
 
-    <!-- PHẦN VII: MỤC TIÊU SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 2 PDF) -->
-    <div class="mb-8">
+    <!-- PHẦN VII: MỤC TIÊU SẢN XUẤT THÁNG TIẾP THEO (CHUẨN TRANG 2 PDF - TÙY CHỌN ẨN/HIỆN) -->
+    <div class="mb-8 transition" id="sec-vii-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
@@ -6453,10 +6723,10 @@ function renderFormMauContent(d) {
       </div>
 
       <!-- Kế hoạch các phòng ban / phân xưởng thực hiện -->
-      <h5 class="text-xs font-bold text-amber-400 mb-2">★ Kế hoạch các phòng ban / phân xưởng cần thực hiện trong kỳ:</h5>
+      <h5 class="text-xs font-bold text-amber-400 mb-2">★ Kế hoạch các phòng ban / phân xưởng cần thực hiện trong kỳ (Bấm để chỉnh sửa):</h5>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         ${deptTasks.map(d => `
-          <div class="bg-[#0c1a35]/80 p-3.5 rounded-xl border border-[#1e3a6a] shadow-sm">
+          <div contenteditable="true" class="bg-[#0c1a35]/80 p-3.5 rounded-xl border border-[#1e3a6a] shadow-sm outline-none focus:border-cyan-400">
             <h6 class="text-xs font-bold text-emerald-300 mb-1.5 flex items-center gap-1.5">
               <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400"></i>
               ${d.dept}
@@ -6467,8 +6737,8 @@ function renderFormMauContent(d) {
       </div>
     </div>
 
-    <!-- PHẦN VIII: ĐÁNH GIÁ & CHỮ KÝ 6 CẤP TRÌNH KÝ (CHUẨN TRANG 3 PDF) -->
-    <div class="mb-8">
+    <!-- PHẦN VIII: ĐÁNH GIÁ & CHỮ KÝ 6 CẤP TRÌNH KÝ (CHUẨN TRANG 3 PDF - TÙY CHỌN ẨN/HIỆN) -->
+    <div class="mb-8 transition" id="sec-viii-container">
       <div class="flex items-center justify-between mb-3 border-b border-cyan-500/30 pb-2">
         <h4 class="font-bold text-cyan-400 uppercase tracking-wider text-sm flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
@@ -6476,48 +6746,48 @@ function renderFormMauContent(d) {
         </h4>
       </div>
       
-      <div class="bg-[#0c1a35]/80 p-4 rounded-xl border border-[#1e3a6a] text-slate-200 text-xs leading-relaxed mb-6">
-        <div class="font-bold text-cyan-400 mb-2 uppercase tracking-wide">Nhận Xét Tổng Thể Của Phân Xưởng:</div>
+      <div contenteditable="true" class="bg-[#0c1a35]/80 p-4 rounded-xl border border-[#1e3a6a] text-slate-200 text-xs leading-relaxed mb-6 outline-none focus:border-cyan-400">
+        <div class="font-bold text-cyan-400 mb-2 uppercase tracking-wide">Nhận Xét Tổng Thể Của Phân Xưởng (Bấm để sửa):</div>
         <div class="whitespace-pre-line">${s8.content || 'Hoàn thành các chỉ tiêu sản xuất theo kế hoạch.'}</div>
         <div class="mt-3 italic text-slate-400">Trân trọng!</div>
       </div>
 
       <!-- Ngày tháng & Chữ ký 6 cấp -->
       <div class="bg-[#0c1a35]/90 p-4 rounded-xl border border-[#1e3a6a]">
-        <div class="text-right text-xs italic text-slate-300 mb-6 font-serif">
+        <div contenteditable="true" class="text-right text-xs italic text-slate-300 mb-6 font-serif outline-none focus:text-cyan-300">
           ${sigs.date_str || 'Đồng Nai, ngày 28 tháng 08 năm 2026'}
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-6 gap-3 text-center mb-8">
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-amber-300 uppercase">${sigs.signer_1_title || 'TỔNG GIÁM ĐỐC'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-amber-300 uppercase outline-none">${sigs.signer_1_title || 'TỔNG GIÁM ĐỐC'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký & Ghi rõ họ tên)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_1_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_1_name || ''}</div>
           </div>
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-amber-300 uppercase">${sigs.signer_2_title || 'P.TGĐ PT'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-amber-300 uppercase outline-none">${sigs.signer_2_title || 'P.TGĐ PT'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký duyệt)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_2_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_2_name || ''}</div>
           </div>
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-cyan-300 uppercase">${sigs.signer_3_title || 'PXCĐ-NL'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-cyan-300 uppercase outline-none">${sigs.signer_3_title || 'PXCĐ-NL'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký xác nhận)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_3_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_3_name || ''}</div>
           </div>
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-cyan-300 uppercase">${sigs.signer_4_title || 'PXSX'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-cyan-300 uppercase outline-none">${sigs.signer_4_title || 'PXSX'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký xác nhận)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_4_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_4_name || ''}</div>
           </div>
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-cyan-300 uppercase">${sigs.signer_5_title || 'P.KT-CN'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-cyan-300 uppercase outline-none">${sigs.signer_5_title || 'P.KT-CN'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký xác nhận)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_5_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_5_name || ''}</div>
           </div>
           <div class="p-2 border border-[#1e3a6a]/60 rounded-lg bg-[#071326]">
-            <div class="font-bold text-[11px] text-emerald-300 uppercase">${sigs.signer_6_title || 'Người lập'}</div>
+            <div contenteditable="true" class="font-bold text-[11px] text-emerald-300 uppercase outline-none">${sigs.signer_6_title || 'Người lập'}</div>
             <div class="h-16 flex items-end justify-center text-xs text-slate-400 italic pb-1">(Ký tên)</div>
-            <div class="font-bold text-xs text-white">${sigs.signer_6_name || ''}</div>
+            <div contenteditable="true" class="font-bold text-xs text-white outline-none">${sigs.signer_6_name || ''}</div>
           </div>
         </div>
 
@@ -6541,6 +6811,52 @@ function renderFormMauContent(d) {
     </div>
   `;
 
+  if (window.lucide) lucide.createIcons();
+}
+
+// ----------------------------------------------------
+// FORM MẪU HELPER CONTROLS (HR CLEAR, SECTION TOGGLE)
+// ----------------------------------------------------
+function clearFormMauHRTable() {
+  const tbody = document.getElementById('form-mau-hr-tbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('td[contenteditable="true"]').forEach(td => {
+    td.innerText = '0';
+  });
+  if (typeof showToast === "function") {
+    showToast("🧹 Đã xóa trắng các ô số liệu nhân sự để bạn tự do điền số!");
+  } else {
+    alert("🧹 Đã xóa trắng các ô số liệu nhân sự để bạn tự do điền số!");
+  }
+}
+
+function resetFormMauHRTable() {
+  loadFormMauData();
+  if (typeof showToast === "function") {
+    showToast("🔄 Đã tải lại bảng định biên nhân sự mẫu!");
+  }
+}
+
+function toggleFormMauSection(secId, btnId, secTitle) {
+  const el = document.getElementById(secId);
+  const btn = document.getElementById(btnId);
+  if (!el) return;
+  const isHidden = el.classList.contains('hidden');
+  if (isHidden) {
+    el.classList.remove('hidden');
+    el.classList.remove('print:hidden');
+    if (btn) {
+      btn.className = 'px-2.5 py-1 rounded bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium flex items-center gap-1 transition';
+      btn.innerHTML = `<i data-lucide="check-square" class="w-3.5 h-3.5 text-blue-400"></i> Hiện ${secTitle}`;
+    }
+  } else {
+    el.classList.add('hidden');
+    el.classList.add('print:hidden');
+    if (btn) {
+      btn.className = 'px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 text-xs font-medium flex items-center gap-1 transition';
+      btn.innerHTML = `<i data-lucide="square" class="w-3.5 h-3.5 text-slate-500"></i> Ẩn ${secTitle}`;
+    }
+  }
   if (window.lucide) lucide.createIcons();
 }
 

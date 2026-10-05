@@ -537,6 +537,77 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
     coal_dc2_total = process_coal_section([r for r in coal_raw_all if r["line"] == "DC2"], "TỔNG SỬ DỤNG DÂY CHUYỀN 2")
     coal_all_total = process_coal_section(coal_raw_all, "TỔNG SỬ DỤNG 2 DÂY CHUYỀN (TOÀN NHÀ MÁY)")
 
+    # Tổng hợp theo Nhà Cung Cấp & Loại Than
+    supplier_map = {}
+    for r in coal_raw_all:
+        raw_sup = (r.get("coal_supplier") or "Khác").strip()
+        is_dry = "không" in (r.get("firing_type") or "").lower() or "sấy" in raw_sup.lower()
+        if is_dry:
+            key = "Than Sấy Lò (Không tính tiêu hao)"
+        elif "hải thành" in raw_sup.lower():
+            key = "Than Khí Hóa Hải Thành"
+        elif "hưng tam long" in raw_sup.lower():
+            key = "Than Khí Hóa Hưng Tam Long"
+        else:
+            key = raw_sup
+
+        if key not in supplier_map:
+            supplier_map[key] = {
+                "supplier_name": key,
+                "heat_values": [],
+                "issued_weight": 0.0,
+                "ash_weight": 0.0,
+                "compensation_weight": 0.0,
+                "excess_ash_weight": 0.0,
+                "total_used_weight": 0.0,
+                "production_m2": 0.0,
+                "count_batches": 0,
+                "has_drying": is_dry,
+                "note": ""
+            }
+        if r.get("heat_value"):
+            supplier_map[key]["heat_values"].append(r["heat_value"])
+        supplier_map[key]["issued_weight"] += (r.get("issued_weight") or 0.0)
+        supplier_map[key]["ash_weight"] += (r.get("ash_weight") or 0.0)
+        supplier_map[key]["compensation_weight"] += (r.get("compensation_weight") or 0.0)
+        supplier_map[key]["excess_ash_weight"] += (r.get("excess_ash_weight") or 0.0)
+        supplier_map[key]["total_used_weight"] += (r.get("total_used_weight") or 0.0)
+        if not is_dry:
+            supplier_map[key]["production_m2"] += (r.get("production_m2") or 0.0)
+        else:
+            supplier_map[key]["has_drying"] = True
+        supplier_map[key]["count_batches"] += 1
+
+    coal_supplier_summary = []
+    grand_coal_used = sum(s["total_used_weight"] for s in supplier_map.values())
+    for sup in supplier_map.values():
+        avg_heat = (sum(sup["heat_values"]) / len(sup["heat_values"])) if sup["heat_values"] else 0.0
+        used_w = sup["total_used_weight"]
+        prod_m2 = sup["production_m2"]
+        iss_w = sup["issued_weight"]
+        ash_w = sup["ash_weight"]
+        ash_pct = (ash_w / (iss_w + ash_w) * 100) if (iss_w + ash_w) > 0 else 0.0
+        rate_tot = (used_w / prod_m2) if prod_m2 > 0 else 0.0
+        pct_sh = (used_w / grand_coal_used * 100) if grand_coal_used > 0 else 0.0
+        
+        eval_txt = "Sấy lò" if sup["has_drying"] and prod_m2 == 0 else ("Khoán đạt ✓" if rate_tot <= 1.45 else "Cần theo dõi")
+        
+        coal_supplier_summary.append({
+            "supplier_name": sup["supplier_name"],
+            "avg_heat_value": avg_heat,
+            "issued_weight": iss_w,
+            "ash_weight": ash_w,
+            "ash_pct": ash_pct,
+            "compensation_weight": sup["compensation_weight"],
+            "excess_ash_weight": sup["excess_ash_weight"],
+            "total_used_weight": used_w,
+            "production_m2": prod_m2,
+            "rate_total": rate_tot,
+            "pct_share": pct_sh,
+            "evaluation": eval_txt
+        })
+    coal_supplier_summary.sort(key=lambda x: x["total_used_weight"], reverse=True)
+
     # 5, 6, 7, 8: FETCH CUSTOM DATA FROM DB OR DEFAULTS
     saved_custom = cur.execute("SELECT * FROM report_form_mau_custom WHERE period_key = ?", (p_info["period_key"],)).fetchone()
     
@@ -613,7 +684,8 @@ def build_form_mau_payload(conn, period_type="month", period_value="8", year=202
             "dc2_40x80": coal_dc2_40x80,
             "dc2_60x60": coal_dc2_60x60,
             "dc2_total": coal_dc2_total,
-            "total_2dc": coal_all_total
+            "total_2dc": coal_all_total,
+            "supplier_summary": coal_supplier_summary
         },
         "section_5_hr": {
             "table": hr_data,
