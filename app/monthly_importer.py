@@ -361,9 +361,35 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
         ws_c = wb_c[wb_c.sheetnames[0]]
         logs.append(f"[Than] Đang bóc tách file than sheet '{wb_c.sheetnames[0]}'...")
 
+        cur_line = "DC1"
+        cur_size = "30x60"
+
         for r in range(1, ws_c.max_row + 1):
-            supplier_name = str(ws_c.cell(r, 3).value or "").strip()
-            if not supplier_name or supplier_name.lower().startswith("tên") or supplier_name.lower().startswith("tổng") or supplier_name.lower().startswith("iv."):
+            c1_val = str(ws_c.cell(r, 1).value or "").strip().lower()
+            c2_val = str(ws_c.cell(r, 2).value or "").strip().lower()
+            c3_val = str(ws_c.cell(r, 3).value or "").strip()
+
+            line_check = f"{c1_val} {c2_val} {c3_val.lower()}"
+
+            # Section detection
+            if "i. dây chuyền 1" in line_check or "dây chuyền 1" in line_check:
+                cur_line = "DC1"
+                cur_size = "30x60"
+                continue
+            elif "500*500" in line_check or "50x50" in line_check:
+                cur_line = "DC2"
+                cur_size = "50x50"
+                continue
+            elif "400*800" in line_check or "40x80" in line_check:
+                cur_line = "DC2"
+                cur_size = "40x80"
+                continue
+            elif "iii. tổng dây chuyền 2" in line_check or "iv. tổng 2 dây chuyền" in line_check or "ghi chú :" in line_check:
+                # Reached summary tables or notes, stop scanning detail rows
+                break
+
+            supplier_name = c3_val
+            if not supplier_name or supplier_name.lower().startswith("tên") or supplier_name.lower().startswith("tổng") or supplier_name.lower().startswith("cộng") or supplier_name.lower().startswith("stt"):
                 continue
 
             heat = parse_number(ws_c.cell(r, 7).value)
@@ -390,8 +416,8 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                         heat_value, ash_rate, std_ash_rate, stone_rate, issued_weight, ash_weight,
                         ash_export_rate, compensation_weight, excess_ash_weight, total_used_weight,
                         production_m2, rate_lump, rate_with_ash, rate_total, note
-                    ) VALUES (?, ?, 'DC1', '30x60', ?, 'Kho', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (month, year, supplier_name, firing, heat, ash, std_ash, stone, issued, ash_w, ash_rate, comp, excess, tot_used, prod_m2, r_lump, r_with_ash, r_tot, note))
+                    ) VALUES (?, ?, ?, ?, ?, 'Kho', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (month, year, cur_line, cur_size, supplier_name, firing, heat, ash, std_ash, stone, issued, ash_w, ash_rate, comp, excess, tot_used, prod_m2, r_lump, r_with_ash, r_tot, note))
 
         logs.append(f"[Than] Hoàn tất nạp dữ liệu Than Tháng {month}/{year}")
 

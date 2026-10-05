@@ -16,28 +16,28 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     f_motto = Font(name=font_family, size=10, bold=True, underline="single", color="0F172A")
     f_date = Font(name=font_family, size=9, italic=True, color="475569")
     
-    f_report_title = Font(name=font_family, size=14, bold=True, color="0F2A4A")
+    f_report_title = Font(name=font_family, size=13.5, bold=True, color="0F2A4A")
     f_report_sub = Font(name=font_family, size=10, italic=True, color="334155")
     f_filter_info = Font(name=font_family, size=9.5, bold=True, color="0284C7")
     
-    f_sec_header = Font(name=font_family, size=11, bold=True, color="FFFFFF")
+    f_sec_header = Font(name=font_family, size=10.5, bold=True, color="FFFFFF")
     fill_sec_header = PatternFill(start_color="0F2A4A", end_color="0F2A4A", fill_type="solid")
     
-    f_th = Font(name=font_family, size=9.5, bold=True, color="FFFFFF")
+    f_th = Font(name=font_family, size=9, bold=True, color="FFFFFF")
     fill_th = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
     
-    f_data = Font(name=font_family, size=9.5, color="0F172A")
-    f_data_bold = Font(name=font_family, size=9.5, bold=True, color="0F172A")
-    f_data_green = Font(name=font_family, size=9.5, bold=True, color="15803D")
-    f_data_blue = Font(name=font_family, size=9.5, bold=True, color="0284C7")
-    f_data_red = Font(name=font_family, size=9.5, bold=True, color="B91C1C")
+    f_data = Font(name=font_family, size=9, color="0F172A")
+    f_data_bold = Font(name=font_family, size=9, bold=True, color="0F172A")
+    f_data_green = Font(name=font_family, size=9, bold=True, color="15803D")
+    f_data_blue = Font(name=font_family, size=9, bold=True, color="0284C7")
+    f_data_red = Font(name=font_family, size=9, bold=True, color="B91C1C")
     
-    f_total = Font(name=font_family, size=10, bold=True, color="0F172A")
+    f_total = Font(name=font_family, size=9.5, bold=True, color="0F172A")
     fill_total = PatternFill(start_color="E6F4EA", end_color="E6F4EA", fill_type="solid")
     
-    f_kpi_title = Font(name=font_family, size=9, bold=True, color="64748B")
-    f_kpi_val = Font(name=font_family, size=13, bold=True, color="0F2A4A")
-    f_kpi_sub = Font(name=font_family, size=8.5, italic=True, color="475569")
+    f_kpi_title = Font(name=font_family, size=8.5, bold=True, color="64748B")
+    f_kpi_val = Font(name=font_family, size=12.5, bold=True, color="0F2A4A")
+    f_kpi_sub = Font(name=font_family, size=8, italic=True, color="475569")
     fill_kpi = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
     
     border_thin = Border(
@@ -259,7 +259,7 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     style_merged_range(ws1, f"A{curr_row}:M{curr_row}", font=f_sec_header, fill=fill_sec_header, alignment=Alignment(horizontal="left", vertical="center", indent=1))
     curr_row += 1
 
-    headers_p1 = ["STT", "DC", "Kích Thước", "Dòng Men / SP", "Loại Số Liệu", "SL Ép (m²)", "A1 (m²)", "A (m²)", "B (m²)", "Tổng Thu Hồi (m²)", "Tỷ Lệ A1 (%)", "Ngày SX", "Dừng Máy (p)"]
+    headers_p1 = ["STT", "Dòng Men / Sản Phẩm", "DC", "Kích Thước", "Loại Số Liệu", "SL Ép (m²)", "A1 (m²)", "A (m²)", "B (m²)", "Tổng Thu Hồi (m²)", "Tỷ Lệ A1 (%)", "Ngày SX", "Dừng Máy (p)"]
     for col_idx, h in enumerate(headers_p1, start=1):
         cell = ws1.cell(row=curr_row, column=col_idx, value=h)
         cell.font = f_th
@@ -288,16 +288,16 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         sum_stop += stop
 
         row_vals = [
-            idx, r.get("line", ""), r.get("size", ""), r.get("product_line", "Phương Nam"),
+            idx, r.get("product_line", "Phương Nam"), r.get("line", ""), r.get("size", ""),
             r.get("data_type", "Thực hiện"), sl_ep, a1, a, b, tong, pct_a1 / 100.0, days, stop
         ]
         for col_idx, val in enumerate(row_vals, start=1):
             cell = ws1.cell(row=curr_row, column=col_idx, value=val)
             cell.font = f_data
             cell.border = border_thin
-            if col_idx in [1, 2, 3, 5]:
+            if col_idx in [1, 3, 4, 5]:
                 cell.alignment = align_center
-            elif col_idx == 4:
+            elif col_idx == 2:
                 cell.alignment = align_left
             elif col_idx == 11:
                 cell.alignment = align_right
@@ -341,7 +341,7 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     style_merged_range(ws1, f"A{curr_row}:M{curr_row}", font=f_sec_header, fill=fill_sec_header, alignment=Alignment(horizontal="left", vertical="center", indent=1))
     curr_row += 1
 
-    headers_p2 = ["STT", "Thương Hiệu / Nhãn Hàng", "Kích Thước", "Dây Chuyền", "Dòng Men", "Loại A1 (m²)", "Loại A (m²)", "Loại B (m²)", "Tổng Sản Lượng (m²)", "Tỷ Lệ A1 (%)", "Tỷ Trọng Cơ Cấu (%)", "", ""]
+    headers_p2 = ["STT", "Thương Hiệu / Nhãn Hàng", "DC", "Kích Thước", "Dòng Men", "Loại A1 (m²)", "Loại A (m²)", "Loại B (m²)", "Tổng Sản Lượng (m²)", "Tỷ Lệ A1 (%)", "Cơ Cấu (%)", "", ""]
     for col_idx, h in enumerate(headers_p2, start=1):
         cell = ws1.cell(row=curr_row, column=col_idx, value=h)
         cell.font = f_th
@@ -366,7 +366,7 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         sum_p2_tot += tot
 
         row_vals = [
-            idx, r.get("brand_name", ""), r.get("size", ""), r.get("line", ""),
+            idx, r.get("brand_name", ""), r.get("line", ""), r.get("size", ""),
             r.get("glaze_type", "Phương Nam"), a1, a, b, tot, pct_a1, share_pct, "", ""
         ]
         for col_idx, val in enumerate(row_vals, start=1):
@@ -416,7 +416,7 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     style_merged_range(ws1, f"A{curr_row}:M{curr_row}", font=f_sec_header, fill=fill_sec_header, alignment=Alignment(horizontal="left", vertical="center", indent=1))
     curr_row += 1
 
-    headers_p3 = ["STT", "Tên Nguyên Liệu / Vật Tư", "DC", "Kích Thước", "ĐVT", "Định Mức Quy Định", "Lượng Sử Dụng", "SL Tính Tiêu Hao (m²)", "Tiêu Hao Thực Tế", "Chênh Lệch Vượt/Giảm", "Đánh Giá Trạng Thái", "", ""]
+    headers_p3 = ["STT", "Tên Nguyên Liệu / Vật Tư", "DC", "Kích Thước", "ĐVT", "Định Mức Kỳ", "Lượng Sử Dụng", "SL Tính ĐM (m²)", "Tiêu Hao Thực Tế", "Chênh Lệch Vượt/Giảm", "Đánh Giá", "", ""]
     for col_idx, h in enumerate(headers_p3, start=1):
         cell = ws1.cell(row=curr_row, column=col_idx, value=h)
         cell.font = f_th
@@ -432,9 +432,9 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         prod_m2 = r.get("prod_qty", 0) or 0
         act_r = r.get("actual_rate", 0) or 0
         diff_q = r.get("diff_qty", 0) or 0
-        status_txt = "Đạt định mức ✓" if diff_q <= 0 else "Vượt định mức ✗"
+        status_txt = "Đạt ĐM ✓" if diff_q <= 0 else "Vượt ĐM ✗"
         if used_q == 0 and act_r == 0:
-            status_txt = "Chưa nhập liệu"
+            status_txt = "Chưa nhập"
 
         row_vals = [
             idx, r.get("material_name", ""), r.get("line", ""), r.get("size", ""),
@@ -473,19 +473,21 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
     style_merged_range(ws1, f"A{curr_row}:M{curr_row}", font=f_sec_header, fill=fill_sec_header, alignment=Alignment(horizontal="left", vertical="center", indent=1))
     curr_row += 1
 
-    headers_p4 = ["STT", "Nhà Cung Cấp / Lô Than", "DC", "Công Đoạn", "Nhiệt Trị (Kcal)", "% Cám TT", "KL Lĩnh (kg)", "Xuất Cám (kg)", "Lĩnh Bù (kg)", "Tổng Dùng (kg)", "SL Gạch (m²)", "Suất Cục (kg/m²)", "Suất Tổng (kg/m²)"]
-    for col_idx, h in enumerate(headers_p4, start=1):
+    headers_p4 = ["STT", "Nhà Cung Cấp / Lô Than", "DC", "Công Đoạn", "Nhiệt Trị (Kcal)", "% Cám TT", "% Cám TC", "KL Lĩnh (kg)", "Xuất Cám (kg)", "Lĩnh Bù (kg)", "Tổng Dùng (kg)", "SL Gạch (m²)", "Suất Cục / Tổng (kg/m²)"]
+    for col_idx, h in enumerate(headers_p4[:12], start=1):
         cell = ws1.cell(row=curr_row, column=col_idx, value=h)
         cell.font = f_th
         cell.fill = fill_th
         cell.alignment = align_center
         cell.border = border_thin
+    ws1.merge_cells(f"L{curr_row}:M{curr_row}")
     curr_row += 1
 
     sum_p4_issued = sum_p4_ash = sum_p4_comp = sum_p4_used = sum_p4_m2 = 0
     for idx, r in enumerate(p4_rows, start=1):
         heat = r.get("heat_value", 0) or 0
         ash_p = (r.get("ash_rate", 0) or 0) / 100.0
+        std_ash_p = (r.get("std_ash_rate", 0) or 0) / 100.0
         iss = r.get("issued_weight", 0) or 0
         ash_w = r.get("ash_weight", 0) or 0
         comp = r.get("compensation_weight", 0) or 0
@@ -502,7 +504,7 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
 
         row_vals = [
             idx, r.get("coal_supplier", ""), r.get("line", ""), r.get("firing_type", "Nung"),
-            heat, ash_p, iss, ash_w, comp, used, m2, r_lump, r_tot
+            heat, ash_p, std_ash_p, iss, ash_w, comp, used, m2, r_tot
         ]
         for col_idx, val in enumerate(row_vals, start=1):
             cell = ws1.cell(row=curr_row, column=col_idx, value=val)
@@ -515,22 +517,23 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
             elif col_idx == 5:
                 cell.alignment = align_right
                 cell.number_format = num_fmt_int
-            elif col_idx == 6:
+            elif col_idx in [6, 7]:
                 cell.alignment = align_right
                 cell.number_format = num_fmt_pct
-            elif col_idx in [7, 8, 9, 10, 11]:
+            elif col_idx in [8, 9, 10, 11, 12]:
                 cell.alignment = align_right
                 cell.number_format = num_fmt_qty
-            elif col_idx in [12, 13]:
+            elif col_idx == 13:
                 cell.alignment = align_right
                 cell.number_format = num_fmt_rate
-                if col_idx == 13: cell.font = f_data_blue
+                cell.font = f_data_blue
+        
+        ws1.merge_cells(f"L{curr_row}:M{curr_row}")
         curr_row += 1
 
     # Part IV Total Row
-    tot_r_lump = (sum_p4_issued / sum_p4_m2) if sum_p4_m2 > 0 else 0
     tot_r_tot = (sum_p4_used / sum_p4_m2) if sum_p4_m2 > 0 else 0
-    tot_p4_vals = ["TỔNG CỘNG PHẦN IV", "", "", "", "", "", sum_p4_issued, sum_p4_ash, sum_p4_comp, sum_p4_used, sum_p4_m2, tot_r_lump, tot_r_tot]
+    tot_p4_vals = ["TỔNG CỘNG PHẦN IV", "", "", "", "", "", "", sum_p4_issued, sum_p4_ash, sum_p4_comp, sum_p4_used, sum_p4_m2, tot_r_tot]
     for col_idx, val in enumerate(tot_p4_vals, start=1):
         cell = ws1.cell(row=curr_row, column=col_idx, value=val)
         cell.font = f_total
@@ -538,13 +541,14 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         cell.border = border_total
         if col_idx == 1:
             cell.alignment = align_center
-        elif col_idx in [7, 8, 9, 10, 11]:
+        elif col_idx in [8, 9, 10, 11, 12]:
             cell.alignment = align_right
             cell.number_format = num_fmt_qty
-        elif col_idx in [12, 13]:
+        elif col_idx == 13:
             cell.alignment = align_right
             cell.number_format = num_fmt_rate
-    ws1.merge_cells(f"A{curr_row}:F{curr_row}")
+    ws1.merge_cells(f"A{curr_row}:G{curr_row}")
+    ws1.merge_cells(f"L{curr_row}:M{curr_row}")
     curr_row += 3
 
     # -------------------------------------------------------------
@@ -561,12 +565,12 @@ def generate_dashboard_excel_report(conn, month="all", line="all", size="all", b
         ws1[f"{c_s}{curr_row+1}"] = sub_sig
         ws1.merge_cells(f"{c_s}{curr_row}:{c_e}{curr_row}")
         ws1.merge_cells(f"{c_s}{curr_row+1}:{c_e}{curr_row+1}")
-        style_merged_range(ws1, f"{c_s}{curr_row}:{c_e}{curr_row}", font=Font(name=font_family, size=10.5, bold=True, color="0F172A"), alignment=align_center)
-        style_merged_range(ws1, f"{c_s}{curr_row+1}:{c_e}{curr_row+1}", font=Font(name=font_family, size=9, italic=True, color="64748B"), alignment=align_center)
+        style_merged_range(ws1, f"{c_s}{curr_row}:{c_e}{curr_row}", font=Font(name=font_family, size=10, bold=True, color="0F172A"), alignment=align_center)
+        style_merged_range(ws1, f"{c_s}{curr_row+1}:{c_e}{curr_row+1}", font=Font(name=font_family, size=8.5, italic=True, color="64748B"), alignment=align_center)
 
-    # Column Widths Auto-Adjustment for Sheet 1
+    # Column Widths Auto-Adjustment for Sheet 1 (Optimal Proportions)
     col_widths = {
-        "A": 6, "B": 14, "C": 12, "D": 22, "E": 14, "F": 15, "G": 14, "H": 13, "I": 13, "J": 16, "K": 14, "L": 12, "M": 14
+        "A": 5, "B": 30, "C": 6, "D": 11, "E": 12, "F": 13, "G": 13, "H": 12, "I": 12, "J": 14, "K": 12, "L": 11, "M": 11
     }
     for col_letter, width in col_widths.items():
         ws1.column_dimensions[col_letter].width = width

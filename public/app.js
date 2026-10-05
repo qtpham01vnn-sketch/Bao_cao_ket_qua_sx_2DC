@@ -7130,11 +7130,19 @@ function createPrintDocumentHtml({
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      font-size: 10.5px;
+      font-size: 9.5pt;
       color: #0f172a;
       margin: 0;
-      padding: 10px;
-      background: #fff;
+      padding: 16px;
+      background: #f1f5f9;
+    }
+    .print-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 18px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
     .print-bar {
       display: flex;
@@ -7142,18 +7150,21 @@ function createPrintDocumentHtml({
       gap: 10px;
       margin-bottom: 12px;
       padding: 8px 12px;
-      background: #f1f5f9;
+      background: #e2e8f0;
       border-radius: 8px;
     }
     .btn-print-action {
       background: #0284c7;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 8px 18px;
       font-size: 12px;
       font-weight: bold;
       border-radius: 6px;
       cursor: pointer;
+    }
+    .btn-print-action:hover {
+      background: #0369a1;
     }
     .header-table {
       width: 100%;
@@ -7169,14 +7180,14 @@ function createPrintDocumentHtml({
       margin-bottom: 12px;
     }
     .title-box h1 {
-      font-size: 15px;
+      font-size: 14pt;
       font-weight: 800;
       text-transform: uppercase;
       margin: 0 0 4px 0;
       color: #0f172a;
     }
     .title-box .sub {
-      font-size: 10.5px;
+      font-size: 9pt;
       color: #334155;
     }
     .kpi-cards {
@@ -7194,18 +7205,18 @@ function createPrintDocumentHtml({
       text-align: center;
     }
     .kpi-title {
-      font-size: 9.5px;
+      font-size: 8.5pt;
       text-transform: uppercase;
       color: #64748b;
       font-weight: 700;
     }
     .kpi-val {
-      font-size: 13.5px;
+      font-size: 12pt;
       font-weight: 800;
       margin-top: 2px;
     }
     .kpi-sub {
-      font-size: 9px;
+      font-size: 8pt;
       color: #475569;
       margin-top: 1px;
     }
@@ -7215,21 +7226,25 @@ function createPrintDocumentHtml({
     }
     table.data-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
-      font-size: 9.5px;
+      font-size: 8pt;
       margin-bottom: 10px;
+      word-wrap: break-word;
     }
     table.data-table th, table.data-table td {
       border: 1px solid #475569;
-      padding: 3.5px 5px;
+      padding: 3px 4px;
       vertical-align: middle;
+      overflow: hidden;
     }
     table.data-table thead th {
       background: #0f2a4a !important;
       color: #ffffff !important;
       font-weight: 700;
       text-align: center;
-      font-size: 9.5px;
+      font-size: 8pt;
+      padding: 4px 3px;
     }
     table.data-table tr {
       page-break-inside: avoid;
@@ -7243,7 +7258,7 @@ function createPrintDocumentHtml({
     .signature-grid {
       display: flex;
       justify-content: space-between;
-      margin-top: 22px;
+      margin-top: 24px;
       page-break-inside: avoid;
       text-align: center;
     }
@@ -7252,11 +7267,11 @@ function createPrintDocumentHtml({
     }
     .sig-title {
       font-weight: 700;
-      font-size: 10.5px;
+      font-size: 9.5pt;
       text-transform: uppercase;
     }
     .sig-sub {
-      font-size: 9.5px;
+      font-size: 8.5pt;
       font-style: italic;
       color: #64748b;
       margin-top: 2px;
@@ -7265,8 +7280,19 @@ function createPrintDocumentHtml({
       height: 55px;
     }
     @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .print-container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
       .print-bar { display: none !important; }
-      body { padding: 4mm; margin: 0; }
       .section-block { page-break-inside: avoid; }
       .signature-grid { page-break-inside: avoid; }
     }
@@ -7277,36 +7303,38 @@ function createPrintDocumentHtml({
     <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
   </div>
 
-  <!-- HEADER NGHỊ ĐỊNH 30/2020 -->
-  <table class="header-table">
-    <tr>
-      <td style="width: 48%; text-align: center;">
-        <div style="font-weight: 800; font-size: 11px; text-transform: uppercase;">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</div>
-        <div style="font-weight: 700; font-size: 10.5px; text-transform: uppercase; color: #1e3a8a; margin-top: 2px;">PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG</div>
-        <div style="font-size: 9px; margin-top: 1px;">❖❖❖</div>
-      </td>
-      <td style="width: 4%;"></td>
-      <td style="width: 48%; text-align: center;">
-        <div style="font-weight: 800; font-size: 11px;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
-        <div style="font-weight: 700; font-size: 10px; text-decoration: underline; margin-top: 2px;">Độc lập - Tự do - Hạnh phúc</div>
-        <div style="font-size: 9.5px; font-style: italic; margin-top: 3px;">${dateStr}</div>
-      </td>
-    </tr>
-  </table>
+  <div class="print-container">
+    <!-- HEADER NGHỊ ĐỊNH 30/2020 -->
+    <table class="header-table">
+      <tr>
+        <td style="width: 48%; text-align: center;">
+          <div style="font-weight: 800; font-size: 10pt; text-transform: uppercase;">CÔNG TY CỔ PHẦN GẠCH MEN PHƯƠNG NAM</div>
+          <div style="font-weight: 700; font-size: 9.5pt; text-transform: uppercase; color: #1e3a8a; margin-top: 2px;">PHÂN XƯỞNG SẢN XUẤT MEN & XƯƠNG</div>
+          <div style="font-size: 8pt; margin-top: 1px;">❖❖❖</div>
+        </td>
+        <td style="width: 4%;"></td>
+        <td style="width: 48%; text-align: center;">
+          <div style="font-weight: 800; font-size: 10pt;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+          <div style="font-weight: 700; font-size: 9.5pt; text-decoration: underline; margin-top: 2px;">Độc lập - Tự do - Hạnh phúc</div>
+          <div style="font-size: 8.5pt; font-style: italic; margin-top: 3px;">${dateStr}</div>
+        </td>
+      </tr>
+    </table>
 
-  <!-- TITLE -->
-  <div class="title-box">
-    <h1>${title}</h1>
-    <div class="sub">${subTitle || ''} ${periodInfo ? `&nbsp;|&nbsp; ${periodInfo}` : ''}</div>
+    <!-- TITLE -->
+    <div class="title-box">
+      <h1>${title}</h1>
+      <div class="sub">${subTitle || ''} ${periodInfo ? `&nbsp;|&nbsp; ${periodInfo}` : ''}</div>
+    </div>
+
+    ${kpiCardsHtml}
+
+    <!-- DATA TABLE -->
+    ${tableHtml}
+
+    <!-- SIGNATURES -->
+    ${sigHtml}
   </div>
-
-  ${kpiCardsHtml}
-
-  <!-- DATA TABLE -->
-  ${tableHtml}
-
-  <!-- SIGNATURES -->
-  ${sigHtml}
 </body>
 </html>
   `;
@@ -7396,7 +7424,7 @@ async function printDashboardReport() {
   const actA1Pct = Number(act.a1_pct || 0);
   const plnA1Pct = Number(pln.a1_pct || 0);
   
-  const coalUsedKg = Number(coalSec.total_coal_used || 0);
+  const coalUsedKg = Number(coalSec.total_coal_used_kg || coalSec.total_coal_used || 0);
   const coalProdM2 = Number(coalSec.total_coal_prod_m2 || actTotM2 || 0);
   const coalRate = Number(coalSec.avg_coal_rate || (coalProdM2 > 0 ? coalUsedKg / coalProdM2 : 0));
 
@@ -7468,15 +7496,15 @@ async function printDashboardReport() {
 
       const isPln = r.data_type === "Kế hoạch";
       const typeBadge = isPln 
-        ? '<span style="display:inline-block; padding: 1px 5px; font-weight: 600; border-radius: 3px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 9.5px;">Kế hoạch</span>'
-        : '<span style="display:inline-block; padding: 1px 5px; font-weight: 600; border-radius: 3px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 9.5px;">Thực hiện</span>';
+        ? '<span style="display:inline-block; padding: 1px 4px; font-weight: 600; border-radius: 3px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 8.5px;">Kế hoạch</span>'
+        : '<span style="display:inline-block; padding: 1px 4px; font-weight: 600; border-radius: 3px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 8.5px;">Thực hiện</span>';
 
       p1HtmlRows += `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
           <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
           <td style="text-align: center;">${r.size || ''}</td>
-          <td>${r.product_line || 'Phương Nam'}</td>
+          <td style="text-align: left;">${r.product_line || 'Phương Nam'}</td>
           <td style="text-align: center;">${typeBadge}</td>
           <td style="text-align: right;">${formatNumber(slEp, 2)}</td>
           <td style="text-align: right; font-weight: bold; color: #16a34a;">${formatNumber(a1, 2)}</td>
@@ -7499,32 +7527,49 @@ async function printDashboardReport() {
   const p1PctA1Pln = plnTong > 0 ? (plnA1 / plnTong * 100) : 0;
 
   const section1Html = `
-    <div style="font-weight: 800; font-size: 11.5px; text-transform: uppercase; color: #0f2a4a; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 3px;">
+    <div style="font-weight: 800; font-size: 10pt; text-transform: uppercase; color: #0f2a4a; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 2px;">
       <span>PHẦN I: KẾT QUẢ SẢN XUẤT, CHẤT LƯỢNG & THU HỒI TỔNG HỢP (M²)</span>
-      <span style="font-size: 10px; font-weight: 600; color: #0284c7;">Đạt: ${formatNumber(pctComplete, 1)}% KH</span>
+      <span style="font-size: 8.5pt; font-weight: 600; color: #0284c7;">Đạt: ${formatNumber(pctComplete, 1)}% KH</span>
     </div>
     <table class="data-table">
+      <colgroup>
+        <col style="width: 3.5%;">
+        <col style="width: 4.5%;">
+        <col style="width: 6.5%;">
+        <col style="width: 17.5%;">
+        <col style="width: 7.5%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+        <col style="width: 6.5%;">
+        <col style="width: 6.5%;">
+        <col style="width: 8.5%;">
+        <col style="width: 6%;">
+        <col style="width: 5%;">
+        <col style="width: 5%;">
+        <col style="width: 5%;">
+        <col style="width: 5%;">
+      </colgroup>
       <thead>
         <tr>
-          <th rowspan="2" style="width: 25px;">STT</th>
-          <th rowspan="2" style="width: 40px;">DC</th>
-          <th rowspan="2" style="width: 50px;">Kích Thước</th>
+          <th rowspan="2">STT</th>
+          <th rowspan="2">DC</th>
+          <th rowspan="2">Kích Thước</th>
           <th rowspan="2">Dòng Men / Sản Phẩm</th>
-          <th rowspan="2" style="width: 65px;">Loại Số Liệu</th>
-          <th rowspan="2" style="width: 70px;">SL Ép (m²)</th>
+          <th rowspan="2">Loại Số Liệu</th>
+          <th rowspan="2">SL Ép (m²)</th>
           <th colspan="4">KẾT QUẢ THU HỒI (m²)</th>
           <th colspan="3">TỶ LỆ THU HỒI (%)</th>
-          <th rowspan="2" style="width: 45px;">Ngày SX</th>
-          <th rowspan="2" style="width: 45px;">Dừng 2MF (p)</th>
+          <th rowspan="2">Ngày SX</th>
+          <th rowspan="2">Dừng 2MF (p)</th>
         </tr>
         <tr>
-          <th style="width: 68px;">A1</th>
-          <th style="width: 60px;">A</th>
-          <th style="width: 60px;">B</th>
-          <th style="width: 72px;">Tổng Thu Hồi</th>
-          <th style="width: 48px;">% A1</th>
-          <th style="width: 45px;">% A</th>
-          <th style="width: 45px;">% B</th>
+          <th>A1</th>
+          <th>A</th>
+          <th>B</th>
+          <th>Tổng Thu Hồi</th>
+          <th>% A1</th>
+          <th>% A</th>
+          <th>% B</th>
         </tr>
       </thead>
       <tbody>
@@ -7548,8 +7593,8 @@ async function printDashboardReport() {
           <td style="text-align: right; color: #166534;">${formatNumber(actA1 > 0 ? actA1 : sumA1, 2)}</td>
           <td style="text-align: right;">${formatNumber(actA > 0 ? actA : sumA, 2)}</td>
           <td style="text-align: right;">${formatNumber(actB > 0 ? actB : sumB, 2)}</td>
-          <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(actTong > 0 ? actTong : sumTong, 2)}</td>
-          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(p1PctA1Act > 0 ? p1PctA1Act : (sumTong > 0 ? sumA1 / sumTong * 100 : 0), 2)}%</td>
+          <td style="text-align: right; color: #0f172a; font-size: 9pt;">${formatNumber(actTong > 0 ? actTong : sumTong, 2)}</td>
+          <td style="text-align: right; color: #166534; font-size: 9pt;">${formatNumber(p1PctA1Act > 0 ? p1PctA1Act : (sumTong > 0 ? sumA1 / sumTong * 100 : 0), 2)}%</td>
           <td colspan="2"></td>
           <td style="text-align: center;">${formatNumber(sumDays, 1)}</td>
           <td style="text-align: center;">${formatNumber(sumStop, 0)}</td>
@@ -7577,10 +7622,10 @@ async function printDashboardReport() {
       p2HtmlRows += `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
-          <td style="font-weight: 600; color: #0f172a;">${b.brand_name}</td>
+          <td style="font-weight: 600; color: #0f172a; text-align: left;">${b.brand_name}</td>
           <td style="text-align: center;">${b.sizes || size}</td>
           <td style="text-align: center; font-weight: bold;">${b.lines || line}</td>
-          <td>${b.glazes || 'Phương Nam'}</td>
+          <td style="text-align: left;">${b.glazes || 'Phương Nam'}</td>
           <td style="text-align: right; color: #16a34a; font-weight: bold;">${formatNumber(a1, 2)}</td>
           <td style="text-align: right;">${formatNumber(a, 2)}</td>
           <td style="text-align: right; color: #b45309;">${formatNumber(b_m2, 2)}</td>
@@ -7597,24 +7642,37 @@ async function printDashboardReport() {
   const p2PctA1Tot = sumP2Tot > 0 ? (sumP2A1 / sumP2Tot * 100) : 0;
 
   const section2Html = `
-    <div style="font-weight: 800; font-size: 11.5px; text-transform: uppercase; color: #0f2a4a; margin-top: 14px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 3px;">
+    <div style="font-weight: 800; font-size: 10pt; text-transform: uppercase; color: #0f2a4a; margin-top: 12px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 2px;">
       <span>PHẦN II: CƠ CẤU SẢN LƯỢNG THỰC HIỆN THEO CÁC THƯƠNG HIỆU</span>
-      <span style="font-size: 10px; font-weight: 600; color: #16a34a;">Tổng thương hiệu: <b>${formatNumber(sumP2Tot, 2)} m²</b> (Khớp 100% P.I)</span>
+      <span style="font-size: 8.5pt; font-weight: 600; color: #16a34a;">Tổng thương hiệu: <b>${formatNumber(sumP2Tot, 2)} m²</b> (Khớp 100% P.I)</span>
     </div>
     <table class="data-table">
+      <colgroup>
+        <col style="width: 4%;">
+        <col style="width: 23%;">
+        <col style="width: 7.5%;">
+        <col style="width: 5.5%;">
+        <col style="width: 12%;">
+        <col style="width: 10%;">
+        <col style="width: 8%;">
+        <col style="width: 8%;">
+        <col style="width: 10%;">
+        <col style="width: 6%;">
+        <col style="width: 6%;">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width: 25px;">STT</th>
+          <th>STT</th>
           <th>Thương Hiệu / Nhãn Hàng</th>
-          <th style="width: 70px;">Kích Thước</th>
-          <th style="width: 50px;">Dây Chuyền</th>
+          <th>Kích Thước</th>
+          <th>Dây Chuyền</th>
           <th>Dòng Men</th>
-          <th style="width: 80px;">Loại A1 (m²)</th>
-          <th style="width: 75px;">Loại A (m²)</th>
-          <th style="width: 75px;">Loại B (m²)</th>
-          <th style="width: 90px;">Tổng Sản Lượng (m²)</th>
-          <th style="width: 65px;">Tỷ Lệ A1 (%)</th>
-          <th style="width: 70px;">Cơ Cấu (%)</th>
+          <th>Loại A1 (m²)</th>
+          <th>Loại A (m²)</th>
+          <th>Loại B (m²)</th>
+          <th>Tổng Sản Lượng (m²)</th>
+          <th>Tỷ Lệ A1 (%)</th>
+          <th>Cơ Cấu (%)</th>
         </tr>
       </thead>
       <tbody>
@@ -7626,9 +7684,9 @@ async function printDashboardReport() {
           <td style="text-align: right; color: #166534;">${formatNumber(sumP2A1, 2)}</td>
           <td style="text-align: right;">${formatNumber(sumP2A, 2)}</td>
           <td style="text-align: right;">${formatNumber(sumP2B, 2)}</td>
-          <td style="text-align: right; color: #0284c7; font-size: 11px;">${formatNumber(sumP2Tot, 2)}</td>
-          <td style="text-align: right; color: #166534; font-size: 11px;">${formatNumber(p2PctA1Tot, 2)}%</td>
-          <td style="text-align: right; font-size: 11px;">100.00%</td>
+          <td style="text-align: right; color: #0284c7; font-size: 9pt;">${formatNumber(sumP2Tot, 2)}</td>
+          <td style="text-align: right; color: #166534; font-size: 9pt;">${formatNumber(p2PctA1Tot, 2)}%</td>
+          <td style="text-align: right; font-size: 9pt;">100.00%</td>
         </tr>
       </tfoot>
     </table>
@@ -7653,14 +7711,14 @@ async function printDashboardReport() {
       
       const statusBadge = hasData 
         ? (isSave 
-            ? '<span style="display:inline-block; padding: 1px 5px; font-weight: 600; border-radius: 3px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 9px;">Đạt ĐM ✓</span>'
-            : '<span style="display:inline-block; padding: 1px 5px; font-weight: 600; border-radius: 3px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 9px;">Vượt ĐM ✗</span>')
-        : '<span style="color: #94a3b8; font-size: 9px;">-</span>';
+            ? '<span style="display:inline-block; padding: 1px 4px; font-weight: 600; border-radius: 3px; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 8.5px;">Đạt ĐM ✓</span>'
+            : '<span style="display:inline-block; padding: 1px 4px; font-weight: 600; border-radius: 3px; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 8.5px;">Vượt ĐM ✗</span>')
+        : '<span style="color: #94a3b8; font-size: 8.5px;">-</span>';
 
       p3HtmlRows += `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
-          <td style="font-weight: 600;">${r.material_name}</td>
+          <td style="font-weight: 600; text-align: left;">${r.material_name}</td>
           <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
           <td style="text-align: center;">${r.size || '-'}</td>
           <td style="text-align: center;">${r.unit || 'Kg'}</td>
@@ -7678,24 +7736,37 @@ async function printDashboardReport() {
   }
 
   const section3Html = `
-    <div style="font-weight: 800; font-size: 11.5px; text-transform: uppercase; color: #0f2a4a; margin-top: 14px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 3px;">
+    <div style="font-weight: 800; font-size: 10pt; text-transform: uppercase; color: #0f2a4a; margin-top: 12px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 2px;">
       <span>PHẦN III: TỔNG HỢP TIÊU HAO NGUYÊN LIỆU, VẬT TƯ & HAO HỤT</span>
-      <span style="font-size: 10px; font-weight: 600; color: #0284c7;">Số danh mục: <b>${matList.length}</b></span>
+      <span style="font-size: 8.5pt; font-weight: 600; color: #0284c7;">Số danh mục: <b>${matList.length}</b></span>
     </div>
     <table class="data-table">
+      <colgroup>
+        <col style="width: 4%;">
+        <col style="width: 26%;">
+        <col style="width: 5%;">
+        <col style="width: 7%;">
+        <col style="width: 5%;">
+        <col style="width: 8.5%;">
+        <col style="width: 9.5%;">
+        <col style="width: 9.5%;">
+        <col style="width: 9%;">
+        <col style="width: 9%;">
+        <col style="width: 7.5%;">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width: 25px;">STT</th>
+          <th>STT</th>
           <th>Tên Nguyên Liệu / Vật Tư</th>
-          <th style="width: 40px;">DC</th>
-          <th style="width: 55px;">Kích Thước</th>
-          <th style="width: 40px;">ĐVT</th>
-          <th style="width: 75px;">Định Mức Kỳ</th>
-          <th style="width: 80px;">Lượng Sử Dụng</th>
-          <th style="width: 85px;">SL Tính ĐM (m²)</th>
-          <th style="width: 80px;">Tiêu Hao Thực Tế</th>
-          <th style="width: 85px;">Vượt (+) / Giảm (-)</th>
-          <th style="width: 80px;">Đánh Giá</th>
+          <th>DC</th>
+          <th>Kích Thước</th>
+          <th>ĐVT</th>
+          <th>Định Mức Kỳ</th>
+          <th>Lượng Sử Dụng</th>
+          <th>SL Tính ĐM (m²)</th>
+          <th>Tiêu Hao Thực Tế</th>
+          <th>Vượt (+) / Giảm (-)</th>
+          <th>Đánh Giá</th>
         </tr>
       </thead>
       <tbody>
@@ -7727,7 +7798,7 @@ async function printDashboardReport() {
       p4HtmlRows += `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
-          <td style="font-weight: 600;">${r.coal_supplier || 'Than Khí Hóa'}</td>
+          <td style="font-weight: 600; text-align: left;">${r.coal_supplier || 'Than Khí Hóa'}</td>
           <td style="text-align: center; font-weight: bold;">${r.line || ''}</td>
           <td style="text-align: center;">${r.firing_type || 'Nung'}</td>
           <td style="text-align: right;">${heat > 0 ? formatNumber(heat, 0) : '-'}</td>
@@ -7751,27 +7822,43 @@ async function printDashboardReport() {
   const p4RateTotAll = sumP4M2 > 0 ? (sumP4Used / sumP4M2) : 0;
 
   const section4Html = `
-    <div style="font-weight: 800; font-size: 11.5px; text-transform: uppercase; color: #0f2a4a; margin-top: 14px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 3px;">
+    <div style="font-weight: 800; font-size: 10pt; text-transform: uppercase; color: #0f2a4a; margin-top: 12px; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0f2a4a; padding-bottom: 2px;">
       <span>PHẦN IV: TÌNH HÌNH SỬ DỤNG THAN KHÍ HÓA & NĂNG LƯỢNG</span>
-      <span style="font-size: 10px; font-weight: 600; color: #d97706;">Suất than bình quân: <b>${formatNumber(p4RateTotAll > 0 ? p4RateTotAll : coalRate, 3)} kg/m²</b></span>
+      <span style="font-size: 8.5pt; font-weight: 600; color: #d97706;">Suất than bình quân: <b>${formatNumber(p4RateTotAll > 0 ? p4RateTotAll : coalRate, 3)} kg/m²</b></span>
     </div>
     <table class="data-table">
+      <colgroup>
+        <col style="width: 3.5%;">
+        <col style="width: 23%;">
+        <col style="width: 4.5%;">
+        <col style="width: 6.5%;">
+        <col style="width: 6.5%;">
+        <col style="width: 5.5%;">
+        <col style="width: 5.5%;">
+        <col style="width: 8%;">
+        <col style="width: 7%;">
+        <col style="width: 6.5%;">
+        <col style="width: 8.5%;">
+        <col style="width: 8%;">
+        <col style="width: 6%;">
+        <col style="width: 6%;">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width: 25px;">STT</th>
+          <th>STT</th>
           <th>Nhà Cung Cấp / Lô Than</th>
-          <th style="width: 35px;">DC</th>
-          <th style="width: 60px;">Công Đoạn</th>
-          <th style="width: 65px;">Nhiệt Trị (Kcal)</th>
-          <th style="width: 55px;">% Cám TT</th>
-          <th style="width: 55px;">% Cám TC</th>
-          <th style="width: 70px;">KL Lĩnh (kg)</th>
-          <th style="width: 65px;">Xuất Cám (kg)</th>
-          <th style="width: 65px;">Lĩnh Bù (kg)</th>
-          <th style="width: 75px;">Tổng Dùng (kg)</th>
-          <th style="width: 75px;">SL Gạch (m²)</th>
-          <th style="width: 65px;">Suất Cục</th>
-          <th style="width: 65px;">Suất Tổng</th>
+          <th>DC</th>
+          <th>Công Đoạn</th>
+          <th>Nhiệt Trị (Kcal)</th>
+          <th>% Cám TT</th>
+          <th>% Cám TC</th>
+          <th>KL Lĩnh (kg)</th>
+          <th>Xuất Cám (kg)</th>
+          <th>Lĩnh Bù (kg)</th>
+          <th>Tổng Dùng (kg)</th>
+          <th>SL Gạch (m²)</th>
+          <th>Suất Cục</th>
+          <th>Suất Tổng</th>
         </tr>
       </thead>
       <tbody>
@@ -7783,10 +7870,10 @@ async function printDashboardReport() {
           <td style="text-align: right;">${formatNumber(sumP4Issued, 2)}</td>
           <td style="text-align: right;">${formatNumber(sumP4Ash, 2)}</td>
           <td style="text-align: right;">${formatNumber(sumP4Comp, 2)}</td>
-          <td style="text-align: right; color: #0f172a; font-size: 11px;">${formatNumber(sumP4Used, 2)}</td>
+          <td style="text-align: right; color: #0f172a; font-size: 9pt;">${formatNumber(sumP4Used, 2)}</td>
           <td style="text-align: right;">${formatNumber(sumP4M2, 2)}</td>
-          <td style="text-align: right; color: #d97706; font-size: 11px;">${formatNumber(p4RateLumpTot, 3)}</td>
-          <td style="text-align: right; color: #0284c7; font-size: 11px;">${formatNumber(p4RateTotAll, 3)}</td>
+          <td style="text-align: right; color: #d97706; font-size: 9pt;">${formatNumber(p4RateLumpTot, 3)}</td>
+          <td style="text-align: right; color: #0284c7; font-size: 9pt;">${formatNumber(p4RateTotAll, 3)}</td>
         </tr>
       </tfoot>
     </table>
