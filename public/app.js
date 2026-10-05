@@ -1890,6 +1890,64 @@ function toggleTheme() {
 }
 
 // ----------------------------------------------------
+// GLOBAL FILTER CONTEXT & SYNCHRONIZATION ENGINE
+// ----------------------------------------------------
+const GlobalFilterContext = {
+  selectedMonths: ["all"],
+  selectedLine: "all",
+  selectedSize: "all",
+  selectedBrand: "all",
+  year: 2026,
+
+  setMonth(m) {
+    if (m === "all" || m === "ALL" || m === "t1-t9") {
+      this.selectedMonths = ["all"];
+    } else if (Array.isArray(m)) {
+      this.selectedMonths = m.map(x => x.toString());
+    } else {
+      this.selectedMonths = [m.toString()];
+    }
+    currentDashMonth = this.getPrimaryMonth();
+  },
+
+  getPrimaryMonth() {
+    if (!this.selectedMonths || this.selectedMonths.includes("all") || this.selectedMonths.length === 0) return "all";
+    if (this.selectedMonths.length === 1) return this.selectedMonths[0];
+    return this.selectedMonths.join(",");
+  },
+
+  getMonthString() {
+    if (!this.selectedMonths || this.selectedMonths.includes("all") || this.selectedMonths.length >= 8) {
+      return "Tất cả các kỳ (T1 - T9)";
+    }
+    if (this.selectedMonths.length === 1) {
+      const m = this.selectedMonths[0];
+      return m.length === 1 ? `Tháng 0${m}` : `Tháng ${m}`;
+    }
+    const nums = this.selectedMonths.map(x => parseInt(x)).filter(n => !isNaN(n)).sort((a,b) => a - b);
+    return `Từ Tháng ${nums[0] < 10 ? '0' + nums[0] : nums[0]} đến Tháng ${nums[nums.length-1] < 10 ? '0' + nums[nums.length-1] : nums[nums.length-1]}`;
+  },
+
+  getReportTitle() {
+    if (!this.selectedMonths || this.selectedMonths.includes("all") || this.selectedMonths.length >= 8) {
+      return `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT NĂM ${this.year} (TỪ THÁNG 01 ĐẾN THÁNG 09)`;
+    }
+    if (this.selectedMonths.length === 1) {
+      const m = this.selectedMonths[0];
+      const mStr = m.length === 1 ? `0${m}` : m;
+      return `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT THÁNG ${mStr} NĂM ${this.year}`;
+    }
+    const nums = this.selectedMonths.map(x => parseInt(x)).filter(n => !isNaN(n)).sort((a,b) => a - b);
+    return `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT TỪ THÁNG 0${nums[0]} ĐẾN THÁNG 0${nums[nums.length-1]} NĂM ${this.year}`;
+  },
+
+  getMonthsParam() {
+    if (!this.selectedMonths || this.selectedMonths.includes("all")) return "all";
+    return this.selectedMonths.join(",");
+  }
+};
+
+// ----------------------------------------------------
 // TAB 1: DASHBOARD (EXCEL REPLICA 2026 WITH VISUAL SLICERS)
 // ----------------------------------------------------
 // Section 1: Sản lượng & Chất lượng
@@ -1913,6 +1971,7 @@ let currentDashSizeP3 = "all";
 let currentDashMonthP4 = "all";
 let currentDashLineP4 = "all";
 let currentDashSizeP4 = "all";
+
 // ==========================================
 // SECTION 1 HANDLERS
 // ==========================================
@@ -1978,12 +2037,14 @@ function updateSizeSlicerAvailability(sec, line) {
 // ==========================================
 function setDashMonth(m) {
   currentDashMonth = m;
+  GlobalFilterContext.setMonth(m);
   updateSlicerButtonStyles(1);
   loadDashboardData();
 }
 
 function setDashLine(l) {
   currentDashLine = l;
+  GlobalFilterContext.selectedLine = l;
   updateSizeSlicerAvailability(1, l);
   updateSlicerButtonStyles(1);
   loadDashboardData();
@@ -1991,12 +2052,14 @@ function setDashLine(l) {
 
 function setDashSize(s) {
   currentDashSize = s;
+  GlobalFilterContext.selectedSize = s;
   updateSlicerButtonStyles(1);
   loadDashboardData();
 }
 
 function setDashBrand(b) {
   currentDashBrand = b;
+  GlobalFilterContext.selectedBrand = b;
   const brandSelect = document.getElementById("dash-filter-brand");
   if (brandSelect) brandSelect.value = b;
   loadDashboardData();
@@ -5108,14 +5171,23 @@ function populateFormMauPeriodSelect() {
   if (!sel) return;
   sel.innerHTML = '';
 
+  const activeM = GlobalFilterContext.getPrimaryMonth();
+
   if (formMauPeriodType === 'month') {
-    for (let m = 1; m <= 12; m++) {
+    const optAll = document.createElement('option');
+    optAll.value = "all";
+    optAll.innerText = `Tất cả các kỳ (T01 - T09/${formMauYear})`;
+    if (activeM === "all") optAll.selected = true;
+    sel.appendChild(optAll);
+
+    const availableMonths = [9, 8, 7, 6, 5, 4, 3, 1];
+    availableMonths.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
       opt.innerText = `Tháng ${m < 10 ? '0' + m : m}/${formMauYear}`;
-      if (m === 8) opt.selected = true;
+      if (activeM.toString() === m.toString()) opt.selected = true;
       sel.appendChild(opt);
-    }
+    });
   } else if (formMauPeriodType === 'quarter') {
     const quarters = [
       { val: 'Q1', text: `Quý I (Tháng 01 - 03/${formMauYear})` },
@@ -5154,7 +5226,12 @@ function populateFormMauPeriodSelect() {
 async function loadFormMauData() {
   const selVal = document.getElementById('form-mau-select-value');
   const selYear = document.getElementById('form-mau-select-year');
-  if (selVal) formMauPeriodValue = selVal.value;
+  if (selVal && selVal.value) {
+    formMauPeriodValue = selVal.value;
+    GlobalFilterContext.setMonth(selVal.value);
+  } else {
+    formMauPeriodValue = GlobalFilterContext.getPrimaryMonth();
+  }
   if (selYear) formMauYear = parseInt(selYear.value) || 2026;
 
   const contentDiv = document.getElementById('form-mau-content');
@@ -5168,10 +5245,14 @@ async function loadFormMauData() {
   }
 
   try {
-    const res = await fetch(`/api/report/form-mau?period_type=${formMauPeriodType}&period_value=${formMauPeriodValue}&year=${formMauYear}`);
+    const pType = (formMauPeriodValue === "all" || formMauPeriodType === "all") ? "all" : formMauPeriodType;
+    const res = await fetch(`/api/report/form-mau?period_type=${pType}&period_value=${encodeURIComponent(formMauPeriodValue)}&year=${formMauYear}`);
     const json = await res.json();
     currentFormMauData = json;
     renderFormMauContent(currentFormMauData);
+    if (typeof isFormMauEditMode !== "undefined" && isFormMauEditMode) {
+      makeFormMauEditable(true);
+    }
   } catch (err) {
     console.error('Error loading form mau data:', err);
     if (contentDiv) {
@@ -5181,6 +5262,7 @@ async function loadFormMauData() {
 }
 
 function renderFormMauPreview() {
+  populateFormMauPeriodSelect();
   loadFormMauData();
 }
 
@@ -6383,23 +6465,50 @@ function renderFormMauContent(d) {
 // ----------------------------------------------------
 function toggleFormMauEditMode() {
   isFormMauEditMode = !isFormMauEditMode;
-  const btn = document.getElementById('btn-form-mau-edit');
-  if (btn) {
-    if (isFormMauEditMode) {
-      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 flex items-center gap-1.5 shadow-md hover:bg-amber-400 transition';
-      btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i><span>Lưu Thay Đổi</span>`;
-      makeFormMauEditable(true);
-    } else {
-      saveFormMauCustomData();
-      btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 flex items-center gap-1.5 transition';
-      btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i><span>Chỉnh Sửa Trực Tiếp</span>`;
+  const btn = document.getElementById('btn-toggle-edit-form-mau') || document.getElementById('btn-form-mau-edit');
+  const btnText = document.getElementById('btn-text-edit-form-mau');
+
+  if (isFormMauEditMode) {
+    if (btn) {
+      btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400 text-xs font-bold shadow-lg transition';
+      btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span id="btn-text-edit-form-mau">Khóa & Lưu Bản Sửa</span>`;
     }
-    if (window.lucide) lucide.createIcons();
+    makeFormMauEditable(true);
+    if (typeof showToast === "function") {
+      showToast("✏️ Đã bật chế độ Chỉnh sửa trực tiếp. Bấm vào bất kỳ ô số liệu/chữ nào để chỉnh sửa giải trình!");
+    } else {
+      alert("✏️ Đã bật chế độ Chỉnh sửa trực tiếp! Bạn có thể bấm vào bất kỳ ô số liệu hoặc dòng chữ nào trên bảng để chỉnh sửa trước khi In/Xuất PDF.");
+    }
+  } else {
+    makeFormMauEditable(false);
+    if (btn) {
+      btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition';
+      btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i><span id="btn-text-edit-form-mau">Chỉnh Sửa Trực Tiếp</span>`;
+    }
+    if (typeof showToast === "function") {
+      showToast("🔒 Đã khóa chế độ chỉnh sửa.");
+    }
   }
+  if (window.lucide) lucide.createIcons();
 }
 
 function makeFormMauEditable(isEditable) {
-  // Let the user edit fields or notes if in edit mode
+  const container = document.getElementById('form-mau-printable');
+  if (!container) return;
+
+  const editableSelectors = 'td, th, p, h2, h3, h4, h5, div.editable-text, span.editable-text';
+  container.querySelectorAll(editableSelectors).forEach(el => {
+    if (el.tagName !== 'BUTTON' && el.tagName !== 'I' && !el.closest('.no-edit')) {
+      el.contentEditable = isEditable ? 'true' : 'false';
+      if (isEditable) {
+        el.style.outline = '1px dashed rgba(245, 158, 11, 0.4)';
+        el.style.cursor = 'text';
+      } else {
+        el.style.outline = 'none';
+        el.style.cursor = '';
+      }
+    }
+  });
 }
 
 async function saveFormMauCustomData() {
@@ -7166,6 +7275,23 @@ function createPrintDocumentHtml({
     .btn-print-action:hover {
       background: #0369a1;
     }
+    .btn-edit-action {
+      background: #f59e0b;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn-edit-action:hover {
+      background: #d97706;
+    }
     .header-table {
       width: 100%;
       border-collapse: collapse;
@@ -7300,6 +7426,7 @@ function createPrintDocumentHtml({
 </head>
 <body>
   <div class="print-bar">
+    <button class="btn-edit-action" id="btn-toggle-print-edit" onclick="togglePrintEditMode()">✏️ Chỉnh Sửa Trực Tiếp Trước Khi In</button>
     <button class="btn-print-action" onclick="window.print()">🖨️ Bấm để In / Lưu PDF ngay</button>
   </div>
 
@@ -7335,6 +7462,27 @@ function createPrintDocumentHtml({
     <!-- SIGNATURES -->
     ${sigHtml}
   </div>
+
+  <script>
+    let isPrintEditing = false;
+    function togglePrintEditMode() {
+      isPrintEditing = !isPrintEditing;
+      const container = document.querySelector('.print-container');
+      const btn = document.getElementById('btn-toggle-print-edit');
+      if (container) {
+        container.contentEditable = isPrintEditing ? "true" : "false";
+        if (isPrintEditing) {
+          container.style.outline = '2px dashed #f59e0b';
+        } else {
+          container.style.outline = 'none';
+        }
+        if (btn) {
+          btn.innerText = isPrintEditing ? "🔒 Khóa & Lưu Bản Đã Sửa" : "✏️ Chỉnh Sửa Trực Tiếp Trước Khi In";
+          btn.style.background = isPrintEditing ? "#16a34a" : "#f59e0b";
+        }
+      }
+    }
+  </script>
 </body>
 </html>
   `;
@@ -7344,7 +7492,8 @@ function createPrintDocumentHtml({
 function exportDashboardExcel() {
   const brandSelect = document.getElementById("dash-filter-brand");
   const brand = brandSelect ? brandSelect.value : (currentDashBrand || "all");
-  const url = `/api/export/dashboard-excel?month=${currentDashMonth}&line=${currentDashLine}&size=${currentDashSize}&brand=${encodeURIComponent(brand)}&year=2026`;
+  const monthParam = GlobalFilterContext.getMonthsParam();
+  const url = `/api/export/dashboard-excel?month=${encodeURIComponent(monthParam)}&line=${currentDashLine}&size=${currentDashSize}&brand=${encodeURIComponent(brand)}&year=2026`;
   window.location.href = url;
 }
 
@@ -7367,7 +7516,7 @@ function printCurrentActiveTab() {
       printCoalReport();
       break;
     case "export-report":
-      printSignOffReport();
+      printDashboardReport();
       break;
     case "master-data":
       printNormsReport();
@@ -7382,20 +7531,18 @@ async function printDashboardReport() {
   const brandSelect = document.getElementById("dash-filter-brand");
   const brand = brandSelect ? brandSelect.value : (currentDashBrand || "all");
 
-  const month = currentDashMonth || "all";
+  const month = GlobalFilterContext.getPrimaryMonth();
   const line = currentDashLine || "all";
   const size = currentDashSize || "all";
 
-  // Build display labels
-  const monthStr = month === "all" ? "Tất cả các kỳ (T1 - T9)" : (month.length === 1 ? "Tháng 0" + month : "Tháng " + month);
+  // Build display labels dynamically
+  const monthStr = GlobalFilterContext.getMonthString();
   const lineStr = line === "all" ? "Toàn bộ DC1 & DC2" : ("Dây chuyền " + line);
   const sizeStr = size === "all" ? "Tất cả kích thước" : ("Kích thước " + size);
   const brandStr = brand === "all" ? "" : ` • TH: ${brand}`;
   const periodInfoStr = `Kỳ: <b>${monthStr} / 2026</b> &nbsp;|&nbsp; <b>${lineStr}</b> &nbsp;|&nbsp; <b>${sizeStr}</b>${brandStr ? ` &nbsp;|&nbsp; <b>${brandStr}</b>` : ''}`;
 
-  const reportTitle = month === "all" 
-    ? "BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT NĂM 2026 (TỪ THÁNG 01 ĐẾN THÁNG 09)"
-    : `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT ${monthStr.toUpperCase()}/2026`;
+  const reportTitle = GlobalFilterContext.getReportTitle();
 
   // Fetch full synchronized payload for this selection
   let dashData = null;

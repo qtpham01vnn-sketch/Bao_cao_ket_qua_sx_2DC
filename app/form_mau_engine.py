@@ -24,49 +24,81 @@ def init_form_mau_db(conn):
     conn.commit()
 
 def resolve_period(period_type="month", period_value="8", year=2026):
-    if period_type == "month":
-        m_int = int(period_value) if str(period_value).isdigit() else 8
-        months = [m_int]
-        period_title = f"THÁNG {m_int:02d} NĂM {year}"
-        period_key = f"M{m_int:02d}_{year}"
-        next_m = (m_int % 12) + 1
-        next_y = year if m_int < 12 else year + 1
-        next_period_title = f"Tháng {next_m:02d}/{next_y}"
-        next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
-    elif period_type == "quarter":
-        q_val = str(period_value).upper()
+    s_val = str(period_value).strip() if period_value is not None else "8"
+    p_type = str(period_type).strip().lower() if period_type is not None else "month"
+    year_int = int(year) if str(year).isdigit() else 2026
+
+    # 1. Check if 'all' or 'full_year'
+    if s_val.lower() in ("all", "tất cả", "t1-t9", "t1-t12", "tat ca", "all_months") or p_type in ("all", "full_year"):
+        months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+        period_key = f"Y_{year_int}"
+        next_period_title = f"Năm {year_int + 1}"
+        next_period_full = f"NĂM {year_int + 1}"
+    # 2. Check if comma-separated list of months e.g. "1,3,4,5,6,7,8,9" or "8,9"
+    elif "," in s_val:
+        m_list = [int(x.strip()) for x in s_val.split(",") if x.strip().isdigit()]
+        months = sorted(list(set(m_list))) if m_list else [8]
+        if len(months) == 1:
+            m_int = months[0]
+            period_title = f"THÁNG {m_int:02d} NĂM {year_int}"
+            period_key = f"M{m_int:02d}_{year_int}"
+            next_m = (m_int % 12) + 1
+            next_y = year_int if m_int < 12 else year_int + 1
+            next_period_title = f"Tháng {next_m:02d}/{next_y}"
+            next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
+        elif len(months) >= 8:
+            period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+            period_key = f"Y_{year_int}"
+            next_period_title = f"Năm {year_int + 1}"
+            next_period_full = f"NĂM {year_int + 1}"
+        else:
+            period_title = f"TỪ THÁNG {months[0]:02d} ĐẾN THÁNG {months[-1]:02d} NĂM {year_int}"
+            period_key = f"RANGE_{months[0]}_{months[-1]}_{year_int}"
+            next_m = (months[-1] % 12) + 1
+            next_y = year_int if months[-1] < 12 else year_int + 1
+            next_period_title = f"Tháng {next_m:02d}/{next_y}"
+            next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
+    # 3. Quarter
+    elif p_type == "quarter":
+        q_val = s_val.upper()
         q_map = {"Q1": [1,2,3], "Q2": [4,5,6], "Q3": [7,8,9], "Q4": [10,11,12], "1": [1,2,3], "2": [4,5,6], "3": [7,8,9], "4": [10,11,12]}
         months = q_map.get(q_val, [7,8,9])
         clean_q = q_val if q_val.startswith("Q") else f"Q{q_val}"
-        period_title = f"QUÝ {clean_q[-1]} NĂM {year}"
-        period_key = f"Q_{clean_q}_{year}"
+        period_title = f"QUÝ {clean_q[-1]} NĂM {year_int}"
+        period_key = f"Q_{clean_q}_{year_int}"
         next_q_num = (int(clean_q[-1]) % 4) + 1
-        next_period_title = f"Quý {next_q_num} Năm {year if next_q_num > 1 else year + 1}"
-        next_period_full = f"QUÝ {next_q_num} NĂM {year if next_q_num > 1 else year + 1}"
-    elif period_type == "half_year":
-        if "2" in str(period_value) or "CUOI" in str(period_value).upper():
+        next_period_title = f"Quý {next_q_num} Năm {year_int if next_q_num > 1 else year_int + 1}"
+        next_period_full = f"QUÝ {next_q_num} NĂM {year_int if next_q_num > 1 else year_int + 1}"
+    # 4. Half year
+    elif p_type == "half_year":
+        if "2" in s_val or "CUOI" in s_val.upper():
             months = [7,8,9,10,11,12]
-            period_title = f"6 THÁNG CUỐI NĂM {year}"
-            period_key = f"H2_{year}"
-            next_period_title = f"6 Tháng đầu năm {year + 1}"
-            next_period_full = f"6 THÁNG ĐẦU NĂM {year + 1}"
+            period_title = f"6 THÁNG CUỐI NĂM {year_int}"
+            period_key = f"H2_{year_int}"
+            next_period_title = f"6 Tháng đầu năm {year_int + 1}"
+            next_period_full = f"6 THÁNG ĐẦU NĂM {year_int + 1}"
         else:
             months = [1,2,3,4,5,6]
-            period_title = f"6 THÁNG ĐẦU NĂM {year}"
-            period_key = f"H1_{year}"
-            next_period_title = f"6 Tháng cuối năm {year}"
-            next_period_full = f"6 THÁNG CUỐI NĂM {year}"
-    else: # full_year
-        months = list(range(1, 13))
-        period_title = f"CẢ NĂM {year}"
-        period_key = f"Y_{year}"
-        next_period_title = f"Năm {year + 1}"
-        next_period_full = f"NĂM {year + 1}"
+            period_title = f"6 THÁNG ĐẦU NĂM {year_int}"
+            period_key = f"H1_{year_int}"
+            next_period_title = f"6 Tháng cuối năm {year_int}"
+            next_period_full = f"6 THÁNG CUỐI NĂM {year_int}"
+    # 5. Single month
+    else:
+        m_int = int(s_val) if s_val.isdigit() else 8
+        months = [m_int]
+        period_title = f"THÁNG {m_int:02d} NĂM {year_int}"
+        period_key = f"M{m_int:02d}_{year_int}"
+        next_m = (m_int % 12) + 1
+        next_y = year_int if m_int < 12 else year_int + 1
+        next_period_title = f"Tháng {next_m:02d}/{next_y}"
+        next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
 
     return {
-        "period_type": period_type,
-        "period_value": period_value,
-        "year": int(year),
+        "period_type": p_type,
+        "period_value": s_val,
+        "year": year_int,
         "period_key": period_key,
         "period_title": period_title,
         "next_period_title": next_period_title,
