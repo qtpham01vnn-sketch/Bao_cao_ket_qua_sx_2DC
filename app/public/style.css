@@ -572,3 +572,143 @@ html:not(.dark) [id^="modal-"] .text-white {
   }
 }
 
+
+
+/* ========================================================================== */
+/* SMARTPHONE RESPONSIVE SUITE (iOS Safari & Android Chrome - 360px to 640px) */
+/* Đảm bảo: KHÔNG chèn chữ, KHÔNG mất dòng, KHÔNG chèn dòng, KHÔNG dồn hàng  */
+/* ========================================================================== */
+
+@media (max-width: 640px) {
+  /* 1. Root & Shell Containment (Ngăn 100% hiện tượng tràn ngang màn hình) */
+  html, body, #app-container {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  #main-content {
+    padding: 0.5rem 0.625rem !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 2. Top Header Bar: Tối ưu thanh điều khiển trên màn hình nhỏ */
+  header {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    gap: 0.375rem !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  #user-role-select {
+    max-width: 80px !important;
+    font-size: 10.5px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  #trial-timer-badge {
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+  }
+
+  #trial-timer-badge span#trial-timer-text {
+    font-size: 10px !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* 3. Dashboard Top Banner: Tiêu đề và nút tác vụ */
+  #tab-dashboard h2 {
+    font-size: 0.95rem !important;
+    line-height: 1.35 !important;
+    word-break: break-word !important;
+  }
+
+  /* 4. Slicers: Không bị chèn dòng, viền dọc không bị đứt đoạn vô lý khi xuống dòng */
+  .p2-slicer-btn, .p3-slicer-btn, .p4-slicer-btn, .dash-slicer-btn {
+    padding: 4px 6px !important;
+    font-size: 10.5px !important;
+    min-width: 26px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Bỏ viền ngăn cách dọc (border-l) khi rớt xuống hàng mới trên mobile */
+  div[class*="border-l border-slate-700"] {
+    border-left: none !important;
+    padding-left: 0 !important;
+    width: 100% !important;
+    margin-top: 0.25rem !important;
+  }
+
+  /* 5. Metric Cards & KPI Tiles: Số liệu tuyệt đối không bị ngắt/rớt dòng */
+  [id^="tile-act-"], [id^="tile-pln-"] {
+    font-size: 0.8125rem !important;
+    white-space: nowrap !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.03em !important;
+    display: inline-block !important;
+  }
+
+  [id^="dash-mat-kpi-"] {
+    font-size: 0.95rem !important;
+    white-space: nowrap !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* 6. Bảng dữ liệu (Tables): Chuẩn cuộn ngang mượt mà, không ép nát chữ (No text crushing) */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
+    overscroll-behavior-x: contain !important;
+  }
+
+  /* Bắt buộc bảng có chiều rộng tối thiểu chuẩn để các cột giữ khoảng cách thông thoáng */
+  table:has(#dash-brand-table-body),
+  #dash-brand-table-body {
+    min-width: 780px !important;
+  }
+
+  table:has(#dash-mat-table-body),
+  #dash-mat-table-body {
+    min-width: 720px !important;
+  }
+
+  table:has(#dash-coal-table-body),
+  #dash-coal-table-body {
+    min-width: 960px !important;
+  }
+
+  /* Tiêu đề bảng không bao giờ bị dồn thành từng chữ cái đơn lẻ */
+  table th {
+    white-space: nowrap !important;
+    font-size: 10.5px !important;
+    padding: 6px 8px !important;
+    letter-spacing: 0.01em !important;
+  }
+
+  table td {
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  table td.font-mono,
+  table td span.font-mono,
+  table tfoot td {
+    white-space: nowrap !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  /* 7. Smart Anomaly Radar Mobile Ergonomics */
+  #widget-anomaly-radar {
+    padding: 0.625rem !important;
+  }
+
+  #anomaly-cards-scroll-container {
+    grid-template-columns: 1fr !important;
+    max-height: 340px !important;
+  }
+}

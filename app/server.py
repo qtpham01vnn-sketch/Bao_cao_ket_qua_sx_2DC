@@ -1613,7 +1613,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def handle_get_approval_status(self, params):
-        month = parse_month_int(params.get("month", [None])[0]) or 8
+        month = parse_month_int(params.get("month", [None])[0]) or 10
         year = int(params.get("year", [2026])[0])
         report_type = params.get("type", ["form_mau_signoff"])[0]
 
@@ -1650,7 +1650,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         self.send_json_response({"success": True, "history": rows, "count": len(rows)})
 
     def handle_submit_approval(self, body):
-        month = parse_month_int(body.get("month")) or 8
+        month = parse_month_int(body.get("month")) or 10
         year = int(body.get("year", 2026))
         report_type = body.get("report_type", "form_mau_signoff")
         submitted_by = (body.get("submitted_by") or "Quản Đốc Phân Xưởng").strip()
@@ -1679,7 +1679,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def handle_sign_approval(self, body):
-        month = parse_month_int(body.get("month")) or 8
+        month = parse_month_int(body.get("month")) or 10
         year = int(body.get("year", 2026))
         report_type = body.get("report_type", "form_mau_signoff")
         approved_by = (body.get("approved_by") or "Ban Giám Đốc").strip()
@@ -1794,79 +1794,136 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json_response({"success": False, "error": "Tên đăng nhập hoặc mã PIN không hợp lệ."}, status=401)
 
     def handle_get_anomalies(self, params):
-        month = parse_month_int(params.get("month", [None])[0]) or 8
+        raw_month = params.get("month", [None])[0]
+        line = params.get("line", ["all"])[0]
+        size = params.get("size", ["all"])[0]
         conn = get_db()
         cur = conn.cursor()
 
-        # Query coal consumption
-        coal_rows = [dict(r) for r in cur.execute("SELECT * FROM data_coal_consumption WHERE month = ?", (month,)).fetchall()]
-        # Query material consumption
-        mat_rows = [dict(r) for r in cur.execute("SELECT * FROM data_material_consumption WHERE month = ?", (month,)).fetchall()]
+        # Find latest available month in db
+        max_month_row = cur.execute("SELECT MAX(month) FROM data_production_summary").fetchone()
+        latest_month = max_month_row[0] if (max_month_row and max_month_row[0]) else 10
+
+        target_months = []
+        is_all_months = False
+        if not raw_month or str(raw_month).lower() in ("all", "all_months", "tất cả", "t1-t10", "t1-t9", "t1-t12", "none", "null"):
+            is_all_months = True
+            target_months = [r[0] for r in cur.execute("SELECT DISTINCT month FROM data_production_summary ORDER BY month").fetchall()]
+        elif "," in str(raw_month):
+            target_months = [int(x.strip()) for x in str(raw_month).split(",") if x.strip().isdigit()]
+        elif "-" in str(raw_month):
+            parts = [int(x.strip()) for x in str(raw_month).split("-") if x.strip().isdigit()]
+            if len(parts) == 2:
+                target_months = list(range(parts[0], parts[1] + 1))
+            elif len(parts) == 1:
+                target_months = [parts[0]]
+        else:
+            try:
+                target_months = [int(raw_month)]
+            except:
+                target_months = [latest_month]
+
+        if not target_months:
+            target_months = [latest_month]
+
+        placeholders = ",".join(["?"] * len(target_months))
+
+        # Query materials with line & size filters
+        where_mat = [f"month IN ({placeholders})"]
+        vals_mat = list(target_months)
+        if line and line != "all":
+            where_mat.append("line = ?")
+            vals_mat.append(line)
+        if size and size != "all":
+            where_mat.append("size = ?")
+            vals_mat.append(size)
+        
+        where_mat_str = " AND ".join(where_mat)
+        mat_rows = [dict(r) for r in cur.execute(f"SELECT * FROM data_material_consumption WHERE {where_mat_str}", vals_mat).fetchall()]
+
+        # Query coal with line & size filters
+        where_coal = [f"month IN ({placeholders})"]
+        vals_coal = list(target_months)
+        if line and line != "all":
+            where_coal.append("line = ?")
+            vals_coal.append(line)
+        if size and size != "all":
+            where_coal.append("size = ?")
+            vals_coal.append(size)
+
+        where_coal_str = " AND ".join(where_coal)
+        coal_rows = [dict(r) for r in cur.execute(f"SELECT * FROM data_coal_consumption WHERE {where_coal_str}", vals_coal).fetchall()]
         conn.close()
 
         anomalies = []
 
-        # Analyze Coal
+        # Analyze Coal (excess ash rate or excess ash weight)
         for c in coal_rows:
-            item_name = c.get("item_name", "Than")
-            line = c.get("line_name", "DC")
-            actual = float(c.get("actual_rate") or 0)
-            norm = float(c.get("norm_rate") or 0)
+            c_line = c.get("line") or "DC"
+            c_size = c.get("size") or ""
+            m_val = c.get("month")
+            ash_rate = float(c.get("ash_rate") or 0)
+            std_ash = float(c.get("std_ash_rate") or 15.0)
+            excess_ash_wt = float(c.get("excess_ash_weight") or 0)
+            if (std_ash > 0 and ash_rate > std_ash) or excess_ash_wt > 0:
+                diff_pct = round(ash_rate - std_ash, 2) if std_ash > 0 else 0
+                anomalies.append({
+                    "category": "Nhiên liệu (Than)",
+                    "item": f"Than ({c.get('coal_supplier') or 'Lò nung'})",
+                    "line": c_line,
+                    "size": c_size,
+                    "month": m_val,
+                    "actual": ash_rate,
+                    "norm": std_ash,
+                    "unit": "%",
+                    "variance_pct": diff_pct,
+                    "over_qty": excess_ash_wt,
+                    "severity": "high" if diff_pct > 3.0 or excess_ash_wt > 0 else "medium",
+                    "message": f"Tỷ lệ cám/tro {ash_rate}% vượt định mức {std_ash}% tại {c_line} T{m_val}"
+                })
 
-            if norm > 0 and actual > 0:
-                diff_pct = round(((actual - norm) / norm) * 100, 2)
-                if diff_pct > 5.0:
-                    anomalies.append({
-                        "category": "Nhiên liệu (Than)",
-                        "item": item_name,
-                        "line": line,
-                        "actual": actual,
-                        "norm": norm,
-                        "unit": "kg/m²",
-                        "variance_pct": diff_pct,
-                        "severity": "high" if diff_pct > 10.0 else "medium",
-                        "message": f"Tiêu hao {item_name} vượt định mức {diff_pct}% tại {line} ({actual} vs {norm} kg/m²)"
-                    })
-                elif diff_pct < -5.0:
-                    anomalies.append({
-                        "category": "Nhiên liệu (Than)",
-                        "item": item_name,
-                        "line": line,
-                        "actual": actual,
-                        "norm": norm,
-                        "unit": "kg/m²",
-                        "variance_pct": diff_pct,
-                        "severity": "positive",
-                        "message": f"Tiết kiệm {item_name} vượt trội {abs(diff_pct)}% tại {line}"
-                    })
-
-        # Analyze Materials
+        # Analyze Materials: Any item with over_qty > 0 or actual_rate > norm_value
         for m in mat_rows:
-            item_name = m.get("material_name", "Vật tư")
-            line = m.get("line_name", "DC")
-            actual = float(m.get("actual_consumption") or 0)
-            norm = float(m.get("norm_consumption") or 0)
+            item_name = m.get("material_name") or "Vật tư"
+            m_line = m.get("line") or "DC"
+            m_size = m.get("size") or ""
+            m_val = m.get("month")
+            actual_rate = float(m.get("actual_rate") or 0)
+            norm_val = float(m.get("norm_value") or 0)
+            over_qty = float(m.get("over_qty") or 0)
+            unit = m.get("unit") or "Kg"
 
-            if norm > 0 and actual > 0:
-                diff_pct = round(((actual - norm) / norm) * 100, 2)
-                if diff_pct > 7.0:
-                    anomalies.append({
-                        "category": "Nguyên vật liệu / Men",
-                        "item": item_name,
-                        "line": line,
-                        "actual": actual,
-                        "norm": norm,
-                        "unit": m.get("unit", "kg/m²"),
-                        "variance_pct": diff_pct,
-                        "severity": "high" if diff_pct > 15.0 else "medium",
-                        "message": f"{item_name} tiêu hao vượt mức {diff_pct}% tại {line}"
-                    })
+            # An item is Vượt ĐM if and only if over_qty > 0
+            if over_qty > 0:
+                diff_pct = round(((actual_rate - norm_val) / norm_val) * 100, 2) if norm_val > 0 else 0
+                anomalies.append({
+                    "category": "Nguyên vật liệu" if ("xương" in item_name.lower() or "men" in item_name.lower()) else "Vật tư phụ",
+                    "item": item_name,
+                    "line": m_line,
+                    "size": m_size,
+                    "month": m_val,
+                    "actual": round(actual_rate, 4),
+                    "norm": round(norm_val, 4),
+                    "unit": unit,
+                    "variance_pct": diff_pct,
+                    "over_qty": round(over_qty, 2),
+                    "severity": "high" if (diff_pct > 10.0 or over_qty >= 500) else "medium",
+                    "message": f"{item_name} ({m_line} {m_size}) vượt định mức {diff_pct}% (+{round(over_qty, 2)} {unit})"
+                })
+
+        # Sort anomalies: high severity first, then by over_qty descending
+        anomalies.sort(key=lambda x: (0 if x["severity"] == "high" else 1, -x.get("over_qty", 0)))
 
         self.send_json_response({
             "success": True,
-            "month": month,
+            "month": raw_month if raw_month else latest_month,
+            "line": line,
+            "size": size,
+            "target_months": target_months,
+            "is_all": is_all_months,
             "total_anomalies": len(anomalies),
             "high_risk_count": sum(1 for a in anomalies if a["severity"] == "high"),
+            "total_over_qty": round(sum(a.get("over_qty", 0) for a in anomalies), 2),
             "items": anomalies
         })
 

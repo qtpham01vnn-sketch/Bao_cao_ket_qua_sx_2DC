@@ -2060,15 +2060,23 @@ function updateSizeSlicerAvailability(sec, line) {
 function setDashMonth(m) {
   GlobalFilterContext.setMonth(m);
   currentDashMonth = GlobalFilterContext.getPrimaryMonth();
+  window.currentSelectedMonth = currentDashMonth;
   updateSlicerButtonStyles(1);
   loadDashboardData();
+  if (typeof loadDashboardAnomalies === "function") {
+    loadDashboardAnomalies(currentDashMonth, currentDashLine, currentDashSize);
+  }
 }
 
 function setDashMonthRange(fromM, toM) {
   GlobalFilterContext.setRange(fromM, toM);
   currentDashMonth = GlobalFilterContext.getPrimaryMonth();
+  window.currentSelectedMonth = currentDashMonth;
   updateSlicerButtonStyles(1);
   loadDashboardData();
+  if (typeof loadDashboardAnomalies === "function") {
+    loadDashboardAnomalies(currentDashMonth, currentDashLine, currentDashSize);
+  }
 }
 
 function applyDashMonthRange() {
@@ -2086,6 +2094,9 @@ function setDashLine(l) {
   updateSizeSlicerAvailability(1, l);
   updateSlicerButtonStyles(1);
   loadDashboardData();
+  if (typeof loadDashboardAnomalies === "function") {
+    loadDashboardAnomalies(currentDashMonth, currentDashLine, currentDashSize);
+  }
 }
 
 function setDashSize(s) {
@@ -2093,6 +2104,9 @@ function setDashSize(s) {
   GlobalFilterContext.selectedSize = s;
   updateSlicerButtonStyles(1);
   loadDashboardData();
+  if (typeof loadDashboardAnomalies === "function") {
+    loadDashboardAnomalies(currentDashMonth, currentDashLine, currentDashSize);
+  }
 }
 
 function setDashBrand(b) {
@@ -2269,6 +2283,7 @@ function resetSectionFilter(sec) {
 
 function resetDashFilters() {
   currentDashMonth = "all";
+  window.currentSelectedMonth = "all";
   currentDashLine = "all";
   currentDashSize = "all";
   currentDashBrand = "all";
@@ -2500,6 +2515,9 @@ async function loadDashboardData() {
     currentDashRawCoalTrend = coalSec.coal_monthly_trend || [];
     filterDashboardCoal();
 
+    if (typeof loadDashboardAnomalies === "function") {
+      loadDashboardAnomalies(currentDashMonth, currentDashLine, currentDashSize);
+    }
     if (window.lucide && lucide.createIcons) {
       lucide.createIcons();
     }
@@ -5219,7 +5237,7 @@ async function submitMonthlyImport() {
 // TAB 8: FORM MẪU BÁO CÁO TỔNG HỢP TRÌNH KÝ 8 PHẦN (V3)
 // ----------------------------------------------------
 let formMauPeriodType = 'month';
-let formMauPeriodValue = '8';
+let formMauPeriodValue = '10';
 let formMauYear = 2026;
 let currentFormMauData = null;
 let isFormMauEditMode = false;
@@ -9641,71 +9659,329 @@ async function loadAuditLogsUI() {
 // SMART ANOMALY DETECTION (AI RADAR)
 // ==========================================
 
-async function loadDashboardAnomalies(selectedMonth) {
+// ==========================================
+// SMART ANOMALY RADAR: COLLAPSIBLE & COMPACT
+// ==========================================
+let isAnomalyRadarExpanded = false;
+let currentAnomalyData = {
+  items: [],
+  totalOverQty: 0,
+  highRiskCount: 0,
+  monthLabel: "",
+  scopeLabel: ""
+};
+let currentAnomalyFilterTab = "all";
+let currentAnomalySearchTerm = "";
+
+function formatMonthPeriodLabel(m) {
+  if (!m || m === "all" || m === "ALL" || m === "t1-t10" || m === "t1-t9" || m === "t1-t12") {
+    return "Tất cả các kỳ (T1 - T10)/2026";
+  }
+  const str = String(m).trim();
+  if (str === "1,2,3,4,5,6" || str === "1-6") {
+    return "Kỳ 6 Tháng đầu (T1 - T6)/2026";
+  }
+  if (str === "7,8,9" || str === "7-9") {
+    return "Kỳ Quý 3 (T7 - T9)/2026";
+  }
+  if (str.includes(",")) {
+    const parts = str.split(",").map(Number).filter(n => !isNaN(n)).sort((a,b) => a - b);
+    return `Kỳ T${parts[0]} - T${parts[parts.length - 1]}/2026`;
+  }
+  if (str.includes("-")) {
+    return `Kỳ T${str}/2026`;
+  }
+  const mNum = parseInt(str);
+  if (!isNaN(mNum)) {
+    return `Tháng ${mNum < 10 ? '0' + mNum : mNum}/2026`;
+  }
+  return `Kỳ ${str}/2026`;
+}
+
+function toggleAnomalyRadar() {
+  isAnomalyRadarExpanded = !isAnomalyRadarExpanded;
+  renderAnomalyRadarContent();
+}
+
+function setAnomalyFilterTab(tab) {
+  currentAnomalyFilterTab = tab;
+  renderAnomalyCardsOnly();
+}
+
+function onAnomalySearchInput(val) {
+  currentAnomalySearchTerm = (val || "").trim().toLowerCase();
+  renderAnomalyCardsOnly();
+}
+
+function getFilteredAnomalyItems() {
+  let list = [...(currentAnomalyData.items || [])];
+
+  if (currentAnomalyFilterTab === "high") {
+    list = list.filter(it => it.severity === "high");
+  } else if (currentAnomalyFilterTab === "dc1") {
+    list = list.filter(it => (it.line || "").toUpperCase().includes("DC1"));
+  } else if (currentAnomalyFilterTab === "dc2") {
+    list = list.filter(it => (it.line || "").toUpperCase().includes("DC2"));
+  }
+
+  if (currentAnomalySearchTerm) {
+    list = list.filter(it => 
+      (it.item || "").toLowerCase().includes(currentAnomalySearchTerm) ||
+      (it.line || "").toLowerCase().includes(currentAnomalySearchTerm) ||
+      (it.size || "").toLowerCase().includes(currentAnomalySearchTerm) ||
+      (it.message || "").toLowerCase().includes(currentAnomalySearchTerm)
+    );
+  }
+
+  return list;
+}
+
+function renderAnomalyCardsOnly() {
+  const cardsContainer = document.getElementById("anomaly-cards-scroll-container");
+  const countBadge = document.getElementById("anomaly-filtered-count-badge");
+  if (!cardsContainer) return;
+
+  const filtered = getFilteredAnomalyItems();
+  if (countBadge) {
+    countBadge.textContent = `${filtered.length} / ${currentAnomalyData.items.length} mục`;
+  }
+
+  if (filtered.length === 0) {
+    cardsContainer.innerHTML = `
+      <div class="p-6 text-center text-slate-400 col-span-1 md:col-span-3 bg-[#08152b] rounded-lg border border-slate-800">
+        <i data-lucide="search-x" class="w-6 h-6 text-slate-500 mx-auto mb-1.5"></i>
+        <div class="text-xs">Không tìm thấy chỉ số vượt định mức nào khớp với từ khóa/bộ lọc này.</div>
+      </div>
+    `;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    return;
+  }
+
+  cardsContainer.innerHTML = filtered.map(it => {
+    const isHigh = it.severity === "high";
+    const borderCls = isHigh ? "border-rose-500/50 bg-[#0d1f3d] hover:border-rose-400" : "border-amber-500/40 bg-[#0d1f3d] hover:border-amber-400";
+    const badgeCls = isHigh ? "bg-rose-500/20 text-rose-300 border-rose-500/40" : "bg-amber-500/20 text-amber-300 border-amber-500/40";
+    const tagText = isHigh ? "VƯỢT CAO" : "VƯỢT ĐM";
+    const monthText = it.month ? `T${it.month}` : "";
+
+    return `
+      <div class="p-3 rounded-xl border ${borderCls} transition text-xs space-y-2 shadow-md">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="font-black text-white text-[12px] sm:text-[12.5px] flex items-center gap-1.5 break-words">
+              <i data-lucide="${isHigh ? 'alert-triangle' : 'alert-circle'}" class="w-3.5 h-3.5 shrink-0 ${isHigh ? 'text-rose-400' : 'text-amber-400'}"></i>
+              <span>${it.item}</span>
+            </div>
+            <div class="text-[10.5px] text-slate-400 font-medium mt-0.5 break-words">
+              ${monthText ? `<span class="text-amber-300 font-bold mr-1">${monthText}</span>• ` : ''}Dây chuyền: <b class="text-cyan-300 font-semibold">${it.line}</b> • Kích thước: <b class="text-cyan-300 font-semibold">${it.size || '-'}</b>
+            </div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-black ${badgeCls} border whitespace-nowrap shrink-0">
+            +${it.variance_pct}% (${tagText})
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5 pt-1 text-[11px] border-t border-[#1e3a6a]/40">
+          <div class="bg-[#081427] p-1.5 rounded min-w-0">
+            <span class="text-slate-400 block text-[9.5px]">Định mức:</span>
+            <div class="truncate">
+              <b class="text-slate-200 font-mono">${formatNumber(it.norm, 4)}</b> <span class="text-[9.5px] text-slate-400">${it.unit}</span>
+            </div>
+          </div>
+          <div class="bg-[#081427] p-1.5 rounded min-w-0">
+            <span class="text-slate-400 block text-[9.5px]">Thực tế:</span>
+            <div class="truncate">
+              <b class="text-amber-300 font-mono">${formatNumber(it.actual, 4)}</b> <span class="text-[9.5px] text-slate-400">${it.unit}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-[11px] bg-rose-950/40 border border-rose-500/30 px-2 py-1 rounded text-rose-200 font-bold">
+          <span>Lượng vượt:</span>
+          <span class="font-mono text-rose-300 font-black whitespace-nowrap">+${formatNumber(it.over_qty, 2)} ${it.unit}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
+function renderAnomalyRadarContent() {
   const container = document.getElementById("anomaly-items-container");
   const badge = document.getElementById("anomaly-badge-count");
   if (!container) return;
 
-  const m = selectedMonth || (window.currentSelectedMonth || 8);
+  const { items, totalOverQty, highRiskCount, monthLabel, scopeLabel } = currentAnomalyData;
 
-  try {
-    const res = await fetch(`/api/data/anomalies?month=${m}`);
-    const data = await res.json();
-    const items = data.items || [];
-
-    if (badge) {
-      if (items.length === 0) {
-        badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40";
-        badge.textContent = "100% Trong Định Mức";
-      } else {
-        const highCount = data.high_risk_count || 0;
-        badge.className = highCount > 0 
-          ? "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-400/40 animate-pulse"
-          : "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40";
-        badge.textContent = `${items.length} Cảnh Báo Tiêu Hao`;
-      }
-    }
-
+  // 1. Update top badge
+  if (badge) {
     if (items.length === 0) {
-      container.innerHTML = `
-        <div class="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-xs text-emerald-300 col-span-3 flex items-center justify-center gap-2">
-          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
-          <span>Tháng ${m}/2026: Toàn bộ chỉ số tiêu hao Than và Men/Xương đều nằm trong ngưỡng định mức kỹ thuật ban hành.</span>
-        </div>
-      `;
+      badge.className = "px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1";
+      badge.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-emerald-400"></i> 100% Trong Định Mức`;
     } else {
-      container.innerHTML = items.slice(0, 6).map(it => {
-        const isHigh = it.severity === "high";
-        const isPos = it.severity === "positive";
-        const borderCls = isPos ? "border-emerald-500/40 bg-emerald-950/20 text-emerald-200" : isHigh ? "border-rose-500/50 bg-rose-950/30 text-rose-200" : "border-amber-500/40 bg-amber-950/20 text-amber-200";
-        const iconName = isPos ? "trending-down" : isHigh ? "alert-triangle" : "alert-circle";
-        return `
-          <div class="p-2.5 rounded-lg border ${borderCls} text-xs space-y-1">
-            <div class="flex items-center justify-between font-bold">
-              <span class="flex items-center gap-1.5">
-                <i data-lucide="${iconName}" class="w-3.5 h-3.5"></i>
-                ${it.item} (${it.line})
-              </span>
-              <span class="font-mono ${it.variance_pct > 0 ? 'text-rose-400' : 'text-emerald-400'}">
-                ${it.variance_pct > 0 ? '+' : ''}${it.variance_pct}%
-              </span>
-            </div>
-            <div class="text-[11px] text-slate-300 flex items-center justify-between">
-              <span>Thực tế: <b class="text-white">${it.actual}</b> ${it.unit}</span>
-              <span>Định mức: <b class="text-cyan-300">${it.norm}</b></span>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-  } catch (err) {
-    console.error("Lỗi khi quét Anomalies:", err);
-    if (container) {
-      container.innerHTML = '<div class="p-2 text-xs text-slate-500 col-span-3 text-center">Không thể tải cảnh báo bất thường.</div>';
+      badge.className = highRiskCount > 0 
+        ? "px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-400/40 animate-pulse flex items-center gap-1"
+        : "px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center gap-1";
+      badge.innerHTML = `<i data-lucide="alert-triangle" class="w-3 h-3 text-rose-400"></i> ${items.length} Cảnh Báo Vượt Định Mức`;
     }
   }
 
-  if (window.lucide) lucide.createIcons();
+  // 2. If 0 items: show clean green card
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-xs text-emerald-300 flex items-center justify-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+        <span>${monthLabel}${scopeLabel}: Toàn bộ chỉ số tiêu hao Than và Men/Xương/Vật tư đều nằm trong ngưỡng định mức kỹ thuật ban hành.</span>
+      </div>
+    `;
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    return;
+  }
+
+  // 3. Top 3 preview chips for compact view
+  const topPreviewChips = items.slice(0, 3).map(it => {
+    const isHigh = it.severity === "high";
+    const chipCls = isHigh ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : "bg-amber-500/20 text-amber-300 border-amber-500/30";
+    return `<span class="px-2 py-0.5 rounded ${chipCls} text-[10.5px] border font-medium whitespace-nowrap">${it.item} (+${formatNumber(it.over_qty, 1)} ${it.unit})</span>`;
+  }).join("");
+
+  const moreCountText = items.length > 3 ? `<span class="text-[10.5px] text-slate-400 font-semibold">+${items.length - 3} mục khác...</span>` : "";
+
+  // 4. Compact Summary Bar (Always visible)
+  const compactBarHtml = `
+    <div class="p-2.5 sm:p-3 rounded-lg bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-1.5 font-bold">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400 shrink-0"></i>
+          <span class="break-words">${monthLabel}${scopeLabel}:</span>
+        </div>
+        <span class="px-2 py-0.5 rounded bg-rose-500/20 text-white font-extrabold text-[11px] border border-rose-500/40 whitespace-nowrap">
+          ${items.length} chỉ số Vượt ĐM
+        </span>
+        <span class="text-slate-300 text-[11px] whitespace-nowrap">
+          Tổng vượt: <b class="text-rose-300 font-mono">+${formatNumber(totalOverQty, 2)}</b> (kg/cái)
+        </span>
+        <div class="hidden md:flex items-center gap-1.5">
+          ${topPreviewChips}
+          ${moreCountText}
+        </div>
+      </div>
+      
+      <div class="w-full sm:w-auto flex items-center justify-end">
+        <button type="button" onclick="toggleAnomalyRadar()" class="w-full sm:w-auto justify-center flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${isAnomalyRadarExpanded ? 'bg-[#13284d] text-cyan-300 border-cyan-500/40' : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'} border text-xs font-bold transition shadow active:scale-95">
+          <i data-lucide="${isAnomalyRadarExpanded ? 'chevron-up' : 'chevron-down'}" class="w-3.5 h-3.5"></i>
+          <span>${isAnomalyRadarExpanded ? 'Thu gọn' : `Xem chi tiết (${items.length} mục) ▾`}</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  // 5. Drawer when expanded
+  let expandedDrawerHtml = "";
+  if (isAnomalyRadarExpanded) {
+    const dc1Count = items.filter(it => (it.line || "").toUpperCase().includes("DC1")).length;
+    const dc2Count = items.filter(it => (it.line || "").toUpperCase().includes("DC2")).length;
+
+    expandedDrawerHtml = `
+      <div class="p-3 bg-[#071326] rounded-xl border border-blue-500/30 space-y-2.5 shadow-inner transition-all">
+        <!-- Sub-toolbar: Search & Filter Tabs -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#1e3a6a]/40 text-xs">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[11px] text-slate-400 font-semibold mr-1">Lọc nhanh:</span>
+            <button type="button" onclick="setAnomalyFilterTab('all')" class="px-2 py-0.5 rounded text-[11px] font-bold ${currentAnomalyFilterTab === 'all' ? 'bg-cyan-600 text-white' : 'bg-[#0e2142] text-slate-300 hover:text-white border border-slate-700'} transition">
+              Tất cả (${items.length})
+            </button>
+            <button type="button" onclick="setAnomalyFilterTab('high')" class="px-2 py-0.5 rounded text-[11px] font-bold ${currentAnomalyFilterTab === 'high' ? 'bg-rose-600 text-white' : 'bg-[#0e2142] text-rose-300 hover:text-white border border-rose-500/30'} transition">
+              Vượt cao (${highRiskCount})
+            </button>
+            <button type="button" onclick="setAnomalyFilterTab('dc1')" class="px-2 py-0.5 rounded text-[11px] font-bold ${currentAnomalyFilterTab === 'dc1' ? 'bg-emerald-600 text-white' : 'bg-[#0e2142] text-emerald-300 hover:text-white border border-emerald-500/30'} transition">
+              DC1 (${dc1Count})
+            </button>
+            <button type="button" onclick="setAnomalyFilterTab('dc2')" class="px-2 py-0.5 rounded text-[11px] font-bold ${currentAnomalyFilterTab === 'dc2' ? 'bg-indigo-600 text-white' : 'bg-[#0e2142] text-indigo-300 hover:text-white border border-indigo-500/30'} transition">
+              DC2 (${dc2Count})
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <div class="relative flex-1 sm:w-56">
+              <input type="text" oninput="onAnomalySearchInput(this.value)" value="${currentAnomalySearchTerm}" placeholder="Tìm vật tư (bi, men, đai...)" class="w-full bg-[#0b1b36] border border-slate-700 focus:border-cyan-400 text-white placeholder-slate-500 text-xs rounded-lg pl-7 pr-2.5 py-1.5 focus:outline-none transition">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2.5 pointer-events-none"></i>
+            </div>
+            <span id="anomaly-filtered-count-badge" class="text-[10.5px] font-mono text-cyan-300 px-2 py-1 bg-[#0b1b36] rounded border border-slate-700 shrink-0">
+              ${items.length} mục
+            </span>
+          </div>
+        </div>
+
+        <!-- Scrollable Cards Box with Max Height: NEVER overflowing dashboard! -->
+        <div id="anomaly-cards-scroll-container" class="grid grid-cols-1 md:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+          <!-- Filled by renderAnomalyCardsOnly() -->
+        </div>
+
+        <!-- Footer close toggle -->
+        <div class="pt-2 border-t border-[#1e3a6a]/30 flex items-center justify-between text-xs text-slate-400">
+          <span>* Các chỉ số được đối soát tự động từ Báo cáo Tiêu hao Định mức Phân xưởng.</span>
+          <button type="button" onclick="toggleAnomalyRadar()" class="text-cyan-300 hover:text-white flex items-center gap-1 font-bold">
+            <i data-lucide="chevron-up" class="w-3.5 h-3.5"></i> Thu gọn danh sách
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = compactBarHtml + expandedDrawerHtml;
+
+  if (isAnomalyRadarExpanded) {
+    renderAnomalyCardsOnly();
+  }
+
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
+async function loadDashboardAnomalies(selectedMonth, selectedLine, selectedSize) {
+  const container = document.getElementById("anomaly-items-container");
+  if (!container) return;
+
+  const m = (selectedMonth !== undefined && selectedMonth !== null && selectedMonth !== "") 
+    ? selectedMonth 
+    : (currentDashMonth || window.currentSelectedMonth || "all");
+  const l = (selectedLine !== undefined && selectedLine !== null) ? selectedLine : (currentDashLine || "all");
+  const s = (selectedSize !== undefined && selectedSize !== null) ? selectedSize : (currentDashSize || "all");
+
+  window.currentSelectedMonth = m;
+  window.currentSelectedLine = l;
+  window.currentSelectedSize = s;
+
+  const monthLabel = formatMonthPeriodLabel(m);
+  let scopeLabel = "";
+  if (l !== "all") scopeLabel += ` • ${l}`;
+  if (s !== "all") scopeLabel += ` • KT ${s}`;
+
+  try {
+    const res = await fetch(`/api/data/anomalies?month=${encodeURIComponent(m)}&line=${encodeURIComponent(l)}&size=${encodeURIComponent(s)}`);
+    const data = await res.json();
+    const items = data.items || [];
+    const totalOverQty = data.total_over_qty || 0;
+    const highRiskCount = data.high_risk_count || 0;
+
+    currentAnomalyData = {
+      items: items,
+      totalOverQty: totalOverQty,
+      highRiskCount: highRiskCount,
+      monthLabel: monthLabel,
+      scopeLabel: scopeLabel
+    };
+
+    renderAnomalyRadarContent();
+  } catch (err) {
+    console.error("Lỗi khi quét Anomalies:", err);
+    if (container) {
+      container.innerHTML = '<div class="p-2 text-xs text-slate-500 text-center">Không thể tải cảnh báo bất thường.</div>';
+    }
+  }
+
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
 }
 
 // ==========================================
@@ -9713,7 +9989,7 @@ async function loadDashboardAnomalies(selectedMonth) {
 // ==========================================
 
 async function loadReportApprovalStatus(month) {
-  const m = month || (window.currentFormMauMonth || 8);
+  const m = month || formMauPeriodValue || (window.currentFormMauMonth || 10);
   const badge = document.getElementById("badge-approval-status");
   const desc = document.getElementById("desc-approval-status");
   const btnSubmit = document.getElementById("btn-submit-approval");
@@ -9768,7 +10044,7 @@ async function loadReportApprovalStatus(month) {
 }
 
 async function submitReportApproval() {
-  const m = window.currentFormMauMonth || 8;
+  const m = formMauPeriodValue || window.currentFormMauMonth || 10;
   if (!confirm(`Xác nhận gửi Trình Ký Báo Cáo Tháng ${m}/2026 lên Ban Giám Đốc?`)) return;
 
   try {
@@ -9812,7 +10088,7 @@ function closeSignApprovalModal() {
 }
 
 async function confirmSignApproval() {
-  const m = window.currentFormMauMonth || 8;
+  const m = formMauPeriodValue || window.currentFormMauMonth || 10;
   const name = (document.getElementById("input-signer-name")?.value || "").trim();
   const pin = (document.getElementById("input-signer-pin")?.value || "").trim();
   const notes = (document.getElementById("input-signer-notes")?.value || "").trim();
@@ -9852,8 +10128,8 @@ async function confirmSignApproval() {
 // Global hook: load anomalies and approval status automatically
 document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
-    loadDashboardAnomalies(8);
-    loadReportApprovalStatus(8);
+    loadDashboardAnomalies(currentDashMonth || "all", currentDashLine || "all", currentDashSize || "all");
+    loadReportApprovalStatus(formMauPeriodValue || 10);
   }, 1000);
 });
 
