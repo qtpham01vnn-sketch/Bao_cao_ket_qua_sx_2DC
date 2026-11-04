@@ -2,11 +2,18 @@ import os
 import json
 import sqlite3
 import datetime
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
-DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
+TMP_DB = "/tmp/production_data.db"
+if os.path.exists(TMP_DB) and os.path.getsize(TMP_DB) > 0:
+    DB_PATH = TMP_DB
+else:
+    DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
 CONFIG_PATH = os.path.join(WORKSPACE_DIR, "app_data", "supabase_config.json")
 
 TABLES_TO_SYNC = [
