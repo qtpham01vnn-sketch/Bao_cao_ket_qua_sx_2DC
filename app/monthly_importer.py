@@ -146,8 +146,15 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 if brand_name.lower() in ["kh/th", "tổng", "ghi chú", "thực hiện", ""] or brand_name.startswith("II."):
                     continue
                 
-                # Check if it's a glaze header
-                if "men" in brand_name.lower():
+                # Check if row has glaze header or note (e.g. 'Sản lượng men Matt' or 'men Phương Nam')
+                row_text = " ".join([str(ws1.cell(r, c).value or "") for c in range(1, 15)]).lower()
+                if "men matt" in row_text:
+                    current_glaze = "Matt"
+                elif "men phương nam" in row_text or "men phuong nam" in row_text:
+                    current_glaze = "Phương Nam"
+                elif "men panson" in row_text:
+                    current_glaze = "Panson"
+                elif "men" in brand_name.lower():
                     current_glaze = brand_name
                     continue
 
@@ -216,15 +223,26 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
             elif "40*80" in c1 or "40x80" in c1:
                 line_size = "40x80"
 
-            # Nếu trong tháng 9, DC2 chỉ chạy 40x80 (các dòng 50x50 là sót lại từ file T8) thì bỏ qua 50x50
-            if month == 9 and line_size == "50x50":
+            # Nếu trong tháng 9 hoặc 10, DC2 không chạy 50x50 mà có dòng 50x50 là sót lại từ file cũ thì bỏ qua
+            if month in (9, 10) and line_size == "50x50":
                 continue
 
             prod_line = "Panson"
-            if "matt" in c1 or "sugar" in c1:
-                prod_line = "Sugar Sân vườn"
-            elif "bóng" in c1 or "bong" in c1:
-                prod_line = "Bóng"
+            if line_size == "50x50":
+                if "bóng" in c1 or "bong" in c1:
+                    prod_line = "Bóng"
+                else:
+                    prod_line = "Sugar Sân vườn"
+            elif line_size == "60x60":
+                if "matt" in c1:
+                    prod_line = "Matt"
+                else:
+                    prod_line = "Bóng"
+            elif line_size == "40x80":
+                if "matt" in c1:
+                    prod_line = "Matt"
+                else:
+                    prod_line = "Panson"
 
             if c1.startswith("kế hoạch"):
                 sl_ep = parse_number(ws2.cell(r, 3).value)
@@ -290,15 +308,23 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
         cur_glaze = "Panson"
         is_mat_sec = False
         
-        for r in range(30, min(140, ws2.max_row + 1)):
+        # Lấy danh sách kích thước thực tế sản xuất trong Tháng (Data I) để lọc bỏ bảng rác cũ sót lại
+        cur.execute("SELECT DISTINCT size FROM data_production_summary WHERE month = ? AND year = ? AND line = 'DC2'", (month, year))
+        active_sizes_sec1 = [r[0] for r in cur.fetchall()]
+        if not active_sizes_sec1:
+            active_sizes_sec1 = ["40x80", "50x50", "60x60"]
+
+        for r in range(25, min(250, ws2.max_row + 1)):
             c1 = ws2.cell(r, 1).value
             c2 = ws2.cell(r, 2).value
             line_str = str(c1 or c2 or "").strip()
 
-            if "500x500" in line_str or "50x50" in line_str:
+            if "500x500" in line_str or "50x50" in line_str or "50*50" in line_str:
                 cur_size = "50x50"
-            elif "400x800" in line_str or "40x80" in line_str:
+            elif "400x800" in line_str or "40x80" in line_str or "40*80" in line_str:
                 cur_size = "40x80"
+            elif "600x600" in line_str or "60x60" in line_str or "60*60" in line_str or "60x600" in line_str:
+                cur_size = "60x60"
 
             if "men matt" in line_str.lower():
                 cur_glaze = "Matt"
@@ -310,13 +336,13 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
             if "tiêu hao vật tư" in line_str.lower():
                 is_mat_sec = True
                 continue
-            if "nhân sự" in line_str.lower():
+            if "nhân sự" in line_str.lower() or "khiếu nại" in line_str.lower():
                 is_mat_sec = False
                 continue
 
             if not is_mat_sec:
-                # Bóc tách Thương hiệu
-                if month == 9 and cur_size == "50x50":
+                # Bóc tách Thương hiệu: Bỏ qua kích thước không có trong kế hoạch/thực hiện của tháng
+                if cur_size not in active_sizes_sec1:
                     continue
                 brand = str(c1 or "").strip()
                 if brand and not brand.lower().startswith("kh/") and not brand.lower().startswith("tổng") and not brand.lower().startswith("➢") and not brand.lower().startswith("1.") and not brand.lower().startswith("2."):
@@ -331,8 +357,8 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                                 ) VALUES (?, ?, 'DC2', ?, ?, ?, ?, ?, ?)
                             """, (month, year, cur_size, cur_glaze, brand, gr, qty, f"Import DC2 T{month} Brand Row {r}"))
             else:
-                # Bóc tách Vật tư DC2
-                if month == 9 and cur_size == "50x50":
+                # Bóc tách Vật tư DC2: Bỏ qua kích thước không có trong kế hoạch/thực hiện của tháng
+                if cur_size not in active_sizes_sec1:
                     continue
                 mat_name = str(c2 or "").strip()
                 if mat_name and not mat_name.lower().startswith("nguyên liệu") and not mat_name.lower().startswith("➢") and not mat_name.lower().startswith("stt") and not mat_name.lower().startswith("*"):
@@ -349,7 +375,7 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                             month, year, line, size, material_name, unit, norm_value, used_qty,
                             prod_qty, actual_rate, reduced_qty, over_qty, diff_qty, status_text, source_row
                         ) VALUES (?, ?, 'DC2', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Có số liệu', ?)
-                    """, (month, year, cur_size, mat_name, unit, norm, used_qty, 439864.0, act_rate, giam_dm, vuot_dm, diff, f"Import DC2 T{month} Mat Row {r}"))
+                    """, (month, year, cur_size, mat_name, unit, norm, used_qty, 0.0, act_rate, giam_dm, vuot_dm, diff, f"Import DC2 T{month} Mat Row {r}"))
 
         logs.append(f"[DC2] Hoàn tất bóc tách DC2 Tháng {month}/{year}")
 

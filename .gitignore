@@ -12,4 +12,9 @@ app/test.txt
 ._*
 */._*
 app/clean_m9.py
+_backups/
+_packages/
+_test_sandbox/
+*.docx
+BaoCao_*.html
 

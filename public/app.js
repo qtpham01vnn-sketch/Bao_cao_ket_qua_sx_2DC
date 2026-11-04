@@ -1429,6 +1429,9 @@ function switchMasterSubTab(subTabId) {
     loadNormVersions();
   } else if (subTabId === "branding") {
     renderBrandingSettings();
+  } else if (subTabId === "supabase") {
+    loadSupabaseStatus();
+    loadAuditLogsUI();
   }
   if (window.lucide) lucide.createIcons();
 }
@@ -1937,7 +1940,7 @@ const GlobalFilterContext = {
 
   getMonthString() {
     if (!this.selectedMonths || this.selectedMonths.includes("all") || this.selectedMonths.length >= 8) {
-      return "Tất cả các kỳ (T1 - T9)";
+      return "Tất cả các kỳ (T1 - T10)";
     }
     if (this.selectedMonths.length === 1) {
       const m = this.selectedMonths[0];
@@ -1949,7 +1952,7 @@ const GlobalFilterContext = {
 
   getReportTitle() {
     if (!this.selectedMonths || this.selectedMonths.includes("all") || this.selectedMonths.length >= 8) {
-      return `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT NĂM ${this.year} (TỪ THÁNG 01 ĐẾN THÁNG 09)`;
+      return `BÁO CÁO TỔNG HỢP KẾT QUẢ SẢN XUẤT NĂM ${this.year} (TỪ THÁNG 01 ĐẾN THÁNG 10)`;
     }
     if (this.selectedMonths.length === 1) {
       const m = this.selectedMonths[0];
@@ -2122,6 +2125,25 @@ function setDashSizeP2(s) {
   loadDashboardData();
 }
 
+let currentDashGlazeP2 = "all";
+function setDashGlazeP2(g) {
+  currentDashGlazeP2 = g;
+  updateGlazeSlicerStyles();
+  loadDashboardData();
+}
+
+function updateGlazeSlicerStyles() {
+  const glazes = ["all", "Bóng", "Matt", "Sugar"];
+  const activeCls = "p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-amber-600 text-white shadow-md border border-amber-400 transition";
+  const inactiveCls = "p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition";
+  glazes.forEach(g => {
+    const btn = document.getElementById("btn-p2-glaze-" + g);
+    if (btn) {
+      btn.className = currentDashGlazeP2 === g ? activeCls : inactiveCls;
+    }
+  });
+}
+
 function setDashBrandP2(b) {
   currentDashBrandP2 = b;
   loadDashboardData();
@@ -2225,6 +2247,8 @@ function resetSectionFilter(sec) {
     currentDashLineP2 = "all";
     currentDashSizeP2 = "all";
     currentDashBrandP2 = "all";
+    currentDashGlazeP2 = "all";
+    updateGlazeSlicerStyles();
     updateSizeSlicerAvailability(2, "all");
     updateSlicerButtonStyles(2);
   } else if (sec === 3) {
@@ -2376,7 +2400,7 @@ async function loadDashboardData() {
 
   // Build badge
   const badge = document.getElementById("dash-badge-period");
-  const monthStr = currentDashMonth === "all" ? "Tất cả các kỳ (T1 - T9)" : ("Tháng " + (currentDashMonth.length === 1 ? "0" + currentDashMonth : currentDashMonth));
+  const monthStr = currentDashMonth === "all" ? "Tất cả các kỳ (T1 - T10)" : ("Tháng " + (currentDashMonth.length === 1 ? "0" + currentDashMonth : currentDashMonth));
   const lineStr = currentDashLine === "all" ? "Tất cả DC" : currentDashLine;
   const sizeStr = currentDashSize === "all" ? "Tất cả KT" : currentDashSize;
   const brandStr = currentDashBrand === "all" ? "" : ` • TH: ${currentDashBrand}`;
@@ -2385,10 +2409,10 @@ async function loadDashboardData() {
   // Date range label
   const dateRangeEl = document.getElementById("dash-date-range");
   if (dateRangeEl) {
-    if (currentDashMonth === "all") dateRangeEl.innerText = "01/01/2026 - 30/09/2026";
+    if (currentDashMonth === "all") dateRangeEl.innerText = "01/01/2026 - 31/10/2026";
     else {
       const m = parseInt(currentDashMonth);
-      dateRangeEl.innerText = `01/${m.toString().padStart(2, '0')}/2026 - 30/${m.toString().padStart(2, '0')}/2026`;
+      dateRangeEl.innerText = `01/${m.toString().padStart(2, '0')}/2026 - ${m === 10 ? '31' : '30'}/${m.toString().padStart(2, '0')}/2026`;
     }
   }
 
@@ -2403,6 +2427,7 @@ async function loadDashboardData() {
       p2_line: currentDashLineP2,
       p2_size: currentDashSizeP2,
       p2_brand: currentDashBrandP2,
+      p2_glaze: currentDashGlazeP2,
 
       p3_month: currentDashMonthP3,
       p3_line: currentDashLineP3,
@@ -2705,7 +2730,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
   if (!tbody || !brandList) return;
 
   if (brandList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500">Không có dữ liệu thương hiệu phù hợp</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Không có dữ liệu thương hiệu phù hợp</td></tr>`;
     if (tfoot) tfoot.innerHTML = "";
     return;
   }
@@ -2721,6 +2746,19 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
 
   tbody.innerHTML = brandList.map((b, idx) => {
     const isSelected = currentBrandFilter === b.brand_name;
+    const rawGlaze = String(b.glazes || b.glaze_type || '-');
+    let glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">${rawGlaze}</span>`;
+    if (rawGlaze.includes('Matt')) {
+      glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-900/60 text-purple-300 border border-purple-500/50 shadow-sm"><i class="fas fa-feather-alt text-[9px] mr-1"></i>Matt</span>`;
+    } else if (rawGlaze.includes('Sugar')) {
+      glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/60 text-amber-300 border border-amber-500/50 shadow-sm"><i class="fas fa-cube text-[9px] mr-1"></i>Sân Vườn (Sugar)</span>`;
+    } else if (rawGlaze.includes('Phương Nam')) {
+      glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-900/60 text-blue-300 border border-blue-500/50 shadow-sm"><i class="fas fa-sun text-[9px] mr-1"></i>Phương Nam (Bóng)</span>`;
+    } else if (rawGlaze.includes('Panson')) {
+      glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-900/60 text-cyan-300 border border-cyan-500/50 shadow-sm"><i class="fas fa-gem text-[9px] mr-1"></i>Panson (Bóng)</span>`;
+    } else if (rawGlaze.includes('Bóng')) {
+      glazeBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-500/50 shadow-sm"><i class="fas fa-sparkles text-[9px] mr-1"></i>Men Bóng</span>`;
+    }
     return `
       <tr class="transition ${isSelected ? 'bg-amber-500/15 text-amber-200 font-semibold' : 'hover:bg-[#13284d]/50 text-slate-200'}">
         <td class="p-2 text-center font-mono text-cyan-300 font-bold border border-[#1e3a6a]/40">${idx + 1}</td>
@@ -2732,6 +2770,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
         </td>
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
+        <td class="p-2 text-center border border-[#1e3a6a]/40">${glazeBadge}</td>
         <td class="p-2 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
         <td class="p-2 text-right font-bold text-blue-400 border border-[#1e3a6a]/40">${formatNumber(b.a_m2, 2)}</td>
         <td class="p-2 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
@@ -2757,7 +2796,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
   if (tfoot) {
     tfoot.innerHTML = `
       <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
-        <td colspan="4" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
+        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
         <td class="p-2 text-right text-emerald-400 text-xs">${formatNumber(sumA1, 2)}</td>
         <td class="p-2 text-right text-blue-400 text-xs">${formatNumber(sumA, 2)}</td>
         <td class="p-2 text-right text-amber-400 text-xs">${formatNumber(sumB, 2)}</td>
@@ -3482,12 +3521,14 @@ async function loadBrandsData() {
   const month = document.getElementById("brands-filter-month").value;
   const line = document.getElementById("brands-filter-line").value;
   const size = document.getElementById("brands-filter-size").value;
+  const glazeEl = document.getElementById("brands-filter-glaze");
+  const glaze = glazeEl ? glazeEl.value : "all";
 
   const badge = document.getElementById("brands-badge-period");
   badge.innerText = `• Tháng ${month === "all" ? "Tất cả" : (month.length === 1 ? "0" + month : month)} / 2026`;
 
   try {
-    const res = await fetch(`/api/data/brands?month=${month}&line=${line}&size=${size}`);
+    const res = await fetch(`/api/data/brands?month=${month}&line=${line}&size=${size}&glaze=${encodeURIComponent(glaze)}`);
     const json = await res.json();
     rawBrandsData = json.data || [];
     renderBrandsTable(rawBrandsData);
@@ -5237,8 +5278,8 @@ function populateFormMauPeriodSelect() {
   if (formMauPeriodType === 'month') {
     const optAll = document.createElement('option');
     optAll.value = "all";
-    optAll.innerText = `Tất cả các kỳ (T01 - T09/${formMauYear})`;
-    if (activeM === "all" || activeM === "t1-t9") optAll.selected = true;
+    optAll.innerText = `Tất cả các kỳ (T01 - T10/${formMauYear})`;
+    if (activeM === "all" || activeM === "t1-t9" || activeM === "t1-t10") optAll.selected = true;
     sel.appendChild(optAll);
 
     // Multi-month presets
@@ -5254,7 +5295,7 @@ function populateFormMauPeriodSelect() {
     if (activeM === "7,8,9" || activeM === "7-9") optQ3.selected = true;
     sel.appendChild(optQ3);
 
-    const availableMonths = [9, 8, 7, 6, 5, 4, 3, 1];
+    const availableMonths = [10, 9, 8, 7, 6, 5, 4, 3, 1];
     availableMonths.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m;
@@ -9407,4 +9448,414 @@ function printNormsReport() {
 
   openPrintWindow(html);
 }
+
+// ==========================================
+// SUPABASE CLOUD SYNC & AUDIT LOG HANDLERS
+// ==========================================
+
+async function loadSupabaseStatus() {
+  const badge = document.getElementById("supabase-status-badge");
+  const text = document.getElementById("supabase-status-text");
+  const urlInput = document.getElementById("supabase-cfg-url");
+  const keyInput = document.getElementById("supabase-cfg-key");
+  const lastSyncLabel = document.getElementById("supabase-last-sync-label");
+  const tbody = document.getElementById("supabase-sync-table-body");
+
+  if (badge && text) {
+    badge.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5";
+    text.textContent = "Đang kiểm tra kết nối...";
+  }
+
+  try {
+    const res = await fetch("/api/supabase/status");
+    const data = await res.json();
+
+    if (urlInput && !urlInput.value && data.supabase_url) {
+      urlInput.value = data.supabase_url;
+    }
+    if (keyInput && !keyInput.value && data.has_key) {
+      keyInput.placeholder = "•••••••••••••••••••••••••••••••• (Đã lưu khóa an toàn)";
+    }
+
+    if (badge && text) {
+      if (data.connected) {
+        badge.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/60 shadow flex items-center gap-1.5";
+        text.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Đã Kết Nối Cloud (Sẵn sàng)';
+      } else if (data.configured) {
+        badge.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-500/60 shadow flex items-center gap-1.5";
+        text.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-400"></span> Lỗi Kết Nối / Sai Khóa API';
+      } else {
+        badge.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-500/60 shadow flex items-center gap-1.5";
+        text.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> Chưa Cấu Hình Supabase';
+      }
+    }
+
+    if (lastSyncLabel) {
+      if (data.last_sync) {
+        lastSyncLabel.innerHTML = `Lần đồng bộ gần nhất: <span class="font-bold text-cyan-300">${data.last_sync}</span>`;
+      } else {
+        lastSyncLabel.textContent = "Lần đồng bộ gần nhất: Chưa thực hiện";
+      }
+    }
+
+    if (tbody && data.tables) {
+      const rows = [
+        { name: "production_monthly_data", desc: "Dữ liệu Sản xuất 2 Dây chuyền (Kế hoạch & Thực tế)", key: "production_monthly_data" },
+        { name: "raw_materials", desc: "Danh mục Vật tư, Nguyên liệu & Mã hàng", key: "raw_materials" },
+        { name: "norm_versions", desc: "Phiên bản Định mức tiêu hao", key: "norm_versions" },
+        { name: "norm_details", desc: "Chi tiết Định mức theo kích thước", key: "norm_details" },
+        { name: "user_accounts", desc: "Tài khoản Người dùng & Phân quyền", key: "user_accounts" },
+        { name: "branding_settings", desc: "Cấu hình Thương hiệu, Logo & Báo cáo", key: "branding_settings" }
+      ];
+
+      tbody.innerHTML = rows.map(r => {
+        const stats = data.tables[r.key] || { sqlite_count: 0, cloud_count: 0 };
+        const isMatched = data.connected && (stats.sqlite_count === stats.cloud_count);
+        return `
+          <tr class="hover:bg-[#13284d]/60 transition">
+            <td class="p-3 font-mono font-bold text-cyan-300 border border-[#1e3a6a]/40">${r.name}</td>
+            <td class="p-3 text-slate-300 border border-[#1e3a6a]/40">${r.desc}</td>
+            <td class="p-3 text-center font-mono font-bold text-white border border-[#1e3a6a]/40">${Number(stats.sqlite_count || 0).toLocaleString()}</td>
+            <td class="p-3 text-center font-mono font-bold text-emerald-300 border border-[#1e3a6a]/40">${data.connected ? Number(stats.cloud_count || 0).toLocaleString() : '<span class="text-slate-500 italic">Chưa kết nối</span>'}</td>
+            <td class="p-3 text-center border border-[#1e3a6a]/40">
+              ${!data.connected 
+                ? '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 border border-slate-700">Chờ kết nối</span>'
+                : isMatched 
+                  ? '<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 font-bold">Khớp 100%</span>' 
+                  : '<span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-400/40 font-bold">Chênh lệch</span>'}
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+  } catch (err) {
+    console.error("Lỗi khi tải trạng thái Supabase:", err);
+    if (badge && text) {
+      badge.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-950/80 text-rose-300 border border-rose-500/60 shadow flex items-center gap-1.5";
+      text.textContent = "Lỗi kết nối máy chủ!";
+    }
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+async function saveSupabaseConfigFromUI() {
+  const url = (document.getElementById("supabase-cfg-url")?.value || "").trim();
+  const key = (document.getElementById("supabase-cfg-key")?.value || "").trim();
+
+  if (!url) {
+    alert("Vui lòng nhập Supabase Project URL (ví dụ: https://xyzcompany.supabase.co)");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/supabase/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supabase_url: url, supabase_key: key })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ Lưu cấu hình Supabase thành công!\n" + (result.message || ""));
+      loadSupabaseStatus();
+    } else {
+      alert("⚠️ Không thể lưu cấu hình: " + (result.error || "Lỗi không xác định"));
+    }
+  } catch (err) {
+    alert("❌ Lỗi mạng khi lưu cấu hình Supabase: " + err.message);
+  }
+}
+
+async function triggerSupabaseSync(direction) {
+  const isPush = direction === "push";
+  const confirmMsg = isPush
+    ? "BẠN CÓ CHẮC CHẮN MUỐN ĐẨY DỮ LIỆU LÊN SUPABASE CLOUD?\n\nToàn bộ dữ liệu SQLite cục bộ (Kế hoạch, Thực tế, Định mức, Tài khoản, Thương hiệu) sẽ được đồng bộ lên đám mây PostgreSQL."
+    : "BẠN CÓ CHẮC CHẮN MUỐN KÉO DỮ LIỆU TỪ SUPABASE CLOUD VỀ SQLITE CỤC BỘ?\n\nDữ liệu từ Supabase Cloud sẽ được tải về và cập nhật vào cơ sở dữ liệu SQLite máy trạm.";
+
+  if (!confirm(confirmMsg)) return;
+
+  const btnPush = document.getElementById("btn-supabase-push");
+  const btnPull = document.getElementById("btn-supabase-pull");
+  if (btnPush) btnPush.disabled = true;
+  if (btnPull) btnPull.disabled = true;
+
+  try {
+    const res = await fetch("/api/supabase/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ direction: isPush ? "sqlite_to_cloud" : "cloud_to_sqlite" })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`🎉 ĐỒNG BỘ THÀNH CÔNG!\n\n${result.message || 'Dữ liệu đã được đồng bộ toàn vẹn.'}`);
+    } else {
+      alert(`⚠️ Đồng bộ chưa hoàn tất: ${result.error || result.message || 'Lỗi không xác định'}`);
+    }
+  } catch (err) {
+    alert("❌ Lỗi khi thực hiện đồng bộ: " + err.message);
+  } finally {
+    if (btnPush) btnPush.disabled = false;
+    if (btnPull) btnPull.disabled = false;
+    loadSupabaseStatus();
+    loadAuditLogsUI();
+  }
+}
+
+async function loadAuditLogsUI() {
+  const tbody = document.getElementById("audit-log-table-body");
+  if (!tbody) return;
+
+  try {
+    const res = await fetch("/api/audit-logs?limit=30");
+    const data = await res.json();
+    const logs = data.logs || [];
+
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-500 italic">Chưa có bản ghi nhật ký kiểm toán nào.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const isSecurity = l.action && (l.action.includes("DELETE") || l.action.includes("AUTH") || l.action.includes("SECURITY"));
+      return `
+        <tr class="hover:bg-[#13284d]/60 transition">
+          <td class="p-2 border border-[#1e3a6a]/30 text-slate-300">${l.created_at || '-'}</td>
+          <td class="p-2 border border-[#1e3a6a]/30">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isSecurity ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'}">
+              ${l.action || '-'}
+            </span>
+          </td>
+          <td class="p-2 border border-[#1e3a6a]/30 text-slate-200">${l.target || '-'}</td>
+          <td class="p-2 border border-[#1e3a6a]/30 text-amber-300 font-bold">${l.username || 'System'}</td>
+          <td class="p-2 border border-[#1e3a6a]/30 text-slate-400 font-mono">${l.ip_address || '-'}</td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    console.error("Lỗi khi tải Audit Logs:", err);
+    tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-rose-400">Không thể tải nhật ký kiểm toán.</td></tr>';
+  }
+}
+
+// ==========================================
+// SMART ANOMALY DETECTION (AI RADAR)
+// ==========================================
+
+async function loadDashboardAnomalies(selectedMonth) {
+  const container = document.getElementById("anomaly-items-container");
+  const badge = document.getElementById("anomaly-badge-count");
+  if (!container) return;
+
+  const m = selectedMonth || (window.currentSelectedMonth || 8);
+
+  try {
+    const res = await fetch(`/api/data/anomalies?month=${m}`);
+    const data = await res.json();
+    const items = data.items || [];
+
+    if (badge) {
+      if (items.length === 0) {
+        badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40";
+        badge.textContent = "100% Trong Định Mức";
+      } else {
+        const highCount = data.high_risk_count || 0;
+        badge.className = highCount > 0 
+          ? "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-400/40 animate-pulse"
+          : "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40";
+        badge.textContent = `${items.length} Cảnh Báo Tiêu Hao`;
+      }
+    }
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/30 text-xs text-emerald-300 col-span-3 flex items-center justify-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+          <span>Tháng ${m}/2026: Toàn bộ chỉ số tiêu hao Than và Men/Xương đều nằm trong ngưỡng định mức kỹ thuật ban hành.</span>
+        </div>
+      `;
+    } else {
+      container.innerHTML = items.slice(0, 6).map(it => {
+        const isHigh = it.severity === "high";
+        const isPos = it.severity === "positive";
+        const borderCls = isPos ? "border-emerald-500/40 bg-emerald-950/20 text-emerald-200" : isHigh ? "border-rose-500/50 bg-rose-950/30 text-rose-200" : "border-amber-500/40 bg-amber-950/20 text-amber-200";
+        const iconName = isPos ? "trending-down" : isHigh ? "alert-triangle" : "alert-circle";
+        return `
+          <div class="p-2.5 rounded-lg border ${borderCls} text-xs space-y-1">
+            <div class="flex items-center justify-between font-bold">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="${iconName}" class="w-3.5 h-3.5"></i>
+                ${it.item} (${it.line})
+              </span>
+              <span class="font-mono ${it.variance_pct > 0 ? 'text-rose-400' : 'text-emerald-400'}">
+                ${it.variance_pct > 0 ? '+' : ''}${it.variance_pct}%
+              </span>
+            </div>
+            <div class="text-[11px] text-slate-300 flex items-center justify-between">
+              <span>Thực tế: <b class="text-white">${it.actual}</b> ${it.unit}</span>
+              <span>Định mức: <b class="text-cyan-300">${it.norm}</b></span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  } catch (err) {
+    console.error("Lỗi khi quét Anomalies:", err);
+    if (container) {
+      container.innerHTML = '<div class="p-2 text-xs text-slate-500 col-span-3 text-center">Không thể tải cảnh báo bất thường.</div>';
+    }
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+// ==========================================
+// DIGITAL APPROVAL WORKFLOW
+// ==========================================
+
+async function loadReportApprovalStatus(month) {
+  const m = month || (window.currentFormMauMonth || 8);
+  const badge = document.getElementById("badge-approval-status");
+  const desc = document.getElementById("desc-approval-status");
+  const btnSubmit = document.getElementById("btn-submit-approval");
+  const btnSign = document.getElementById("btn-sign-approval");
+  const stampBox = document.getElementById("sig-stamp-container-4");
+
+  try {
+    const res = await fetch(`/api/approval/status?month=${m}&year=2026`);
+    const data = await res.json();
+    const app = data.approval || { status: "draft" };
+
+    if (badge && desc) {
+      if (app.status === "approved") {
+        badge.className = "px-2.5 py-0.5 rounded text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 flex items-center gap-1";
+        badge.innerHTML = '<i data-lucide="check-check" class="w-3.5 h-3.5 text-emerald-400"></i> ĐÃ PHÊ DUYỆT CHÍNH THỨC';
+        desc.innerHTML = `Báo cáo đã được ký duyệt bởi <b class="text-white">${app.approved_by || 'Ban Giám Đốc'}</b> vào lúc <b class="text-cyan-300">${app.approved_at || '-'}</b> (Mã: <code class="font-mono text-emerald-300">${app.signature_hash || ''}</code>).`;
+        if (btnSubmit) btnSubmit.classList.add("hidden");
+        if (btnSign) btnSign.classList.add("hidden");
+      } else if (app.status === "submitted") {
+        badge.className = "px-2.5 py-0.5 rounded text-[10.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/50 flex items-center gap-1 animate-pulse";
+        badge.innerHTML = '<i data-lucide="clock" class="w-3.5 h-3.5 text-amber-400"></i> ĐÃ TRÌNH KÝ - CHỜ BGĐ DUYỆT';
+        desc.innerHTML = `Quản đốc đã gửi trình ký vào lúc <b class="text-white">${app.submitted_at || '-'}</b>. Vui lòng liên hệ Ban Giám Đốc để ký duyệt.`;
+        if (btnSubmit) btnSubmit.classList.add("hidden");
+        if (btnSign) btnSign.classList.remove("hidden");
+      } else {
+        badge.className = "px-2.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1";
+        badge.innerHTML = '<i data-lucide="file-edit" class="w-3.5 h-3.5 text-slate-400"></i> Dự Thảo (Chưa Trình Ký)';
+        desc.textContent = "Báo cáo đang trong giai đoạn rà soát dữ liệu kỹ thuật phân xưởng.";
+        if (btnSubmit) btnSubmit.classList.remove("hidden");
+        if (btnSign) btnSign.classList.remove("hidden");
+      }
+    }
+
+    if (stampBox) {
+      if (app.status === "approved") {
+        stampBox.innerHTML = `
+          <div class="digital-stamp digital-stamp-approved my-2">
+            <span class="text-[9.5px] font-black tracking-widest text-emerald-300">ĐÃ PHÊ DUYỆT ĐIỆN TỬ</span>
+            <span class="text-[8.5px] font-mono text-emerald-200 mt-0.5">SHA: ${app.signature_hash || 'VERIFIED'}</span>
+            <span class="text-[7.5px] text-slate-400 mt-0.5">${app.approved_at || ''}</span>
+          </div>
+        `;
+      } else {
+        stampBox.innerHTML = '<div class="text-[11px] text-slate-500 italic my-3">(Chờ Ban Giám Đốc Ký Duyệt)</div>';
+      }
+    }
+  } catch (err) {
+    console.error("Lỗi khi tải trạng thái phê duyệt:", err);
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+async function submitReportApproval() {
+  const m = window.currentFormMauMonth || 8;
+  if (!confirm(`Xác nhận gửi Trình Ký Báo Cáo Tháng ${m}/2026 lên Ban Giám Đốc?`)) return;
+
+  try {
+    const res = await fetch("/api/approval/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        month: m,
+        year: 2026,
+        submitted_by: "Quản Đốc Phân Xưởng Sản Xuất"
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ GỬI TRÌNH KÝ THÀNH CÔNG!\nBáo cáo đã được chuyển sang trạng thái [Chờ Ban Giám Đốc Phê Duyệt].");
+      loadReportApprovalStatus(m);
+    } else {
+      alert("⚠️ Lỗi khi gửi trình ký: " + (result.error || "Không xác định"));
+    }
+  } catch (err) {
+    alert("❌ Lỗi mạng: " + err.message);
+  }
+}
+
+function openSignApprovalModal() {
+  const modal = document.getElementById("modal-approval-sign");
+  if (modal) {
+    modal.classList.remove("hidden");
+    const pinInput = document.getElementById("input-signer-pin");
+    if (pinInput) {
+      pinInput.value = "";
+      setTimeout(() => pinInput.focus(), 100);
+    }
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeSignApprovalModal() {
+  const modal = document.getElementById("modal-approval-sign");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function confirmSignApproval() {
+  const m = window.currentFormMauMonth || 8;
+  const name = (document.getElementById("input-signer-name")?.value || "").trim();
+  const pin = (document.getElementById("input-signer-pin")?.value || "").trim();
+  const notes = (document.getElementById("input-signer-notes")?.value || "").trim();
+
+  if (!pin) {
+    alert("Vui lòng nhập mã PIN xác thực thẩm quyền phê duyệt.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/approval/sign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        month: m,
+        year: 2026,
+        approved_by: name || "Ban Giám Đốc",
+        approved_role: "ptgd",
+        pin: pin,
+        notes: notes
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`🎉 BAN GIÁM ĐỐC ĐÃ KÝ DUYỆT THÀNH CÔNG!\n\nCon dấu điện tử đã được đóng vào Báo cáo Tháng ${m}/2026.\nMã định danh SHA: ${result.signature_hash}`);
+      closeSignApprovalModal();
+      loadReportApprovalStatus(m);
+      if (typeof loadFormMauData === "function") loadFormMauData();
+    } else {
+      alert("⚠️ Không thể ký duyệt: " + (result.error || "Mã PIN không đúng hoặc bị khóa tạm thời."));
+    }
+  } catch (err) {
+    alert("❌ Lỗi mạng khi ký duyệt: " + err.message);
+  }
+}
+
+// Global hook: load anomalies and approval status automatically
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    loadDashboardAnomalies(8);
+    loadReportApprovalStatus(8);
+  }, 1000);
+});
+
+
 

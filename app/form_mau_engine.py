@@ -29,9 +29,9 @@ def resolve_period(period_type="month", period_value="8", year=2026):
     year_int = int(year) if str(year).isdigit() else 2026
 
     # 1. Check if 'all' or 'full_year'
-    if s_val.lower() in ("all", "tất cả", "t1-t9", "t1-t12", "tat ca", "all_months") or p_type in ("all", "full_year"):
+    if s_val.lower() in ("all", "tất cả", "t1-t9", "t1-t10", "t1-t12", "tat ca", "all_months") or p_type in ("all", "full_year"):
         months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-        period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+        period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 10)"
         period_key = f"Y_{year_int}"
         next_period_title = f"Năm {year_int + 1}"
         next_period_full = f"NĂM {year_int + 1}"
@@ -48,7 +48,7 @@ def resolve_period(period_type="month", period_value="8", year=2026):
             next_period_title = f"Tháng {next_m:02d}/{next_y}"
             next_period_full = f"THÁNG {next_m:02d} NĂM {next_y}"
         elif len(months) >= 8:
-            period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 09)"
+            period_title = f"NĂM {year_int} (TỪ THÁNG 01 ĐẾN THÁNG 10)"
             period_key = f"Y_{year_int}"
             next_period_title = f"Năm {year_int + 1}"
             next_period_full = f"NĂM {year_int + 1}"

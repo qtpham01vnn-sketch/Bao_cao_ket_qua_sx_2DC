@@ -10,20 +10,103 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import sys
 import random
 import datetime
+import hmac
+import hashlib
+import time
+import threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from form_mau_engine import build_form_mau_payload, save_form_mau_custom_data, parse_form_mau_excel_upload, resolve_period
 from dashboard_excel_exporter import generate_dashboard_excel_report
+import supabase_sync
 
 PORT = 8080
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
 ORIGINAL_EXCEL_PATH = os.path.join(WORKSPACE_DIR, "New Biểu đồ Báo cáo TH 2 DC năm 2026.xlsx")
+SERVER_START_TIME = time.time()
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "phuongnam-production-2dc-enterprise-secret-key-2026")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def parse_month_int(val):
+    if not val or str(val).lower() in ("all", "none", "null"):
+        return None
+    val_str = str(val).strip()
+    if "-" in val_str:
+        val_str = val_str.split("-")[-1]
+    try:
+        return int(val_str)
+    except (ValueError, TypeError):
+        return None
+
+def generate_session_token(username, role, duration_hours=24):
+    expires_at = int(time.time()) + (duration_hours * 3600)
+    payload = f"{username}:{role}:{expires_at}"
+    sig = hmac.new(SESSION_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+def verify_session_token(token):
+    if not token:
+        return False, None
+    parts = token.split(":")
+    if len(parts) != 4:
+        return False, None
+    username, role, expires_at_str, sig = parts
+    try:
+        expires_at = int(expires_at_str)
+        if time.time() > expires_at:
+            return False, None
+    except ValueError:
+        return False, None
+    expected_payload = f"{username}:{role}:{expires_at_str}"
+    expected_sig = hmac.new(SESSION_SECRET.encode(), expected_payload.encode(), hashlib.sha256).hexdigest()
+    if hmac.compare_digest(sig, expected_sig):
+        return True, {"username": username, "role": role, "expires_at": expires_at}
+    return False, None
+
+def check_brute_force(identifier):
+    conn = get_db()
+    cur = conn.cursor()
+    row = cur.execute("SELECT failed_attempts, locked_until FROM auth_security_rate_limit WHERE identifier = ?", (identifier,)).fetchone()
+    conn.close()
+    if row:
+        locked_until = row["locked_until"]
+        if locked_until:
+            try:
+                locked_dt = datetime.datetime.fromisoformat(locked_until)
+                if datetime.datetime.now() < locked_dt:
+                    diff_min = int((locked_dt - datetime.datetime.now()).total_seconds() / 60) + 1
+                    return False, f"Tài khoản/IP tạm thời bị khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau {diff_min} phút."
+            except Exception:
+                pass
+    return True, None
+
+def record_auth_failure(identifier):
+    conn = get_db()
+    cur = conn.cursor()
+    row = cur.execute("SELECT failed_attempts FROM auth_security_rate_limit WHERE identifier = ?", (identifier,)).fetchone()
+    now_str = datetime.datetime.now().isoformat()
+    if row:
+        attempts = row["failed_attempts"] + 1
+        locked_until = None
+        if attempts >= 5:
+            locked_until = (datetime.datetime.now() + datetime.timedelta(minutes=15)).isoformat()
+        cur.execute("UPDATE auth_security_rate_limit SET failed_attempts = ?, locked_until = ?, last_attempt = ? WHERE identifier = ?", (attempts, locked_until, now_str, identifier))
+    else:
+        cur.execute("INSERT INTO auth_security_rate_limit (identifier, failed_attempts, last_attempt) VALUES (?, 1, ?)", (identifier, now_str))
+    conn.commit()
+    conn.close()
+
+def record_auth_success(identifier):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM auth_security_rate_limit WHERE identifier = ?", (identifier,))
+    conn.commit()
+    conn.close()
 
 def init_auth_access_table():
     conn = get_db()
@@ -41,6 +124,44 @@ def init_auth_access_table():
             granted_at TEXT,
             expires_at TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS system_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL,
+            target_table TEXT,
+            target_id TEXT,
+            user_info TEXT,
+            ip_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS report_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            month INTEGER NOT NULL,
+            year INTEGER NOT NULL DEFAULT 2026,
+            report_type TEXT DEFAULT 'form_mau_signoff',
+            status TEXT DEFAULT 'draft',
+            submitted_by TEXT,
+            submitted_at TEXT,
+            approved_by TEXT,
+            approved_role TEXT,
+            approved_at TEXT,
+            signature_hash TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(month, year, report_type)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_security_rate_limit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            identifier TEXT NOT NULL UNIQUE,
+            failed_attempts INTEGER DEFAULT 0,
+            locked_until TEXT,
+            last_attempt TEXT
         )
     """)
     conn.commit()
@@ -62,7 +183,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-User-Role, X-Admin-Token")
         self.end_headers()
 
     def send_json_response(self, data, status=200):
@@ -105,6 +226,18 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     self.handle_get_access_requests()
                 elif path == "/api/access/check-status":
                     self.handle_check_access_status(params)
+                elif path == "/api/supabase/status":
+                    self.send_json_response(supabase_sync.get_sync_status())
+                elif path == "/api/audit-logs":
+                    self.handle_get_audit_logs()
+                elif path == "/api/approval/status":
+                    self.handle_get_approval_status(params)
+                elif path == "/api/approval/history":
+                    self.handle_get_approval_history()
+                elif path == "/api/data/anomalies":
+                    self.handle_get_anomalies(params)
+                elif path == "/api/health":
+                    self.handle_health_check()
                 else:
                     self.send_json_response({"error": "Endpoint not found"}, status=404)
             except Exception as e:
@@ -153,6 +286,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_approve_access_request(body)
             elif path == "/api/access/verify-pin":
                 self.handle_verify_pin_access(body)
+            elif path == "/api/auth/login":
+                self.handle_auth_login(body)
+            elif path == "/api/approval/submit":
+                self.handle_submit_approval(body)
+            elif path == "/api/approval/sign":
+                self.handle_sign_approval(body)
+            elif path == "/api/supabase/sync":
+                self.handle_supabase_sync(body)
+            elif path == "/api/supabase/config":
+                self.handle_supabase_config(body)
             else:
                 self.send_json_response({"error": "Endpoint not found"}, status=404)
         except Exception as e:
@@ -166,25 +309,50 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         params = urllib.parse.parse_qs(parsed_url.query)
         item_id = params.get("id", [None])[0]
 
+        # Security & Authorization check
+        user_role = self.headers.get("X-User-Role", "") or params.get("role", [""])[0]
+        admin_token = self.headers.get("X-Admin-Token", "") or self.headers.get("Authorization", "")
+        client_ip = self.client_address[0] if self.client_address else "unknown"
+
+        # Enforce Admin Role or Session Token strictly without localhost bypass
+        token_valid, token_data = verify_session_token(admin_token.replace("Bearer ", "").strip())
+        is_admin = (user_role in ["admin", "ptgd"]) or (token_valid and token_data.get("role") in ["admin", "ptgd"])
+
+        if not is_admin:
+            self.log_audit("UNAUTHORIZED_DELETE_ATTEMPT", path, str(item_id), f"IP: {client_ip}, Role: {user_role}")
+            self.send_json_response({"error": "Không có quyền thực hiện: Thao tác xóa yêu cầu quyền Quản trị viên (Admin)."}, status=403)
+            return
+
         if not item_id:
             self.send_json_response({"error": "ID parameter required"}, status=400)
             return
 
         conn = get_db()
         cur = conn.cursor()
+        target_table = None
         if path == "/api/data/summary":
+            target_table = "data_production_summary"
             cur.execute("DELETE FROM data_production_summary WHERE id = ?", (item_id,))
         elif path == "/api/data/brands":
+            target_table = "data_brand_production"
             cur.execute("DELETE FROM data_brand_production WHERE id = ?", (item_id,))
         elif path == "/api/data/materials":
+            target_table = "data_material_consumption"
             cur.execute("DELETE FROM data_material_consumption WHERE id = ?", (item_id,))
         elif path == "/api/data/coal":
+            target_table = "data_coal_consumption"
             cur.execute("DELETE FROM data_coal_consumption WHERE id = ?", (item_id,))
         elif path == "/api/norms/versions":
+            target_table = "master_norms_version"
             cur.execute("DELETE FROM master_norms_detail WHERE version_id = ?", (item_id,))
             cur.execute("DELETE FROM master_norms_version WHERE id = ?", (item_id,))
         elif path == "/api/norms/items":
+            target_table = "master_norms_detail"
             cur.execute("DELETE FROM master_norms_detail WHERE id = ?", (item_id,))
+
+        if target_table:
+            self.log_audit("DELETE", target_table, str(item_id), f"Role: {user_role or 'admin'}")
+
         conn.commit()
         conn.close()
         self.send_json_response({"success": True, "message": "Đã xóa bản ghi thành công"})
@@ -219,6 +387,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         p2_line = params.get("p2_line", params.get("line", ["all"]))[0]
         p2_size = params.get("p2_size", params.get("size", ["all"]))[0]
         p2_brand = params.get("p2_brand", ["all"])[0]
+        p2_glaze = params.get("p2_glaze", params.get("glaze", ["all"]))[0]
 
         # Section 3 parameters (Tiêu hao Vật tư)
         p3_month = params.get("p3_month", params.get("month", ["all"]))[0]
@@ -243,7 +412,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             elif "-" in s:
                 parts = [int(x.strip()) for x in s.split("-") if x.strip().isdigit()]
                 if len(parts) == 2:
-                    return list(range(parts[0], parts[1] + 1))
+                    if parts[0] > 100:  # e.g. 2026-08 (Year-Month)
+                        return [parts[1]]
+                    else:
+                        return list(range(parts[0], parts[1] + 1))
             elif s.isdigit():
                 return [int(s)]
             return None
@@ -403,6 +575,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         if p2_size != "all":
             where_avail.append("size = ?")
             vals_avail.append(p2_size)
+        if p2_glaze != "all":
+            if p2_glaze.lower() in ("bóng", "bong", "glossy"):
+                where_avail.append("(glaze_type LIKE '%Bóng%' OR glaze_type LIKE '%Phương Nam%' OR glaze_type LIKE '%Panson%')")
+            elif p2_glaze.lower() in ("matt", "matl"):
+                where_avail.append("glaze_type LIKE '%Matt%'")
+            elif p2_glaze.lower() in ("sugar", "sân vườn", "san vuon"):
+                where_avail.append("glaze_type LIKE '%Sugar%'")
+            else:
+                where_avail.append("glaze_type = ?")
+                vals_avail.append(p2_glaze)
         clause_avail = ("WHERE " + " AND ".join(where_avail)) if where_avail else ""
         q_avail_brands = f"SELECT DISTINCT brand_name FROM data_brand_production {clause_avail} {'AND' if clause_avail else 'WHERE'} brand_name != '' ORDER BY brand_name"
         available_brands = [r[0] for r in cur.execute(q_avail_brands, vals_avail).fetchall()]
@@ -418,20 +600,31 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         if p2_size != "all":
             where_d2.append("size = ?")
             vals_d2.append(p2_size)
+        if p2_glaze != "all":
+            if p2_glaze.lower() in ("bóng", "bong", "glossy"):
+                where_d2.append("(glaze_type LIKE '%Bóng%' OR glaze_type LIKE '%Phương Nam%' OR glaze_type LIKE '%Panson%')")
+            elif p2_glaze.lower() in ("matt", "matl"):
+                where_d2.append("glaze_type LIKE '%Matt%'")
+            elif p2_glaze.lower() in ("sugar", "sân vườn", "san vuon"):
+                where_d2.append("glaze_type LIKE '%Sugar%'")
+            else:
+                where_d2.append("glaze_type = ?")
+                vals_d2.append(p2_glaze)
 
         clause_d2 = ("WHERE " + " AND ".join(where_d2)) if where_d2 else ""
         q_brand = f"""
             SELECT brand_name, 
+                   glaze_type,
                    SUM(quantity_m2) as total_m2, 
                    SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2, 
                    SUM(CASE WHEN grade = 'A' THEN quantity_m2 ELSE 0 END) as a_m2, 
                    SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2,
                    GROUP_CONCAT(DISTINCT line) as lines,
                    GROUP_CONCAT(DISTINCT size) as sizes,
-                   GROUP_CONCAT(DISTINCT glaze_type) as glazes
+                   glaze_type as glazes
             FROM data_brand_production 
             {clause_d2} 
-            GROUP BY brand_name 
+            GROUP BY brand_name, size, glaze_type 
             ORDER BY total_m2 DESC
         """
         all_brand_rows = [dict(r) for r in cur.execute(q_brand, vals_d2).fetchall()]
@@ -676,9 +869,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         if unit and unit != "all":
             where.append("unit = ?")
             vals.append(unit)
-        if month and month != "all":
+        m_int = parse_month_int(month)
+        if m_int is not None:
             where.append("month = ?")
-            vals.append(int(month))
+            vals.append(m_int)
         if line and line != "all":
             where.append("line = ?")
             vals.append(line)
@@ -701,18 +895,30 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         month = params.get("month", [None])[0]
         line = params.get("line", [None])[0]
         size = params.get("size", [None])[0]
+        glaze = params.get("glaze", [None])[0]
 
         where = []
         vals = []
-        if month and month != "all":
+        m_int = parse_month_int(month)
+        if m_int is not None:
             where.append("month = ?")
-            vals.append(int(month))
+            vals.append(m_int)
         if line and line != "all":
             where.append("line = ?")
             vals.append(line)
         if size and size != "all":
             where.append("size = ?")
             vals.append(size)
+        if glaze and glaze != "all":
+            if glaze.lower() in ("bóng", "bong", "glossy"):
+                where.append("(glaze_type LIKE '%Bóng%' OR glaze_type LIKE '%Phương Nam%' OR glaze_type LIKE '%Panson%')")
+            elif glaze.lower() in ("matt", "matl"):
+                where.append("glaze_type LIKE '%Matt%'")
+            elif glaze.lower() in ("sugar", "sân vườn", "san vuon"):
+                where.append("glaze_type LIKE '%Sugar%'")
+            else:
+                where.append("glaze_type = ?")
+                vals.append(glaze)
 
         q = "SELECT * FROM data_brand_production"
         if where:
@@ -745,18 +951,30 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         month = params.get("month", [None])[0]
         line = params.get("line", [None])[0]
         size = params.get("size", [None])[0]
+        glaze = params.get("glaze", [None])[0]
 
         where = []
         vals = []
-        if month and month != "all":
+        m_int = parse_month_int(month)
+        if m_int is not None:
             where.append("month = ?")
-            vals.append(int(month))
+            vals.append(m_int)
         if line and line != "all":
             where.append("line = ?")
             vals.append(line)
         if size and size != "all":
             where.append("size = ?")
             vals.append(size)
+        if glaze and glaze != "all":
+            if glaze.lower() in ("bóng", "bong", "glossy"):
+                where.append("(glaze_type LIKE '%Bóng%' OR glaze_type LIKE '%Phương Nam%' OR glaze_type LIKE '%Panson%')")
+            elif glaze.lower() in ("matt", "matl"):
+                where.append("glaze_type LIKE '%Matt%'")
+            elif glaze.lower() in ("sugar", "sân vườn", "san vuon"):
+                where.append("glaze_type LIKE '%Sugar%'")
+            else:
+                where.append("glaze_type = ?")
+                vals.append(glaze)
 
         q = "SELECT * FROM data_material_consumption"
         if where:
@@ -777,9 +995,10 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
 
         where = []
         vals = []
-        if month and month != "all":
+        m_int = parse_month_int(month)
+        if m_int is not None:
             where.append("month = ?")
-            vals.append(int(month))
+            vals.append(m_int)
         if line and line != "all":
             where.append("line = ?")
             vals.append(line)
@@ -1280,6 +1499,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         updated_row = cur.execute("SELECT * FROM auth_access_requests WHERE id = ?", (req_id,)).fetchone()
         conn.close()
 
+        self.log_audit("APPROVE_ACCESS", "auth_access_requests", str(req_id), f"Action: {action_type}")
+
         self.send_json_response({
             "success": True,
             "message": f"Đã thực hiện thành công thao tác [{action_type}]",
@@ -1291,17 +1512,19 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         device_id = (body.get("device_id") or "").strip()
         email = (body.get("email") or "").strip().lower()
 
-        # Master Master PIN override (e.g. 686868 or 888999)
-        if pin in ["686868", "888999", "999888"]:
+        # Secure verification: check environment master secret if configured
+        admin_master_pin = os.environ.get("ADMIN_MASTER_PIN", "").strip()
+        if admin_master_pin and pin == admin_master_pin:
+            self.log_audit("AUTH_MASTER_PIN", "auth_access", "MASTER", email)
             self.send_json_response({
                 "success": True,
                 "grant_type": "permanent",
-                "message": "Kích hoạt quyền truy cập thành công bằng Mã Chủ (Master PIN)!",
+                "message": "Kích hoạt quyền truy cập thành công bằng Mã Chủ (Master Key)!",
                 "user": {
-                    "username": email or "user_vip",
-                    "displayName": "Khách mời VIP (Master PIN)",
-                    "role": "quan_doc",
-                    "roleTitle": "Khách Mời VIP (Chỉ Xem)"
+                    "username": email or "admin_system",
+                    "displayName": "Quản Trị Hệ Thống (Master Key)",
+                    "role": "admin",
+                    "roleTitle": "Quản Trị Toàn Quyền"
                 }
             })
             return
@@ -1318,6 +1541,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
 
         r = dict(row)
         grant = "permanent" if r["status"] == "approved_permanent" else "25h"
+        self.log_audit("AUTH_PIN_VERIFY", "auth_access_requests", str(r.get("id")), f"Status: {r.get('status')}")
         self.send_json_response({
             "success": True,
             "grant_type": grant,
@@ -1325,10 +1549,349 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             "message": f"Xác nhận thành công! Đã cấp quyền truy cập [{grant}]."
         })
 
+    def handle_supabase_sync(self, body):
+        direction = body.get("direction", "push")
+        if direction == "pull":
+            success, result = supabase_sync.sync_supabase_to_sqlite()
+        else:
+            success, result = supabase_sync.sync_sqlite_to_supabase()
+        
+        self.log_audit("SUPABASE_SYNC", f"Direction: {direction}", "ALL", f"Success: {success}")
+        self.send_json_response({"success": success, "result": result})
+
+    def handle_supabase_config(self, body):
+        success, message = supabase_sync.save_supabase_config(body)
+        self.log_audit("SUPABASE_CONFIG", "supabase_config.json", "CONFIG", message)
+        self.send_json_response({"success": success, "message": message})
+
+    def handle_get_audit_logs(self):
+        conn = get_db()
+        cur = conn.cursor()
+        rows = [dict(r) for r in cur.execute("SELECT * FROM system_audit_log ORDER BY id DESC LIMIT 50").fetchall()]
+        conn.close()
+        self.send_json_response({"data": rows, "count": len(rows)})
+
+    def log_audit(self, action, target_table, target_id, user_info):
+        try:
+            client_ip = self.client_address[0] if self.client_address else "unknown"
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO system_audit_log (action, target_table, target_id, user_info, ip_address)
+                VALUES (?, ?, ?, ?, ?)
+            """, (action, target_table, target_id, user_info, client_ip))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print("Audit log error:", e)
+
+    def handle_health_check(self):
+        conn = get_db()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT 1")
+            db_ok = True
+        except Exception:
+            db_ok = False
+        conn.close()
+
+        uptime = round(time.time() - SERVER_START_TIME, 1)
+        active_threads = threading.active_count()
+        supa_status = supabase_sync.get_sync_status()
+
+        self.send_json_response({
+            "status": "healthy" if db_ok else "unhealthy",
+            "version": "v0.3-Enterprise",
+            "uptime_seconds": uptime,
+            "active_threads": active_threads,
+            "database": "sqlite_connected" if db_ok else "error",
+            "supabase_cloud": {
+                "configured": supa_status.get("configured", False),
+                "connected": supa_status.get("connected", False)
+            },
+            "timestamp": datetime.datetime.now().isoformat()
+        })
+
+    def handle_get_approval_status(self, params):
+        month = parse_month_int(params.get("month", [None])[0]) or 8
+        year = int(params.get("year", [2026])[0])
+        report_type = params.get("type", ["form_mau_signoff"])[0]
+
+        conn = get_db()
+        cur = conn.cursor()
+        row = cur.execute("""
+            SELECT * FROM report_approvals 
+            WHERE month = ? AND year = ? AND report_type = ?
+            ORDER BY id DESC LIMIT 1
+        """, (month, year, report_type)).fetchone()
+        conn.close()
+
+        if row:
+            self.send_json_response({"success": True, "approval": dict(row)})
+        else:
+            self.send_json_response({
+                "success": True, 
+                "approval": {
+                    "month": month,
+                    "year": year,
+                    "report_type": report_type,
+                    "status": "draft",
+                    "submitted_by": None,
+                    "approved_by": None,
+                    "signature_hash": None
+                }
+            })
+
+    def handle_get_approval_history(self):
+        conn = get_db()
+        cur = conn.cursor()
+        rows = [dict(r) for r in cur.execute("SELECT * FROM report_approvals ORDER BY id DESC LIMIT 50").fetchall()]
+        conn.close()
+        self.send_json_response({"success": True, "history": rows, "count": len(rows)})
+
+    def handle_submit_approval(self, body):
+        month = parse_month_int(body.get("month")) or 8
+        year = int(body.get("year", 2026))
+        report_type = body.get("report_type", "form_mau_signoff")
+        submitted_by = (body.get("submitted_by") or "Quản Đốc Phân Xưởng").strip()
+        notes = (body.get("notes") or "").strip()
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO report_approvals (month, year, report_type, status, submitted_by, submitted_at, notes)
+            VALUES (?, ?, ?, 'submitted', ?, ?, ?)
+            ON CONFLICT(month, year, report_type) DO UPDATE SET
+                status = 'submitted',
+                submitted_by = excluded.submitted_by,
+                submitted_at = excluded.submitted_at,
+                notes = excluded.notes
+        """, (month, year, report_type, submitted_by, now_str, notes))
+        conn.commit()
+        conn.close()
+
+        self.log_audit("APPROVAL_SUBMIT", "report_approvals", f"{month}/{year}", f"Submitted by: {submitted_by}")
+        self.send_json_response({
+            "success": True,
+            "status": "submitted",
+            "message": f"Báo cáo Tháng {month}/{year} đã được gửi trình ký Ban Giám Đốc thành công!"
+        })
+
+    def handle_sign_approval(self, body):
+        month = parse_month_int(body.get("month")) or 8
+        year = int(body.get("year", 2026))
+        report_type = body.get("report_type", "form_mau_signoff")
+        approved_by = (body.get("approved_by") or "Ban Giám Đốc").strip()
+        approved_role = (body.get("approved_role") or "ptgd").strip()
+        pin = (body.get("pin") or "").strip()
+        notes = (body.get("notes") or "Phê duyệt thông qua số liệu sản xuất").strip()
+        client_ip = self.client_address[0] if self.client_address else "unknown"
+
+        # Rate-limiting check
+        allowed, msg = check_brute_force(client_ip)
+        if not allowed:
+            self.send_json_response({"success": False, "error": msg}, status=429)
+            return
+
+        # Verification: PIN or Admin Role
+        is_valid = False
+        if pin:
+            admin_master_pin = os.environ.get("ADMIN_MASTER_PIN", "").strip()
+            if admin_master_pin and pin == admin_master_pin:
+                is_valid = True
+            else:
+                conn = get_db()
+                cur = conn.cursor()
+                req = cur.execute("SELECT * FROM auth_access_requests WHERE activation_pin = ? AND status LIKE 'approved%'", (pin,)).fetchone()
+                conn.close()
+                if req:
+                    is_valid = True
+        else:
+            # Check user role header
+            user_role = self.headers.get("X-User-Role", "")
+            if user_role in ["admin", "ptgd", "giam_doc"]:
+                is_valid = True
+
+        if not is_valid:
+            record_auth_failure(client_ip)
+            self.log_audit("APPROVAL_SIGN_FAILED", "report_approvals", f"{month}/{year}", f"Failed PIN attempt from {client_ip}")
+            self.send_json_response({"success": False, "error": "Mã PIN xác thực phê duyệt không chính xác hoặc không đủ thẩm quyền."}, status=403)
+            return
+
+        record_auth_success(client_ip)
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sig_data = f"PHUONGNAM-APPROVED-{month}-{year}-{approved_by}-{int(time.time())}"
+        signature_hash = hashlib.sha256(sig_data.encode()).hexdigest().upper()[:24]
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO report_approvals (month, year, report_type, status, approved_by, approved_role, approved_at, signature_hash, notes)
+            VALUES (?, ?, ?, 'approved', ?, ?, ?, ?, ?)
+            ON CONFLICT(month, year, report_type) DO UPDATE SET
+                status = 'approved',
+                approved_by = excluded.approved_by,
+                approved_role = excluded.approved_role,
+                approved_at = excluded.approved_at,
+                signature_hash = excluded.signature_hash,
+                notes = excluded.notes
+        """, (month, year, report_type, approved_by, approved_role, now_str, signature_hash, notes))
+        conn.commit()
+        conn.close()
+
+        self.log_audit("APPROVAL_SIGN_SUCCESS", "report_approvals", f"{month}/{year}", f"Signed by {approved_by} ({signature_hash})")
+        self.send_json_response({
+            "success": True,
+            "status": "approved",
+            "approved_by": approved_by,
+            "approved_role": approved_role,
+            "approved_at": now_str,
+            "signature_hash": signature_hash,
+            "message": f"Ban Giám Đốc đã ký duyệt thành công Báo Cáo Tháng {month}/{year}!"
+        })
+
+    def handle_auth_login(self, body):
+        username = (body.get("username") or "").strip().lower()
+        pin = (body.get("pin") or "").strip()
+        client_ip = self.client_address[0] if self.client_address else "unknown"
+
+        allowed, msg = check_brute_force(f"{client_ip}:{username}")
+        if not allowed:
+            self.send_json_response({"success": False, "error": msg}, status=429)
+            return
+
+        conn = get_db()
+        cur = conn.cursor()
+        user_row = cur.execute("""
+            SELECT * FROM auth_access_requests 
+            WHERE (email = ? OR activation_pin = ?) AND status LIKE 'approved%'
+            ORDER BY id DESC LIMIT 1
+        """, (username, pin)).fetchone()
+        conn.close()
+
+        admin_pin = os.environ.get("ADMIN_MASTER_PIN", "").strip()
+        is_master = admin_pin and pin == admin_pin
+
+        if user_row or is_master:
+            record_auth_success(f"{client_ip}:{username}")
+            role = "admin" if is_master else "manager"
+            fullname = "Quản Trị Viên Master" if is_master else (user_row["full_name"] or username)
+            token = generate_session_token(username or "admin", role, duration_hours=24)
+            self.log_audit("LOGIN_SUCCESS", "auth", username or "admin", f"IP: {client_ip}")
+            self.send_json_response({
+                "success": True,
+                "token": token,
+                "user": {
+                    "username": username or "admin",
+                    "fullname": fullname,
+                    "role": role
+                }
+            })
+        else:
+            record_auth_failure(f"{client_ip}:{username}")
+            self.log_audit("LOGIN_FAILED", "auth", username, f"IP: {client_ip}")
+            self.send_json_response({"success": False, "error": "Tên đăng nhập hoặc mã PIN không hợp lệ."}, status=401)
+
+    def handle_get_anomalies(self, params):
+        month = parse_month_int(params.get("month", [None])[0]) or 8
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Query coal consumption
+        coal_rows = [dict(r) for r in cur.execute("SELECT * FROM data_coal_consumption WHERE month = ?", (month,)).fetchall()]
+        # Query material consumption
+        mat_rows = [dict(r) for r in cur.execute("SELECT * FROM data_material_consumption WHERE month = ?", (month,)).fetchall()]
+        conn.close()
+
+        anomalies = []
+
+        # Analyze Coal
+        for c in coal_rows:
+            item_name = c.get("item_name", "Than")
+            line = c.get("line_name", "DC")
+            actual = float(c.get("actual_rate") or 0)
+            norm = float(c.get("norm_rate") or 0)
+
+            if norm > 0 and actual > 0:
+                diff_pct = round(((actual - norm) / norm) * 100, 2)
+                if diff_pct > 5.0:
+                    anomalies.append({
+                        "category": "Nhiên liệu (Than)",
+                        "item": item_name,
+                        "line": line,
+                        "actual": actual,
+                        "norm": norm,
+                        "unit": "kg/m²",
+                        "variance_pct": diff_pct,
+                        "severity": "high" if diff_pct > 10.0 else "medium",
+                        "message": f"Tiêu hao {item_name} vượt định mức {diff_pct}% tại {line} ({actual} vs {norm} kg/m²)"
+                    })
+                elif diff_pct < -5.0:
+                    anomalies.append({
+                        "category": "Nhiên liệu (Than)",
+                        "item": item_name,
+                        "line": line,
+                        "actual": actual,
+                        "norm": norm,
+                        "unit": "kg/m²",
+                        "variance_pct": diff_pct,
+                        "severity": "positive",
+                        "message": f"Tiết kiệm {item_name} vượt trội {abs(diff_pct)}% tại {line}"
+                    })
+
+        # Analyze Materials
+        for m in mat_rows:
+            item_name = m.get("material_name", "Vật tư")
+            line = m.get("line_name", "DC")
+            actual = float(m.get("actual_consumption") or 0)
+            norm = float(m.get("norm_consumption") or 0)
+
+            if norm > 0 and actual > 0:
+                diff_pct = round(((actual - norm) / norm) * 100, 2)
+                if diff_pct > 7.0:
+                    anomalies.append({
+                        "category": "Nguyên vật liệu / Men",
+                        "item": item_name,
+                        "line": line,
+                        "actual": actual,
+                        "norm": norm,
+                        "unit": m.get("unit", "kg/m²"),
+                        "variance_pct": diff_pct,
+                        "severity": "high" if diff_pct > 15.0 else "medium",
+                        "message": f"{item_name} tiêu hao vượt mức {diff_pct}% tại {line}"
+                    })
+
+        self.send_json_response({
+            "success": True,
+            "month": month,
+            "total_anomalies": len(anomalies),
+            "high_risk_count": sum(1 for a in anomalies if a["severity"] == "high"),
+            "items": anomalies
+        })
+
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+def start_auto_sync_worker(interval_seconds=1800):
+    def worker():
+        while True:
+            time.sleep(interval_seconds)
+            try:
+                if supabase_sync.is_configured():
+                    print("[AutoSync] Bắt đầu tự động đồng bộ định kỳ SQLite -> Supabase Cloud...")
+                    success, res = supabase_sync.sync_sqlite_to_supabase()
+                    print(f"[AutoSync] Hoàn tất đồng bộ: {success} - {res.get('message', '')}")
+            except Exception as e:
+                print(f"[AutoSync] Lỗi trong quá trình chạy nền: {e}")
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+
 def run_server():
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), ProductionAppHandler) as httpd:
-        print(f"Server running at http://localhost:{PORT}")
+    start_auto_sync_worker(interval_seconds=1800)
+    with ThreadedTCPServer(("", PORT), ProductionAppHandler) as httpd:
+        print(f"Server running at http://localhost:{PORT} (Enterprise Multi-threaded)")
         httpd.serve_forever()
 
 if __name__ == "__main__":

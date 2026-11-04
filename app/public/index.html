@@ -12,34 +12,56 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="PXSX Phương Nam" />
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Offline-First Local Vendor Libraries (100% On-Premise Ready) -->
+  <script src="vendor/tailwindcss.js"></script>
   <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              darkBg: "#091428",
-              darkCard: "#0f2042",
-              darkBorder: "#1e3a6a",
-              cyan: "#06b6d4",
-              emerald: "#10b981",
-              amber: "#f59e0b"
+    if (!window.tailwind) {
+      document.write('<script src="https://cdn.tailwindcss.com"><\/script>');
+    }
+  </script>
+  <script>
+    if (window.tailwind) {
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                darkBg: "#091428",
+                darkCard: "#0f2042",
+                darkBorder: "#1e3a6a",
+                cyan: "#06b6d4",
+                emerald: "#10b981",
+                amber: "#f59e0b"
+              }
             }
           }
         }
-      }
-    };
+      };
+    }
   </script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- SheetJS (xlsx) for full Excel import/export support -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=20260905_branding_clock_v2" />
+  <!-- Lucide Icons (Local + CDN Fallback) -->
+  <script src="vendor/lucide.min.js"></script>
+  <script>
+    if (!window.lucide) {
+      document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');
+    }
+  </script>
+  <!-- Chart.js (Local + CDN Fallback) -->
+  <script src="vendor/chart.umd.min.js"></script>
+  <script>
+    if (!window.Chart) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+    }
+  </script>
+  <!-- SheetJS (Local + CDN Fallback) -->
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script>
+    if (!window.XLSX) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+    }
+  </script>
+  <link rel="stylesheet" href="style.css?v=20261016_enterprise_v3" />
 </head>
 <body class="bg-[#091428] text-slate-100 transition-colors duration-300 font-sans antialiased overflow-hidden">
   
@@ -226,12 +248,12 @@
               </h2>
               <div class="text-xs text-slate-300 mt-0.5 flex items-center gap-2">
                 <span>Báo cáo tổng hợp sản xuất 2 dây chuyền:</span>
-                <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 30/09/2026</b>
+                <b id="dash-date-range" class="text-white font-semibold">01/01/2026 - 31/10/2026</b>
               </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               <span id="dash-badge-period" class="px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold shadow-inner">
-                • Tất cả các kỳ (T1 - T9) • Tất cả DC
+                • Tất cả các kỳ (T1 - T10) • Tất cả DC
               </span>
               <button onclick="printDashboardReport()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition" title="In hoặc Tải file PDF toàn bộ Báo cáo Tổng Hợp (4 Phần)">
                 <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-200"></i>
@@ -249,6 +271,37 @@
                 <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                 <span>Đặt lại</span>
               </button>
+            </div>
+          </div>
+
+          <!-- SMART ANOMALY RADAR: GIÁM SÁT VƯỢT ĐỊNH MỨC TIÊU HAO TỰ ĐỘNG -->
+          <div id="widget-anomaly-radar" class="p-4 bg-[#0a1b38] rounded-xl border border-amber-500/30 shadow-lg space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#1e3a6a]/40 pb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/40">
+                  <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h3 class="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    TRUNG TÂM CẢNH BÁO BẤT THƯỜNG & VƯỢT ĐỊNH MỨC (SMART ANOMALY RADAR)
+                  </h3>
+                  <p class="text-[11px] text-slate-300">Tự động phát hiện độ lệch tiêu hao Than & Men/Xương so với định mức kỹ thuật ban hành.</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="anomaly-badge-count" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                  Đang kiểm tra...
+                </span>
+                <button onclick="loadDashboardAnomalies()" class="text-xs text-cyan-300 hover:text-white flex items-center gap-1">
+                  <i data-lucide="refresh-cw" class="w-3 h-3"></i> Quét lại
+                </button>
+              </div>
+            </div>
+            <div id="anomaly-items-container" class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1">
+              <!-- Dynamically populated by app.js -->
+              <div class="p-2.5 rounded-lg bg-[#071326] border border-slate-800 text-xs text-slate-400 text-center col-span-3">
+                Đang quét các chỉ số tiêu hao tháng...
+              </div>
             </div>
           </div>
 
@@ -274,16 +327,17 @@
                     Bộ Lọc Thời Gian
                   </span>
                   <button onclick="setDashMonth('all')" id="btn-month-all" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white transition">
-                    Tất cả (T1-T9)
+                    Tất cả (T1-T10)
                   </button>
                 </div>
 
                 <!-- Quick Presets -->
                 <div class="flex items-center gap-1 mb-2 flex-wrap">
-                  <button type="button" onclick="setDashMonth('9')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-cyan-300 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 transition" title="Xem riêng Tháng 9 mới nhất">Tháng 9</button>
+                  <button type="button" onclick="setDashMonth('10')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-cyan-300 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 transition" title="Xem riêng Tháng 10 mới nhất">Tháng 10</button>
+                  <button type="button" onclick="setDashMonth('9')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-slate-300 hover:bg-cyan-600 hover:text-white border border-slate-700 transition" title="Xem riêng Tháng 9">Tháng 9</button>
                   <button type="button" onclick="setDashMonthRange(1, 6)" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 transition" title="Xem tổng hợp 6 Tháng đầu năm (T1 - T6)">T1 - T6 (6T Đầu)</button>
                   <button type="button" onclick="setDashMonthRange(7, 9)" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-amber-300 hover:bg-amber-600 hover:text-white border border-amber-500/30 transition" title="Xem tổng hợp Quý 3 (T7 - T9)">T7 - T9 (Quý 3)</button>
-                  <button type="button" onclick="setDashMonth('all')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 transition" title="Xem toàn bộ 9 tháng (T1 - T9)">T1 - T9</button>
+                  <button type="button" onclick="setDashMonth('all')" class="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#132d54] text-purple-300 hover:bg-purple-600 hover:text-white border border-purple-500/30 transition" title="Xem toàn bộ 10 tháng (T1 - T10)">T1 - T10</button>
                 </div>
 
                 <!-- 12 Individual Month Buttons -->
@@ -297,7 +351,7 @@
                   <button onclick="setDashMonth('8')" id="btn-month-8" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">8</button>
                   <button onclick="setDashMonth('9')" id="btn-month-9" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">9</button>
                   <button onclick="setDashMonth('2')" id="btn-month-2" class="dash-slicer-btn opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center" title="Tháng 2 nghỉ Tết / bảo dưỡng">2</button>
-                  <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">10</button>
+                  <button onclick="setDashMonth('10')" id="btn-month-10" class="dash-slicer-btn px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition text-center">10</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">11</button>
                   <button class="opacity-40 cursor-not-allowed px-2 py-1.5 rounded text-xs font-bold bg-[#09152b] border border-slate-800 text-slate-500 text-center">12</button>
                 </div>
@@ -316,6 +370,7 @@
                       <option value="7">7</option>
                       <option value="8">8</option>
                       <option value="9">9</option>
+                      <option value="10">10</option>
                     </select>
                   </div>
                   <div class="flex items-center gap-1">
@@ -325,10 +380,11 @@
                       <option value="3">3</option>
                       <option value="4">4</option>
                       <option value="5">5</option>
-                      <option value="6" selected>6</option>
+                      <option value="6">6</option>
                       <option value="7">7</option>
                       <option value="8">8</option>
                       <option value="9">9</option>
+                      <option value="10" selected>10</option>
                     </select>
                   </div>
                   <button type="button" onclick="applyDashMonthRange()" class="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-[11px] font-bold transition shadow" title="Xem tổng hợp khoảng tháng đã chọn">
@@ -562,6 +618,7 @@
                   <button onclick="setDashMonthP2('7')" id="btn-p2-month-7" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                   <button onclick="setDashMonthP2('8')" id="btn-p2-month-8" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
                   <button onclick="setDashMonthP2('9')" id="btn-p2-month-9" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
+                  <button onclick="setDashMonthP2('10')" id="btn-p2-month-10" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">10</button>
                 </div>
               </div>
 
@@ -588,6 +645,19 @@
                   <button onclick="setDashSizeP2('50x50')" id="btn-p2-size-50x50" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">50x50</button>
                   <button onclick="setDashSizeP2('40x80')" id="btn-p2-size-40x80" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">40x80</button>
                   <button onclick="setDashSizeP2('60x60')" id="btn-p2-size-60x60" class="p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">60x60</button>
+                </div>
+              </div>
+
+              <!-- Slicer DÒNG MEN P2 -->
+              <div class="flex items-center gap-1.5 border-l border-slate-700/60 pl-3">
+                <span class="text-[10.5px] font-bold text-slate-300 uppercase flex items-center gap-1">
+                  <i data-lucide="sparkles" class="w-3 h-3 text-amber-400"></i> MEN:
+                </span>
+                <div class="flex items-center gap-1 flex-wrap" id="p2-glaze-slicer-btns">
+                  <button onclick="setDashGlazeP2('all')" id="btn-p2-glaze-all" class="p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-emerald-600 text-white transition">Tất cả</button>
+                  <button onclick="setDashGlazeP2('Bóng')" id="btn-p2-glaze-Bóng" class="p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition" title="Men Bóng / Phương Nam / Panson">Men Bóng</button>
+                  <button onclick="setDashGlazeP2('Matt')" id="btn-p2-glaze-Matt" class="p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition" title="Men Matt (Mờ)">Men Matt</button>
+                  <button onclick="setDashGlazeP2('Sugar')" id="btn-p2-glaze-Sugar" class="p2-glaze-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition" title="Men Sân Vườn Sugar">Sân Vườn (Sugar)</button>
                 </div>
               </div>
             </div>
@@ -625,6 +695,7 @@
                       <th class="p-2.5 border border-[#1e3a6a]/40">Thương Hiệu</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
+                      <th class="p-2.5 text-center border border-[#1e3a6a]/40 text-amber-300">Dòng Men</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-emerald-300">Sản Lượng A1 (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-blue-300">Sản Lượng A (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-amber-300">Sản Lượng B (m²)</th>
@@ -678,6 +749,7 @@
                       <button onclick="setDashMonthP3('7')" id="btn-p3-month-7" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                       <button onclick="setDashMonthP3('8')" id="btn-p3-month-8" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
                       <button onclick="setDashMonthP3('9')" id="btn-p3-month-9" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
+                      <button onclick="setDashMonthP3('10')" id="btn-p3-month-10" class="p3-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">10</button>
                     </div>
                   </div>
 
@@ -846,6 +918,7 @@
                       <button onclick="setDashMonthP4('7')" id="btn-p4-month-7" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">7</button>
                       <button onclick="setDashMonthP4('8')" id="btn-p4-month-8" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">8</button>
                       <button onclick="setDashMonthP4('9')" id="btn-p4-month-9" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">9</button>
+                      <button onclick="setDashMonthP4('10')" id="btn-p4-month-10" class="p4-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition">10</button>
                     </div>
                   </div>
 
@@ -1112,7 +1185,8 @@
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
                     <option value="8">Tháng 08</option>
-                    <option value="9" selected>Tháng 09</option>
+                    <option value="9">Tháng 09</option>
+                    <option value="10" selected>Tháng 10</option>
                   </select>
                 </div>
                 <div>
@@ -1130,6 +1204,16 @@
                     <option value="30x60">30x60</option>
                     <option value="50x50">50x50</option>
                     <option value="40x80">40x80</option>
+                    <option value="60x60">60x60</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dòng Men</label>
+                  <select id="brands-filter-glaze" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-amber-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all" selected>Tất cả dòng men</option>
+                    <option value="Bóng">Men Bóng / Panson</option>
+                    <option value="Matt">Men Matt</option>
+                    <option value="Sugar">Sân vườn (Sugar)</option>
                   </select>
                 </div>
               </div>
@@ -1216,7 +1300,8 @@
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
                     <option value="8">Tháng 08</option>
-                    <option value="9" selected>Tháng 09</option>
+                    <option value="9">Tháng 09</option>
+                    <option value="10" selected>Tháng 10</option>
                   </select>
                 </div>
                 <div>
@@ -1234,6 +1319,16 @@
                     <option value="30x60">30x60</option>
                     <option value="50x50">50x50</option>
                     <option value="40x80">40x80</option>
+                    <option value="60x60">60x60</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dòng Men</label>
+                  <select id="brands-filter-glaze" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-amber-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all" selected>Tất cả dòng men</option>
+                    <option value="Bóng">Men Bóng / Panson</option>
+                    <option value="Matt">Men Matt</option>
+                    <option value="Sugar">Sân vườn (Sugar)</option>
                   </select>
                 </div>
               </div>
@@ -1339,7 +1434,8 @@
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
                     <option value="8">Tháng 08</option>
-                    <option value="9" selected>Tháng 09</option>
+                    <option value="9">Tháng 09</option>
+                    <option value="10" selected>Tháng 10</option>
                   </select>
                 </div>
                 <div>
@@ -1357,6 +1453,16 @@
                     <option value="30x60">30x60</option>
                     <option value="50x50">50x50</option>
                     <option value="40x80">40x80</option>
+                    <option value="60x60">60x60</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Dòng Men</label>
+                  <select id="brands-filter-glaze" onchange="loadBrandsData()" class="bg-[#091428] border border-blue-500/30 text-xs text-amber-300 font-bold rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer">
+                    <option value="all" selected>Tất cả dòng men</option>
+                    <option value="Bóng">Men Bóng / Panson</option>
+                    <option value="Matt">Men Matt</option>
+                    <option value="Sugar">Sân vườn (Sugar)</option>
                   </select>
                 </div>
               </div>
@@ -1437,7 +1543,8 @@
                     <option value="6">Tháng 06</option>
                     <option value="7">Tháng 07</option>
                     <option value="8">Tháng 08</option>
-                    <option value="9" selected>Tháng 09</option>
+                    <option value="9">Tháng 09</option>
+                    <option value="10" selected>Tháng 10</option>
                   </select>
                 </div>
                 <div>
@@ -1722,6 +1829,36 @@
             </div>
           </div>
 
+          <!-- DIGITAL APPROVAL CONTROL BAR -->
+          <div id="bar-digital-approval" class="p-4 bg-gradient-to-r from-[#091730] to-[#0d2247] rounded-xl border border-cyan-500/30 shadow-lg flex flex-wrap items-center justify-between gap-4 no-print">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center border border-cyan-400/40">
+                <i data-lucide="file-check-2" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xs font-bold text-white uppercase tracking-wider">QUY TRÌNH PHÊ DUYỆT ĐIỆN TỬ BÁO CÁO</h4>
+                  <span id="badge-approval-status" class="px-2.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                    Dự Thảo (Chưa Ký)
+                  </span>
+                </div>
+                <p id="desc-approval-status" class="text-[11px] text-slate-300 mt-0.5">Báo cáo đang trong giai đoạn rà soát dữ liệu kỹ thuật.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <button id="btn-submit-approval" onclick="submitReportApproval()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow transition active:scale-95">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>Gửi Trình Ký Ban Giám Đốc</span>
+              </button>
+
+              <button id="btn-sign-approval" onclick="openSignApprovalModal()" class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition active:scale-95">
+                <i data-lucide="stamp" class="w-4 h-4"></i>
+                <span>Ký Duyệt Báo Cáo (Ban Giám Đốc)</span>
+              </button>
+            </div>
+          </div>
+
           <!-- FORM MẪU CONTAINER -->
           <div class="p-8 bg-[#0f2042] text-slate-100 rounded-xl shadow-2xl border border-[#1e3a6a] overflow-x-auto print-area" id="form-mau-printable">
             
@@ -1768,8 +1905,11 @@
                 <div class="font-bold text-slate-200" id="sig-name-3">(Ký & ghi rõ họ tên)</div>
               </div>
               <div>
-                <div class="text-slate-400 uppercase text-[11px] mb-14" id="sig-title-4">BAN GIÁM ĐỐC PHÊ DUYỆT</div>
-                <div class="font-bold text-slate-200" id="sig-name-4">(Ký & ghi rõ họ tên)</div>
+                <div class="text-slate-400 uppercase text-[11px] mb-2" id="sig-title-4">BAN GIÁM ĐỐC PHÊ DUYỆT</div>
+                <div id="sig-stamp-container-4" class="min-h-[52px] flex items-center justify-center">
+                  <!-- Populated dynamically: digital stamp if approved -->
+                </div>
+                <div class="font-bold text-slate-200 mt-2" id="sig-name-4">(Ký & ghi rõ họ tên)</div>
               </div>
             </div>
           </div>
@@ -1865,6 +2005,11 @@
               <i data-lucide="shield-alert" class="w-4 h-4 text-purple-400"></i>
               <span>Logo & Bản Quyền & Phê Duyệt Email</span>
               <span id="tab-pending-badge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono text-[9.5px]">0</span>
+            </button>
+            <button onclick="switchMasterSubTab('supabase')" id="btn-sub-supabase" class="master-sub-btn px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-300 hover:bg-[#112348] hover:text-white">
+              <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i>
+              <span>Đồng Bộ Supabase Cloud</span>
+              <span id="tab-supabase-badge" class="px-1.5 py-0.2 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">Cloud</span>
             </button>
           </div>
 
@@ -2340,9 +2485,9 @@
                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                     <span>Làm Mới</span>
                   </button>
-                  <div class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5" title="Mã VIP mở khóa nhanh cho khách">
-                    <i data-lucide="key" class="w-3.5 h-3.5"></i>
-                    <span>Mã VIP Dùng Nhanh: <b class="font-mono text-amber-200">686868</b></span>
+                  <div class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5" title="Mã cấp qua phê duyệt">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                    <span>Cấp Quyền: <b class="font-mono text-emerald-200">Qua Phê Duyệt / Zalo</b></span>
                   </div>
                 </div>
               </div>
@@ -2495,7 +2640,136 @@
 
           </div>
 
-        </div>
+          <!-- ================= SUB-PANE 6: ĐỒNG BỘ SUPABASE CLOUD & BACKUP ================= -->
+          <div id="sub-master-supabase" class="master-sub-pane hidden space-y-6">
+            
+            <!-- Connection Status Card -->
+            <div class="p-5 bg-[#0f2042] rounded-xl border border-emerald-500/40 shadow-xl space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e3a6a]/40 pb-3">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300 shadow-inner">
+                    <i data-lucide="cloud-lightning" class="w-5 h-5"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                      TRUNG TÂM ĐỒNG BỘ ĐÁM MÂY SUPABASE POSTGRESQL (CLOUD SYNC)
+                    </h3>
+                    <p class="text-xs text-slate-300 mt-0.5">Lưu trữ kép: Tự động sao lưu và đồng bộ toàn vẹn dữ liệu giữa SQLite cục bộ và Supabase Cloud.</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <span id="supabase-status-badge" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
+                    <span id="supabase-status-text">Đang kiểm tra kết nối...</span>
+                  </span>
+                  <button onclick="loadSupabaseStatus()" class="px-3 py-1.5 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/40 text-xs font-bold text-cyan-300 transition flex items-center gap-1.5">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Kiểm Tra Lại</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Configuration Form -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[#091428] p-4 rounded-xl border border-blue-500/20">
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-1">Supabase Project URL:</label>
+                  <input type="text" id="supabase-cfg-url" placeholder="https://your-project.supabase.co" class="w-full bg-[#0b172a] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-400" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-300 mb-1">Supabase API Key (Service Role hoặc Anon):</label>
+                  <div class="relative">
+                    <input type="password" id="supabase-cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." class="w-full bg-[#0b172a] border border-blue-500/30 text-xs text-white rounded-lg pl-3 pr-9 py-2 focus:outline-none focus:border-cyan-400 font-mono" />
+                    <button type="button" onclick="togglePasswordVisibility('supabase-cfg-key', 'toggle-supa-key-icon')" class="absolute right-2.5 top-2 text-slate-400 hover:text-cyan-300">
+                      <i id="toggle-supa-key-icon" data-lucide="eye" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="md:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#1e3a6a]/30">
+                  <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+                    <span>Khóa API được lưu an toàn tại máy chủ cục bộ hoặc qua biến môi trường <code class="text-cyan-300">SUPABASE_URL</code> và <code class="text-cyan-300">SUPABASE_KEY</code>.</span>
+                  </div>
+                  <button onclick="saveSupabaseConfigFromUI()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow flex items-center gap-1.5 transition">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Lưu Cấu Hình</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Action Bar & Sync Buttons -->
+              <div class="flex flex-wrap items-center justify-between gap-3 bg-[#0c1f38] p-4 rounded-xl border border-blue-500/30">
+                <div>
+                  <div class="text-xs font-bold text-white flex items-center gap-2">
+                    <i data-lucide="repeat" class="w-4 h-4 text-cyan-400"></i>
+                    <span>Thao Tác Đồng Bộ Dữ Liệu</span>
+                  </div>
+                  <div id="supabase-last-sync-label" class="text-[11px] text-slate-400 mt-0.5">Lần đồng bộ gần nhất: Chưa thực hiện</div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                  <button id="btn-supabase-push" onclick="triggerSupabaseSync('push')" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg flex items-center gap-2 transition active:scale-95">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    <span>Đẩy Lên Supabase Cloud (Push Sync)</span>
+                  </button>
+
+                  <button id="btn-supabase-pull" onclick="triggerSupabaseSync('pull')" class="px-4 py-2 rounded-lg bg-[#112348] hover:bg-[#183266] border border-blue-500/40 text-cyan-300 font-bold text-xs shadow flex items-center gap-2 transition active:scale-95">
+                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                    <span>Kéo Về SQLite Cục Bộ (Pull Sync)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Database Tables Comparison Table -->
+              <div class="overflow-x-auto rounded-xl border border-[#1e3a6a]/60 shadow-inner">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-[#0b172a] text-slate-300 uppercase font-bold text-[10.5px]">
+                    <tr>
+                      <th class="p-3 border border-[#1e3a6a]/40">Bảng Dữ Liệu</th>
+                      <th class="p-3 border border-[#1e3a6a]/40">Phân Hệ Nghiệp Vụ</th>
+                      <th class="p-3 border border-[#1e3a6a]/40 text-center">Bản Ghi SQLite Cục Bộ</th>
+                      <th class="p-3 border border-[#1e3a6a]/40 text-center">Bản Ghi Supabase Cloud</th>
+                      <th class="p-3 border border-[#1e3a6a]/40 text-center">Trạng Thái Đồng Bộ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="supabase-sync-table-body" class="divide-y divide-[#1e3a6a]/40 text-slate-200">
+                    <!-- Populated dynamically by JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- System Audit Log Card -->
+              <div class="mt-4 p-4 bg-[#091428] rounded-xl border border-blue-500/20 space-y-3">
+                <div class="flex items-center justify-between border-b border-[#1e3a6a]/30 pb-2">
+                  <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="history" class="w-4 h-4 text-amber-400"></i>
+                    NHẬT KÝ KIỂM TOÁN HỆ THỐNG GẦN NHẤT (SYSTEM AUDIT LOG)
+                  </h4>
+                  <button onclick="loadAuditLogsUI()" class="text-[11px] text-cyan-300 hover:underline flex items-center gap-1">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> Làm mới log
+                  </button>
+                </div>
+                <div class="overflow-x-auto max-h-48 overflow-y-auto">
+                  <table class="w-full text-[11px] text-left">
+                    <thead class="bg-[#0b172a] text-slate-400 uppercase font-bold text-[9.5px]">
+                      <tr>
+                        <th class="p-1.5 border border-[#1e3a6a]/30">Thời Gian</th>
+                        <th class="p-1.5 border border-[#1e3a6a]/30">Hành Động</th>
+                        <th class="p-1.5 border border-[#1e3a6a]/30">Đối Tượng</th>
+                        <th class="p-1.5 border border-[#1e3a6a]/30">Người Dùng / Quyền</th>
+                        <th class="p-1.5 border border-[#1e3a6a]/30">IP Address</th>
+                      </tr>
+                    </thead>
+                    <tbody id="audit-log-table-body" class="divide-y divide-[#1e3a6a]/20 font-mono text-slate-300">
+                      <tr><td colspan="5" class="p-2 text-center text-slate-500">Đang tải nhật ký...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
 
       </main>
 
@@ -3089,8 +3363,47 @@
         </button>
       </div>
     </div>
+  <!-- MODAL KÝ DUYỆT ĐIỆN TỬ BAN GIÁM ĐỐC -->
+  <div id="modal-approval-sign" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#0f2042] border border-emerald-500/50 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-[#1e3a6a] pb-3">
+        <div class="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+          <i data-lucide="stamp" class="w-5 h-5"></i>
+          <span>XÁC THỰC KÝ DUYỆT BÁO CÁO THÁNG</span>
+        </div>
+        <button onclick="closeSignApprovalModal()" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Bạn đang thực hiện ký duyệt chính thức số liệu sản xuất và định mức tiêu hao. Hệ thống sẽ sinh con dấu điện tử và mã định danh SHA-256 vào báo cáo.
+      </p>
+
+      <div class="space-y-3 bg-[#091428] p-4 rounded-xl border border-blue-500/20">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Người Ký Duyệt / Chức Vụ:</label>
+          <input type="text" id="input-signer-name" value="Phó Tổng Giám Đốc Kỹ Thuật" class="w-full bg-[#0b172a] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-400 font-semibold" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Mã PIN Xác Thực An Toàn:</label>
+          <input type="password" id="input-signer-pin" placeholder="Nhập mã PIN xác nhận" class="w-full bg-[#0b172a] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-400 font-mono tracking-widest text-center" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">Ý Kiến / Ghi Chú Phê Duyệt:</label>
+          <input type="text" id="input-signer-notes" value="Số liệu sản xuất và tiêu hao đạt yêu cầu kỹ thuật" class="w-full bg-[#0b172a] border border-blue-500/30 text-xs text-white rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-400" />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeSignApprovalModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">Hủy Bỏ</button>
+        <button onclick="confirmSignApproval()" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg flex items-center gap-1.5 transition active:scale-95">
+          <i data-lucide="check-circle" class="w-4 h-4"></i> Xác Nhận Ký Duyệt
+        </button>
+      </div>
+    </div>
   </div>
 
-  <script src="app.js?v=20260905_email_hub_v1"></script>
+  <script src="app.js?v=20261016_enterprise_v3"></script>
 </body>
 </html>
