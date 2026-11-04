@@ -22,7 +22,41 @@ import supabase_sync
 PORT = 8080
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
-DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
+
+# Resolve DB_PATH for both local environment and Vercel Serverless
+import tempfile
+TEMP_BASE = "/tmp" if os.path.exists("/tmp") else tempfile.gettempdir()
+TMP_DB = os.path.join(TEMP_BASE, "production_data.db")
+CANDIDATE_DBS = [
+    os.path.join(WORKSPACE_DIR, "app_data", "production_data.db"),
+    os.path.join(WORKSPACE_DIR, "api", "production_data.db"),
+    os.path.join(BASE_DIR, "production_data.db"),
+    os.path.join(os.getcwd(), "app_data", "production_data.db"),
+    os.path.join(os.getcwd(), "api", "production_data.db"),
+]
+
+if os.path.exists(TMP_DB) and os.path.getsize(TMP_DB) > 0:
+    DB_PATH = TMP_DB
+else:
+    found_db = None
+    for cand in CANDIDATE_DBS:
+        if os.path.exists(cand) and os.path.getsize(cand) > 0:
+            found_db = cand
+            break
+    
+    if found_db:
+        # If on Vercel or in a read-only container, copy to /tmp so SQLite has write permissions
+        if os.environ.get("VERCEL") or not os.access(os.path.dirname(found_db), os.W_OK):
+            import shutil
+            try:
+                shutil.copy2(found_db, TMP_DB)
+                DB_PATH = TMP_DB
+            except Exception:
+                DB_PATH = found_db
+        else:
+            DB_PATH = found_db
+    else:
+        DB_PATH = os.path.join(WORKSPACE_DIR, "app_data", "production_data.db")
 ORIGINAL_EXCEL_PATH = os.path.join(WORKSPACE_DIR, "New Biểu đồ Báo cáo TH 2 DC năm 2026.xlsx")
 SERVER_START_TIME = time.time()
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "phuongnam-production-2dc-enterprise-secret-key-2026")
@@ -108,7 +142,10 @@ def record_auth_success(identifier):
     conn.commit()
     conn.close()
 
-def init_auth_access_table():
+def try:
+    init_auth_access_table()
+except Exception as e:
+    print(f"Warning: init_auth_access_table ignored error: {e}"):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
@@ -167,11 +204,23 @@ def init_auth_access_table():
     conn.commit()
     conn.close()
 
-init_auth_access_table()
+try:
+    init_auth_access_table()
+except Exception as e:
+    print(f"Warning: init_auth_access_table ignored error: {e}")
 
 class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=os.path.join(BASE_DIR, "public"), **kwargs)
+        pub_dir = os.path.join(BASE_DIR, "public")
+        if not os.path.exists(pub_dir):
+            pub_dir = os.path.join(WORKSPACE_DIR, "public")
+        if os.path.exists(pub_dir):
+            try:
+                super().__init__(*args, directory=pub_dir, **kwargs)
+                return
+            except TypeError:
+                pass
+        super().__init__(*args, **kwargs)
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -234,7 +283,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     self.handle_get_approval_status(params)
                 elif path == "/api/approval/history":
                     self.handle_get_approval_history()
-                elif path == "/api/data/anomalies":
+                elif path == "/api/data/anomalies" or path == "/api/anomalies":
                     self.handle_get_anomalies(params)
                 elif path == "/api/health":
                     self.handle_health_check()
