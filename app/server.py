@@ -142,10 +142,7 @@ def record_auth_success(identifier):
     conn.commit()
     conn.close()
 
-def try:
-    init_auth_access_table()
-except Exception as e:
-    print(f"Warning: init_auth_access_table ignored error: {e}"):
+def init_auth_access_table():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
