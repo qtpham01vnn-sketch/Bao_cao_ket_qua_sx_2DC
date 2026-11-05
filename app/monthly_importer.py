@@ -387,6 +387,74 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
         ws_c = wb_c[wb_c.sheetnames[0]]
         logs.append(f"[Than] Đang bóc tách file than sheet '{wb_c.sheetnames[0]}'...")
 
+        # Tự động nhận diện cấu trúc cột theo tiêu đề (Hỗ trợ định dạng cũ T08 và định dạng rút gọn T10)
+        def detect_coal_columns(ws):
+            h_row = 7
+            for r in range(1, 15):
+                txt = " ".join([str(ws.cell(r, c).value or "") for c in range(1, 15)]).lower()
+                if "tên loại than" in txt or "chất lượng" in txt or "nhiệt trị" in txt:
+                    h_row = r
+                    break
+
+            cols_map = {}
+            r_top = {c: str(ws.cell(h_row, c).value or "").strip().lower() for c in range(1, 26)}
+            r_sub = {c: str(ws.cell(h_row + 1, c).value or "").strip().lower() for c in range(1, 26)}
+
+            for c in range(1, 26):
+                h1 = r_top.get(c, "")
+                h2 = r_sub.get(c, "")
+                comb = f"{h1} {h2}".strip()
+
+                if "tên loại than" in comb or "loại than" in comb:
+                    cols_map["supplier"] = c
+                elif "nhiệt trị" in comb:
+                    cols_map["heat"] = c
+                elif "cám thực tế" in comb or ("thực tế" in comb and "%" in comb):
+                    cols_map["ash_rate"] = c
+                elif "cám tiêu chuẩn" in comb:
+                    cols_map["std_ash_rate"] = c
+                elif "xít" in comb or "đá" in comb:
+                    cols_map["stone_rate"] = c
+                elif ("kl lĩnh" in comb or "khối lượng lĩnh" in comb or h1 == "kl lĩnh") and "bù" not in comb:
+                    cols_map["issued"] = c
+                elif "tổng sử dụng" in comb or (h1.startswith("tổng") and "sử dụng" in comb):
+                    cols_map["tot_used"] = c
+                elif "lĩnh bù" in comb and "tiêu hao" not in comb and "tổng" not in comb:
+                    cols_map["comp"] = c
+                elif "vượt tiêu chuẩn" in comb or "vượt tc" in comb:
+                    cols_map["excess"] = c
+                elif "sản lượng" in comb:
+                    cols_map["prod_m2"] = c
+                elif "xuất cám" in h1 or "cám (kg)" in h1:
+                    if "sl" in h2 or not h2:
+                        cols_map["ash_w"] = c
+                    if "%" in h2:
+                        cols_map["ash_pct"] = c
+                elif "% cám" in comb and "ash_pct" not in cols_map:
+                    cols_map["ash_pct"] = c
+                elif "tiêu hao" in comb:
+                    if "có cám" in comb or "kẹp" in comb:
+                        cols_map["rate_with_ash"] = c
+                    elif "cục+" in comb or "cục +" in comb or "lĩnh bù" in comb or "tổng" in comb:
+                        cols_map["rate_tot"] = c
+                    elif "cục" in comb or "kg/m2" in comb or "rate_lump" not in cols_map:
+                        if "rate_lump" not in cols_map:
+                            cols_map["rate_lump"] = c
+                elif "ghi chú" in comb:
+                    cols_map["note"] = c
+
+            if "ash_w" not in cols_map and "issued" in cols_map:
+                for c in range(cols_map["issued"] + 1, cols_map.get("tot_used", cols_map.get("prod_m2", 25))):
+                    h = r_top.get(c, "")
+                    if "cám" in h:
+                        cols_map["ash_w"] = c
+                        break
+
+            return h_row, cols_map
+
+        h_row, coal_cols = detect_coal_columns(ws_c)
+        logs.append(f"[Than] Đã nhận diện tự động cột than: {coal_cols}")
+
         cur_line = "DC1"
         cur_size = "30x60"
         last_sup_name = ""
@@ -395,10 +463,10 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
         last_std_ash = 0.0
         last_stone = 0.0
 
-        for r in range(1, ws_c.max_row + 1):
+        for r in range(h_row + 2, ws_c.max_row + 1):
             c1_val = str(ws_c.cell(r, 1).value or "").strip().lower()
             c2_val = str(ws_c.cell(r, 2).value or "").strip().lower()
-            c3_raw = str(ws_c.cell(r, 3).value or "").strip()
+            c3_raw = str(ws_c.cell(r, coal_cols.get("supplier", 3)).value or "").strip()
             c3_val = c3_raw.lower()
 
             line_check = f"{c1_val} {c2_val} {c3_val}"
@@ -434,23 +502,23 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 continue
 
             supplier_name = c3_raw
-            issued = parse_number(ws_c.cell(r, 11).value)
-            ash_w = parse_number(ws_c.cell(r, 13).value)
-            ash_rate = parse_number(ws_c.cell(r, 14).value)
-            comp = parse_number(ws_c.cell(r, 15).value)
-            excess = parse_number(ws_c.cell(r, 16).value)
-            tot_used = parse_number(ws_c.cell(r, 17).value)
-            prod_val = ws_c.cell(r, 18).value
+            issued = parse_number(ws_c.cell(r, coal_cols.get("issued", 11)).value) if "issued" in coal_cols else 0.0
+            ash_w = parse_number(ws_c.cell(r, coal_cols.get("ash_w", 13)).value) if "ash_w" in coal_cols else 0.0
+            ash_rate = parse_number(ws_c.cell(r, coal_cols.get("ash_pct", 14)).value) if "ash_pct" in coal_cols else 0.0
+            comp = parse_number(ws_c.cell(r, coal_cols.get("comp", 15)).value) if "comp" in coal_cols else 0.0
+            excess = parse_number(ws_c.cell(r, coal_cols.get("excess", 16)).value) if "excess" in coal_cols else 0.0
+            tot_used = parse_number(ws_c.cell(r, coal_cols.get("tot_used", 17)).value) if "tot_used" in coal_cols else 0.0
+            prod_val = ws_c.cell(r, coal_cols.get("prod_m2", 18)).value if "prod_m2" in coal_cols else 0.0
             prod_m2 = parse_number(prod_val)
-            r_lump = parse_number(ws_c.cell(r, 19).value)
-            r_with_ash = parse_number(ws_c.cell(r, 20).value)
-            r_tot = parse_number(ws_c.cell(r, 21).value)
-            note = str(ws_c.cell(r, 22).value or "").strip()
+            r_lump = parse_number(ws_c.cell(r, coal_cols.get("rate_lump", 19)).value) if "rate_lump" in coal_cols else 0.0
+            r_with_ash = parse_number(ws_c.cell(r, coal_cols.get("rate_with_ash", 20)).value) if "rate_with_ash" in coal_cols else 0.0
+            r_tot = parse_number(ws_c.cell(r, coal_cols.get("rate_tot", 21)).value) if "rate_tot" in coal_cols else 0.0
+            note = str(ws_c.cell(r, coal_cols.get("note", 22)).value or "").strip() if "note" in coal_cols else ""
 
-            heat = parse_number(ws_c.cell(r, 7).value)
-            ash = parse_number(ws_c.cell(r, 8).value)
-            std_ash = parse_number(ws_c.cell(r, 9).value)
-            stone = parse_number(ws_c.cell(r, 10).value)
+            heat = parse_number(ws_c.cell(r, coal_cols.get("heat", 7)).value) if "heat" in coal_cols else 0.0
+            ash = parse_number(ws_c.cell(r, coal_cols.get("ash_rate", 8)).value) if "ash_rate" in coal_cols else 0.0
+            std_ash = parse_number(ws_c.cell(r, coal_cols.get("std_ash_rate", 9)).value) if "std_ash_rate" in coal_cols else 0.0
+            stone = parse_number(ws_c.cell(r, coal_cols.get("stone_rate", 10)).value) if "stone_rate" in coal_cols else 0.0
 
             if supplier_name:
                 last_sup_name = supplier_name
@@ -467,23 +535,38 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
             else:
                 continue
 
-            is_drying = (prod_m2 == 0) or ("sấy" in str(prod_val or "").lower()) or ("sấy" in note.lower())
+            prod_val_str = str(prod_val or "").strip().lower()
+            is_drying = (
+                ("sấy" in prod_val_str) or 
+                ("sấy" in note.lower()) or 
+                ("không tính" in prod_val_str) or
+                ("sấy" in supplier_name.lower()) or
+                (prod_m2 == 0 and ("sấy" in line_check or "không tính" in line_check))
+            )
             firing = "Không tính tiêu hao" if is_drying else "Có tính tiêu hao"
             if is_drying:
                 prod_m2 = 0.0
                 r_lump = 0.0
                 r_with_ash = 0.0
                 r_tot = 0.0
+            else:
+                # Tự tính suất tiêu hao nếu file Excel chưa tính
+                if r_lump == 0 and prod_m2 > 0 and issued > 0:
+                    r_lump = round(issued / prod_m2, 2)
+                if r_with_ash == 0 and prod_m2 > 0 and (issued + ash_w) > 0:
+                    r_with_ash = round((issued + ash_w - excess) / prod_m2, 2)
+                if r_tot == 0 and prod_m2 > 0 and tot_used > 0:
+                    r_tot = round(tot_used / prod_m2, 2)
 
             if issued > 0 or tot_used > 0:
                 cur.execute("""
                     INSERT INTO data_coal_consumption (
-                        month, year, line, size, coal_supplier, warehouse, import_date, firing_type,
+                        excel_row, month, year, line, size, coal_supplier, warehouse, import_date, firing_type,
                         heat_value, ash_rate, std_ash_rate, stone_rate, issued_weight, ash_weight,
                         ash_export_rate, compensation_weight, excess_ash_weight, total_used_weight,
                         production_m2, rate_lump, rate_with_ash, rate_total, note
-                    ) VALUES (?, ?, ?, ?, ?, 'Kho', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (month, year, cur_line, cur_size, supplier_name, firing, heat, ash, std_ash, stone, issued, ash_w, ash_rate, comp, excess, tot_used, prod_m2, r_lump, r_with_ash, r_tot, note))
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'Kho', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (r, month, year, cur_line, cur_size, supplier_name, firing, heat, ash, std_ash, stone, issued, ash_w, ash_rate, comp, excess, tot_used, prod_m2, r_lump, r_with_ash, r_tot, note))
 
         logs.append(f"[Than] Hoàn tất nạp dữ liệu Than Tháng {month}/{year}")
 
