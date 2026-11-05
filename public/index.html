@@ -672,6 +672,23 @@
             </div>
           </div>
 
+          <!-- Monthly Active Breakdown Strip (Trực quan hóa các tháng chạy & khối lượng từng tháng) -->
+          <div id="p2-monthly-breakdown-bar" class="p-3 bg-[#0a172c] rounded-xl border border-cyan-500/30 shadow-md">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                  <i data-lucide="calendar-check-2" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Các Tháng Phát Sinh Sản Xuất:</span>
+                </div>
+                <span id="p2-breakdown-total-badge" class="px-2.5 py-0.5 rounded text-xs font-black bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 font-mono">Đang tải...</span>
+              </div>
+              <div id="p2-breakdown-action-btn"></div>
+            </div>
+            <div id="p2-breakdown-chips" class="flex flex-wrap items-center gap-2 mt-2.5">
+              <!-- Dynamically populated chips -->
+            </div>
+          </div>
+
           <!-- Brand Breakdown Section (Donut + Table) -->
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <!-- Brand Doughnut Chart (col-span-4) -->
@@ -696,6 +713,7 @@
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40 text-amber-300">Dòng Men</th>
+                      <th class="p-2.5 text-center border border-[#1e3a6a]/40 text-cyan-300" title="Các tháng phát sinh sản xuất của thương hiệu này">Tháng Chạy</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-emerald-300">Sản Lượng A1 (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-blue-300">Sản Lượng A (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-amber-300">Sản Lượng B (m²)</th>

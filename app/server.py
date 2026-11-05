@@ -676,7 +676,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                    SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2,
                    GROUP_CONCAT(DISTINCT line) as lines,
                    GROUP_CONCAT(DISTINCT size) as sizes,
-                   glaze_type as glazes
+                   glaze_type as glazes,
+                   GROUP_CONCAT(DISTINCT month) as months
             FROM data_brand_production 
             {clause_d2} 
             GROUP BY brand_name, size, glaze_type 
@@ -707,7 +708,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 "share_pct": share_p,
                 "lines": r.get("lines") or "",
                 "sizes": r.get("sizes") or "",
-                "glazes": r.get("glazes") or ""
+                "glazes": r.get("glazes") or "",
+                "months": r.get("months") or ""
             })
 
         if p2_brand != "all":
@@ -732,6 +734,44 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                 brand_dist_rows = [dict(r) for r in cur.execute(q_brand_dist, vals_spec).fetchall()]
         else:
             brand_dist_rows = all_brand_rows[:10]
+
+        # Tự động trích xuất các tháng phát sinh sản lượng theo bộ lọc DC, KT, Men, Thương hiệu hiện tại
+        where_p2_months = []
+        vals_p2_months = []
+        if p2_line != "all":
+            where_p2_months.append("line = ?")
+            vals_p2_months.append(p2_line)
+        if p2_size != "all":
+            where_p2_months.append("size = ?")
+            vals_p2_months.append(p2_size)
+        if p2_glaze != "all":
+            if p2_glaze.lower() in ("bóng", "bong", "glossy"):
+                where_p2_months.append("(glaze_type LIKE '%Bóng%' OR glaze_type LIKE '%Phương Nam%' OR glaze_type LIKE '%Panson%')")
+            elif p2_glaze.lower() in ("matt", "matl"):
+                where_p2_months.append("glaze_type LIKE '%Matt%'")
+            elif p2_glaze.lower() in ("sugar", "sân vườn", "san vuon"):
+                where_p2_months.append("glaze_type LIKE '%Sugar%'")
+            else:
+                where_p2_months.append("glaze_type = ?")
+                vals_p2_months.append(p2_glaze)
+        if p2_brand != "all":
+            where_p2_months.append("brand_name = ?")
+            vals_p2_months.append(p2_brand)
+
+        clause_p2_months = ("WHERE " + " AND ".join(where_p2_months)) if where_p2_months else ""
+        q_p2_months = f"""
+            SELECT month, 
+                   SUM(quantity_m2) as total_m2,
+                   SUM(CASE WHEN grade = 'A1' THEN quantity_m2 ELSE 0 END) as a1_m2,
+                   SUM(CASE WHEN grade = 'B' THEN quantity_m2 ELSE 0 END) as b_m2,
+                   COUNT(DISTINCT brand_name) as brand_count
+            FROM data_brand_production
+            {clause_p2_months}
+            GROUP BY month
+            HAVING total_m2 > 0
+            ORDER BY month
+        """
+        p2_monthly_breakdown = [dict(r) for r in cur.execute(q_p2_months, vals_p2_months).fetchall()]
 
         # =========================================================================
         # 3. SECTION 3: Materials Consumption (Using p3_* filters)
@@ -897,6 +937,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             "brand_distribution": brand_dist_rows,
             "available_brands": available_brands,
             "brand_table": brand_table,
+            "p2_monthly_breakdown": p2_monthly_breakdown,
             "materials_section": {
                 "total_used_kg": total_mat_used_kg,
                 "total_reduced_kg": total_mat_reduced_kg,
