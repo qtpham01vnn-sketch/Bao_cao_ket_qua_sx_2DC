@@ -1,0 +1,21 @@
+{
+  "name": "phuongnam-kqsx-2dc",
+  "version": "2.1.0",
+  "description": "Hệ thống Quản Trị & Đối Soát Báo Cáo Sản Xuất 2 Dây Chuyền - Công Ty Gạch Men Phương Nam",
+  "main": "app/server.py",
+  "scripts": {
+    "start": "python app/server.py",
+    "build": "node build.js",
+    "test": "node build.js --test",
+    "validate:units": "python scratch/test_unit_rules.py"
+  },
+  "keywords": [
+    "phuongnam",
+    "production-management",
+    "ceramic-tiles",
+    "anomaly-radar",
+    "data-audit"
+  ],
+  "author": "Phuong Nam Digital Tech",
+  "license": "ISC"
+}
