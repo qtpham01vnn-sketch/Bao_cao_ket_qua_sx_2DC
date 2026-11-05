@@ -1,3 +1,19 @@
+
+try:
+    from app.monthly_importer import get_standard_material_unit
+except ImportError:
+    try:
+        from monthly_importer import get_standard_material_unit
+    except ImportError:
+        def get_standard_material_unit(mat_name, raw_unit="Kg"):
+            n = (mat_name or "").lower().strip()
+            if "pallet" in n or "bao bì" in n or "bao bi" in n: return "Cái"
+            if "bi cao nhôm" in n or "bi trung nhôm" in n or "bi nhôm" in n: return "Kg"
+            if "men " in n or n.startswith("men") or "xương" in n or "xuong" in n: return "Kg"
+            if any(k in n for k in ["vỏ điều", "vo dieu", "dây đai", "day dai", "nan nẹp", "nan nep", "màng co", "mang co", "ke góc", "ke goc"]): return "Kg"
+            u = (raw_unit or "Kg").strip()
+            return "Kg" if u.lower() in ("kg", "kilo") else ("Cái" if u.lower() in ("cái", "cai") else u)
+
 import http.server
 import socketserver
 import json
@@ -1417,7 +1433,7 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         f_dc2 = uploaded_files.get("file_dc2", {}).get("bytes")
         f_coal = uploaded_files.get("file_coal", {}).get("bytes")
         
-        logs = import_monthly_data(
+        import_res = import_monthly_data(
             conn=conn,
             month=target_month,
             year=target_year,
@@ -1425,6 +1441,12 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             file_dc2_bytes=f_dc2,
             file_coal_bytes=f_coal
         )
+        if isinstance(import_res, tuple) and len(import_res) == 2:
+            logs, unit_warnings = import_res
+        else:
+            logs = import_res
+            unit_warnings = getattr(logs, "unit_warnings", [])
+
         conn.close()
 
         # Đồng bộ tự động sang api/production_data.db
@@ -1439,7 +1461,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         self.send_json_response({
             "success": True,
             "message": f"Đã phân tích, bóc tách và lưu thành công toàn bộ dữ liệu Tháng {target_month}/{target_year} vào hệ thống!",
-            "logs": logs
+            "logs": logs,
+            "unit_warnings": unit_warnings
         })
 
     def handle_get_form_mau(self, params):
@@ -2052,10 +2075,11 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     "actual": ash_rate,
                     "norm": std_ash,
                     "unit": "%",
+                    "over_unit": "kg" if excess_ash_wt > 0 else "%",
                     "variance_pct": diff_pct,
                     "over_qty": excess_ash_wt,
                     "severity": "high" if diff_pct > 3.0 or excess_ash_wt > 0 else "medium",
-                    "message": f"Tỷ lệ cám/tro {ash_rate}% vượt định mức {std_ash}% tại {c_line} T{m_val}"
+                    "message": f"Tỷ lệ cám/tro {ash_rate}% vượt định mức {std_ash}% tại {c_line} T{m_val} (+{round(excess_ash_wt, 1)} kg quy bù)"
                 })
 
         # Analyze Materials: Any item with over_qty > 0 or actual_rate > norm_value
@@ -2067,7 +2091,8 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             actual_rate = float(m.get("actual_rate") or 0)
             norm_val = float(m.get("norm_value") or 0)
             over_qty = float(m.get("over_qty") or 0)
-            unit = m.get("unit") or "Kg"
+            raw_u = m.get("unit") or "Kg"
+            unit = get_standard_material_unit(item_name, raw_u)
 
             # An item is Vượt ĐM if and only if over_qty > 0
             if over_qty > 0:
@@ -2090,6 +2115,16 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         # Sort anomalies: high severity first, then by over_qty descending
         anomalies.sort(key=lambda x: (0 if x["severity"] == "high" else 1, -x.get("over_qty", 0)))
 
+        total_over_kg = sum(a.get("over_qty", 0) for a in anomalies if a.get("category") == "Nhiên liệu (Than)" or a.get("unit") in ("Kg", "kg"))
+        total_over_cai = sum(a.get("over_qty", 0) for a in anomalies if a.get("unit") in ("Cái", "cái"))
+        
+        summary_parts = []
+        if total_over_kg > 0:
+            summary_parts.append(f"+{round(total_over_kg, 2):,.2f} kg".replace(",", "@").replace(".", ",").replace("@", "."))
+        if total_over_cai > 0:
+            summary_parts.append(f"+{round(total_over_cai, 1):,.1f} cái".replace(",", "@").replace(".", ",").replace("@", "."))
+        total_over_display = " & ".join(summary_parts) if summary_parts else "+0,00 kg"
+
         self.send_json_response({
             "success": True,
             "month": raw_month if raw_month else latest_month,
@@ -2100,6 +2135,9 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             "total_anomalies": len(anomalies),
             "high_risk_count": sum(1 for a in anomalies if a["severity"] == "high"),
             "total_over_qty": round(sum(a.get("over_qty", 0) for a in anomalies), 2),
+            "total_over_kg": round(total_over_kg, 2),
+            "total_over_cai": round(total_over_cai, 1),
+            "total_over_display": total_over_display,
             "items": anomalies
         })
 

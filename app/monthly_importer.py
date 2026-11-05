@@ -4,6 +4,45 @@ import re
 import sqlite3
 import openpyxl
 
+
+def get_standard_material_unit(mat_name: str, raw_unit: str = "Kg") -> str:
+    """
+    Quy chuẩn ĐVT Công ty Gạch Men Phương Nam (theo bảng chuẩn nhà máy & Ảnh 1):
+    - Bi cao nhôm, Bi trung nhôm (mọi chủng loại): Kg (TUYỆT ĐỐI KHÔNG DÙNG 'CÁI')
+    - Men các loại (EWP, GWP, EWM, GWM, EFB, EFM, GFM, GFB, EFSV, SFSV, EWB, GWB, Matt, Bóng, Sugar...): Kg
+    - Nguyên liệu xương (xương PCL, xương DC1...): Kg
+    - Vỏ Điều / Vỏ điều: Kg
+    - Dây đai pét / Dây đai pet: Kg
+    - Nan Nẹp / Nan nẹp: Kg
+    - Màng co PE khổ 500mm / Màng co: Kg
+    - Ke góc / Ke góc 5V: Kg
+    - Dây đai hộp: Kg
+    - Pallet các loại (1100x1100, cũ, mới...): Cái
+    - Bao bì các loại (hộp carton đóng gói): Cái
+    """
+    n = (mat_name or "").lower().strip()
+    
+    if "pallet" in n:
+        return "Cái"
+    if "bao bì" in n or "bao bi" in n:
+        return "Cái"
+    if "bi cao nhôm" in n or "bi trung nhôm" in n or "bi nhôm" in n:
+        return "Kg"
+    if "men " in n or n.startswith("men"):
+        return "Kg"
+    if "xương" in n or "xuong" in n:
+        return "Kg"
+    if any(k in n for k in ["vỏ điều", "vo dieu", "dây đai", "day dai", "nan nẹp", "nan nep", "màng co", "mang co", "ke góc", "ke goc"]):
+        return "Kg"
+        
+    u = (raw_unit or "Kg").strip()
+    if u.lower() in ("kg", "kilo"):
+        return "Kg"
+    if u.lower() in ("cái", "cai"):
+        return "Cái"
+    return u
+
+
 def parse_number(val, default=0.0):
     if val is None:
         return default
@@ -101,6 +140,7 @@ def extract_size_from_text(text, default="40x80"):
 def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=None, file_coal_bytes=None):
     cur = conn.cursor()
     logs = []
+    unit_warnings = []
     
     # 1. Xóa dữ liệu cũ của tháng này (nếu có) để nạp mới/cập nhật sạch sẽ
     if file_dc1_bytes:
@@ -258,7 +298,22 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 mat_name = str(ws1.cell(r, 2).value or "").strip()
                 if not mat_name or mat_name.lower() in ["nguyên liệu vật tư", "tổng", "ghi chú:"] or mat_name.startswith("IV."):
                     continue
-                unit = str(ws1.cell(r, 4).value or "Kg").strip()
+                raw_unit = str(ws1.cell(r, 4).value or "Kg").strip()
+                std_unit = get_standard_material_unit(mat_name, raw_unit)
+                if raw_unit and raw_unit.lower() != std_unit.lower():
+                    warn_msg = f"⚠️ [LỆCH QUY TẮC ĐVT] DC1 Dòng {r} (30x60): Vật tư '{mat_name}' trong file Excel ghi là '{raw_unit}', SAI quy chuẩn Công ty (chuẩn là '{std_unit}'). Hệ thống đã tự động chuyển về '{std_unit}'."
+                    logs.append(warn_msg)
+                    unit_warnings.append({
+                        "line": "DC1",
+                        "size": "30x60",
+                        "material": mat_name,
+                        "found_unit": raw_unit,
+                        "standard_unit": std_unit,
+                        "row": r,
+                        "message": f"Vật tư '{mat_name}' ghi là '{raw_unit}' ➔ Chuẩn hóa thành '{std_unit}'"
+                    })
+                unit = std_unit
+
                 norm = parse_number(ws1.cell(r, 5).value)
                 act_rate = parse_number(ws1.cell(r, 6).value)
                 used_qty = parse_number(ws1.cell(r, 7).value)
@@ -434,7 +489,22 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                     continue
                 mat_name = str(c2 or "").strip()
                 if mat_name and not mat_name.lower().startswith("nguyên liệu") and not mat_name.lower().startswith("➢") and not mat_name.lower().startswith("stt") and not mat_name.lower().startswith("*"):
-                    unit = str(ws2.cell(r, 4).value or "kg").strip()
+                    raw_unit = str(ws2.cell(r, 4).value or "kg").strip()
+                    std_unit = get_standard_material_unit(mat_name, raw_unit)
+                    if raw_unit and raw_unit.lower() != std_unit.lower():
+                        warn_msg = f"⚠️ [LỆCH QUY TẮC ĐVT] DC2 Dòng {r} ({cur_size}): Vật tư '{mat_name}' trong file Excel ghi là '{raw_unit}', SAI quy chuẩn Công ty (chuẩn là '{std_unit}'). Hệ thống đã tự động chuyển về '{std_unit}'."
+                        logs.append(warn_msg)
+                        unit_warnings.append({
+                            "line": "DC2",
+                            "size": cur_size,
+                            "material": mat_name,
+                            "found_unit": raw_unit,
+                            "standard_unit": std_unit,
+                            "row": r,
+                            "message": f"Vật tư '{mat_name}' ({cur_size}) ghi là '{raw_unit}' ➔ Chuẩn hóa thành '{std_unit}'"
+                        })
+                    unit = std_unit
+
                     norm = parse_number(ws2.cell(r, 5).value)
                     act_rate = parse_number(ws2.cell(r, 6).value)
                     used_qty = parse_number(ws2.cell(r, 7).value)
@@ -643,4 +713,6 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
 
     conn.commit()
     logs.append(f"✅ ĐÃ LƯU TOÀN BỘ DỮ LIỆU THÁNG {month}/{year} VÀO HỆ THỐNG THÀNH CÔNG!")
-    return logs
+    if unit_warnings:
+        logs.append(f"⚠️ ĐÃ PHÁT HIỆN VÀ TỰ ĐỘNG CHUẨN HÓA {len(unit_warnings)} MỤC GHI SAI QUY TẮC ĐVT TRONG FILE EXCEL!")
+    return logs, unit_warnings

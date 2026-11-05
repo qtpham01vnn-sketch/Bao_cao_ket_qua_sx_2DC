@@ -5382,9 +5382,40 @@ async function submitMonthlyImport() {
     if (json.success) {
       logsBox.innerHTML += `<div class="text-emerald-400 font-bold mt-2">✓ ${json.message}</div>`;
       (json.logs || []).forEach(l => {
-        logsBox.innerHTML += `<div>${l}</div>`;
+        if (l.includes("⚠️") || l.includes("LỆCH QUY TẮC ĐVT")) {
+          logsBox.innerHTML += `<div class="text-amber-300 font-semibold">${l}</div>`;
+        } else {
+          logsBox.innerHTML += `<div>${l}</div>`;
+        }
       });
-      alert("Đã trích xuất và phân rã dữ liệu thành công vào 4 bảng Data!");
+
+      if (json.unit_warnings && json.unit_warnings.length > 0) {
+        let warnRows = json.unit_warnings.map(w => 
+          `<li class="font-mono text-amber-200">▪ <b>${w.line} ${w.size}</b>: Vật tư <b>'${w.material}'</b> (Dòng ${w.row}) ghi ĐVT là <span class="text-rose-300 font-bold">'${w.found_unit}'</span> ➔ Đã tự động chuẩn hóa về <span class="text-emerald-300 font-bold">'${w.standard_unit}'</span></li>`
+        ).join("");
+        
+        logsBox.innerHTML += `
+          <div class="mt-3 p-3 rounded-xl bg-amber-950/80 border border-amber-500/60 text-xs shadow-lg space-y-1.5">
+            <div class="flex items-center gap-2 font-black text-amber-300 text-sm">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+              <span>CẢNH BÁO QUY TẮC ĐƠN VỊ TÍNH (ĐVT) - PHÁT HIỆN ${json.unit_warnings.length} MỤC GHI SAI</span>
+            </div>
+            <p class="text-slate-200 text-[11.5px]">Hệ thống phát hiện các mục trong file Excel bị ghi sai đơn vị tính so với quy chuẩn Công ty (Ảnh chuẩn ĐVT). Hệ thống đã tự động quy chuẩn để đảm bảo tính toán chính xác:</p>
+            <ul class="space-y-1 pl-2 text-[11px]">
+              ${warnRows}
+            </ul>
+            <div class="text-[11px] text-amber-300/90 italic pt-1 border-t border-amber-500/30">
+              * Vui lòng nhắc nhở bộ phận nhập liệu điều chỉnh lại file Excel cho các kỳ tiếp theo đúng chuẩn Công ty.
+            </div>
+          </div>
+        `;
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+        alert(`Đã trích xuất thành công!
+
+⚠️ LƯU Ý ĐẶC BIỆT: Phát hiện ${json.unit_warnings.length} vật tư ghi SAI ĐƠN VỊ TÍNH (ĐVT) trong file Excel (ví dụ: Bi trung nhôm ghi là 'cái'). Hệ thống đã tự động quy chuẩn về đúng ĐVT của Công ty (Kg). Chi tiết xem trong khung nhật ký phía dưới.`);
+      } else {
+        alert("Đã trích xuất và phân rã dữ liệu thành công vào 4 bảng Data!");
+      }
     } else {
       logsBox.innerHTML += `<div class="text-rose-400 mt-2">✗ Lỗi: ${json.error}</div>`;
     }
@@ -9958,7 +9989,7 @@ function renderAnomalyCardsOnly() {
 
         <div class="flex items-center justify-between text-[11px] bg-rose-950/40 border border-rose-500/30 px-2 py-1 rounded text-rose-200 font-bold">
           <span>Lượng vượt:</span>
-          <span class="font-mono text-rose-300 font-black whitespace-nowrap">+${formatNumber(it.over_qty, 2)} ${it.unit}</span>
+          <span class="font-mono text-rose-300 font-black whitespace-nowrap">+${formatNumber(it.over_qty, 2)} ${it.over_unit || it.unit}</span>
         </div>
       </div>
     `;
@@ -10003,7 +10034,7 @@ function renderAnomalyRadarContent() {
   const topPreviewChips = items.slice(0, 3).map(it => {
     const isHigh = it.severity === "high";
     const chipCls = isHigh ? "bg-rose-500/20 text-rose-300 border-rose-500/30" : "bg-amber-500/20 text-amber-300 border-amber-500/30";
-    return `<span class="px-2 py-0.5 rounded ${chipCls} text-[10.5px] border font-medium whitespace-nowrap">${it.item} (+${formatNumber(it.over_qty, 1)} ${it.unit})</span>`;
+    return `<span class="px-2 py-0.5 rounded ${chipCls} text-[10.5px] border font-medium whitespace-nowrap">${it.item} (+${formatNumber(it.over_qty, 1)} ${it.over_unit || it.unit})</span>`;
   }).join("");
 
   const moreCountText = items.length > 3 ? `<span class="text-[10.5px] text-slate-400 font-semibold">+${items.length - 3} mục khác...</span>` : "";
@@ -10020,7 +10051,7 @@ function renderAnomalyRadarContent() {
           ${items.length} chỉ số Vượt ĐM
         </span>
         <span class="text-slate-300 text-[11px] whitespace-nowrap">
-          Tổng vượt: <b class="text-rose-300 font-mono">+${formatNumber(totalOverQty, 2)}</b> (kg/cái)
+          Tổng vượt: <b class="text-rose-300 font-mono">${currentAnomalyData.totalOverDisplay || ('+' + formatNumber(totalOverQty, 2) + ' kg')}</b>
         </span>
         <div class="hidden md:flex items-center gap-1.5">
           ${topPreviewChips}
@@ -10128,6 +10159,7 @@ async function loadDashboardAnomalies(selectedMonth, selectedLine, selectedSize)
     currentAnomalyData = {
       items: items,
       totalOverQty: totalOverQty,
+      totalOverDisplay: data.total_over_display,
       highRiskCount: highRiskCount,
       monthLabel: monthLabel,
       scopeLabel: scopeLabel
