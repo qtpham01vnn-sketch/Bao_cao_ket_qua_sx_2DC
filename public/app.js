@@ -5191,6 +5191,43 @@ function updateCoalKPIs(kpi) {
   if (elTotalUsedAll) elTotalUsedAll.innerText = `${formatNumber(kpi.total_used_all, 0)} kg`;
 }
 
+
+function autoDetectMonthFromFilename(file) {
+  if (!file || !file.name) return;
+  const name = file.name.toLowerCase();
+  for (let m = 12; m >= 1; m--) {
+    const pats = [
+      new RegExp(`tháng\\s*0?${m}\\b`, 'i'),
+      new RegExp(`thang\\s*0?${m}\\b`, 'i'),
+      new RegExp(`\\bt0?${m}\\b`, 'i'),
+      new RegExp(`\\b0?${m}\\.2026\\b`, 'i'),
+      new RegExp(`\\b0?${m}-2026\\b`, 'i'),
+    ];
+    if (pats.some(p => p.test(name))) {
+      const select = document.getElementById("import-month-select");
+      if (select) {
+        select.value = String(m);
+        console.log(`Auto-detected month ${m} from filename: ${file.name}`);
+      }
+      break;
+    }
+  }
+}
+
+// Bind auto-detect on file inputs when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  ['file-dc1', 'file-dc2', 'file-coal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          autoDetectMonthFromFilename(e.target.files[0]);
+        }
+      });
+    }
+  });
+});
+
 async function submitMonthlyImport() {
   const month = document.getElementById("import-month-select").value;
   const fDc1 = document.getElementById("file-dc1").files[0];

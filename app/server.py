@@ -413,6 +413,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         glazes = [r[0] for r in cur.execute("SELECT DISTINCT glaze_type FROM data_brand_production WHERE glaze_type != '' ORDER BY glaze_type").fetchall()]
         conn.close()
 
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
+
         self.send_json_response({
             "months": months,
             "lines": lines,
@@ -869,6 +878,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
 
         conn.close()
 
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
+
         self.send_json_response({
             "is_brand_selected": (p1_brand != "all"),
             "selected_brand_name": p1_brand,
@@ -933,6 +951,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
         conn.close()
 
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
+
         self.send_json_response({"data": rows, "count": len(rows)})
 
     def handle_get_brands(self, params):
@@ -979,6 +1006,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         grand_total = sum(r["quantity_m2"] for r in rows)
 
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({
             "data": rows,
@@ -1028,6 +1064,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         q += " ORDER BY month, line, id"
         rows = [dict(r) for r in cur.execute(q, vals).fetchall()]
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({"data": rows, "count": len(rows)})
 
@@ -1096,6 +1141,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
         summary_all = calc_group_summary(rows)
 
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({
             "data": rows,
@@ -1308,7 +1362,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
                     pass
 
         conn = get_db()
-        from monthly_importer import import_monthly_data
+        import importlib
+        try:
+            import app.monthly_importer as monthly_importer
+            importlib.reload(monthly_importer)
+            from app.monthly_importer import import_monthly_data
+        except ImportError:
+            import monthly_importer
+            importlib.reload(monthly_importer)
+            from monthly_importer import import_monthly_data
         
         f_dc1 = uploaded_files.get("file_dc1", {}).get("bytes")
         f_dc2 = uploaded_files.get("file_dc2", {}).get("bytes")
@@ -1323,6 +1385,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             file_coal_bytes=f_coal
         )
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({
             "success": True,
@@ -1391,6 +1462,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             
         save_form_mau_custom_data(conn, body_to_save)
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({
             "success": True,
@@ -1514,6 +1594,15 @@ class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
             rec_id = cur.lastrowid
         conn.commit()
         conn.close()
+
+        # Đồng bộ tự động sang api/production_data.db
+        import shutil
+        api_db = os.path.join(WORKSPACE_DIR, "api", "production_data.db")
+        if os.path.exists(DB_PATH) and os.path.abspath(DB_PATH) != os.path.abspath(api_db):
+            try:
+                shutil.copy2(DB_PATH, api_db)
+            except Exception as e:
+                print(f"Warning syncing to api_db: {e}")
 
         self.send_json_response({
             "success": True,

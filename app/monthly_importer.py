@@ -17,6 +17,87 @@ def parse_number(val, default=0.0):
     except:
         return default
 
+def find_monthly_sheet(sheetnames, month, year=None):
+    """
+    Tìm sheet báo cáo tháng chính xác tuyệt đối, tránh nhầm lẫn giữa T1 và T10/T11/T12.
+    Hỗ trợ các định dạng: T10.2026, T10.26, T10, THÁNG 10, THANG 10, T 10...
+    """
+    pats = [
+        rf"(?i)\bt0?{month}\.(?:20)?\d{{2}}\b",
+        rf"(?i)\btháng\s*0?{month}\b",
+        rf"(?i)\bthang\s*0?{month}\b",
+        rf"(?i)\bt\s*0?{month}(?!\d)",
+    ]
+    for pat in pats:
+        for s in sheetnames:
+            if re.search(pat, s.strip()):
+                return s
+    # Fallback to word token search
+    for s in sheetnames:
+        clean = re.sub(r'[^a-zA-Z0-9]', ' ', s.lower())
+        tokens = clean.split()
+        if f"t{month}" in tokens or f"{month}" in tokens:
+            return s
+    return sheetnames[0] if sheetnames else None
+
+def detect_production_columns(ws, start_row=1, max_row=20):
+    """
+    Tự động quét dòng tiêu đề để nhận diện vị trí các cột trong Section I:
+    sl_ep, a1, a, b, total, days, avg_day, stop_2mf.
+    Hoàn toàn linh hoạt trước mọi sự dịch chuyển cột trong các tháng.
+    """
+    col_map = {
+        'sl_ep': 3,
+        'a1': 4,
+        'a': 5,
+        'b': 6,
+        'total': 7,
+        'days': 8,
+        'avg_day': 9,
+        'stop_2mf': 13
+    }
+    for r in range(start_row, min(max_row + 1, ws.max_row + 1)):
+        for c in range(1, min(25, ws.max_column + 1)):
+            val = str(ws.cell(r, c).value or '').strip().lower()
+            if not val:
+                continue
+            if 'số ngày' in val or 'ngay sx' in val or 'ngày sx' in val:
+                col_map['days'] = c
+            elif 'tb/ngày' in val or 'tb/ngay' in val or 'm2/ngày' in val or 'm2/ngay' in val:
+                col_map['avg_day'] = c
+            elif 'tổng' in val and ('a1' in val or 'ab' in val or '+' in val):
+                col_map['total'] = c
+            elif 'sản lượng ép' in val or 'sl ép' in val or 'sl ep' in val:
+                col_map['sl_ep'] = c
+            elif 'dừng ép' in val or 'dung ep' in val:
+                col_map['stop_2mf'] = c
+            elif val == 'a1':
+                col_map['a1'] = c
+            elif val == 'a':
+                col_map['a'] = c
+            elif val == 'b':
+                col_map['b'] = c
+    return col_map
+
+def extract_size_from_text(text, default="40x80"):
+    """
+    Tự động nhận diện kích thước gạch từ văn bản bất kỳ (hỗ trợ dấu x, *, hoặc kích thước mm).
+    """
+    t = str(text or "").lower()
+    if "30*60" in t or "30x60" in t or "300x600" in t:
+        return "30x60"
+    if "50*50" in t or "50x50" in t or "500x500" in t:
+        return "50x50"
+    if "60*60" in t or "60x60" in t or "600x600" in t:
+        return "60x60"
+    if "40*80" in t or "40x80" in t or "400x800" in t:
+        return "40x80"
+    if "80*80" in t or "80x80" in t or "800x800" in t:
+        return "80x80"
+    if "60*120" in t or "60x120" in t or "600x1200" in t:
+        return "60x120"
+    return default
+
 def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=None, file_coal_bytes=None):
     cur = conn.cursor()
     logs = []
@@ -43,87 +124,89 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
     # =========================================================================
     if file_dc1_bytes:
         wb1 = openpyxl.load_workbook(io.BytesIO(file_dc1_bytes), data_only=True)
-        # Tìm sheet tháng (ví dụ T9.26, T9.2026, hoặc sheet đầu tiên)
-        target_sheet = None
-        for s in wb1.sheetnames:
-            if f"T{month}" in s.upper() or f"THÁNG {month}" in s.upper() or f"THANG {month}" in s.upper():
-                target_sheet = s
-                break
-        if not target_sheet:
-            target_sheet = wb1.sheetnames[0]
-            
+        target_sheet = find_monthly_sheet(wb1.sheetnames, month, year)
         ws1 = wb1[target_sheet]
         logs.append(f"[DC1] Đang bóc tách sheet: '{target_sheet}'...")
 
-        # Tìm Section I: Sản lượng - Chất lượng
-        # Tìm dòng Kế hoạch và Thực hiện
-        kh_row = None
-        th_row = None
-        for r in range(1, min(25, ws1.max_row + 1)):
+        col_map1 = detect_production_columns(ws1, start_row=1, max_row=20)
+
+        # Quét Section I: Sản lượng - Chất lượng DC1 linh hoạt
+        for r in range(1, min(35, ws1.max_row + 1)):
             c1 = str(ws1.cell(r, 1).value or "").strip().lower()
-            if "kế hoạch" in c1 and "30x60" in c1:
-                kh_row = r
-            elif "thực hiện" in c1 and "30x60" in c1:
-                th_row = r
+            if not c1:
+                continue
 
-        if kh_row:
-            sl_ep = parse_number(ws1.cell(kh_row, 3).value)
-            a1 = parse_number(ws1.cell(kh_row, 4).value)
-            a = parse_number(ws1.cell(kh_row, 5).value)
-            b = parse_number(ws1.cell(kh_row, 6).value)
-            tot = parse_number(ws1.cell(kh_row, 7).value)
-            p_days = parse_number(ws1.cell(kh_row, 8).value)
-            avg_d = parse_number(ws1.cell(kh_row, 9).value)
-            
-            # % row
-            pct_a1 = parse_number(ws1.cell(kh_row + 1, 4).value)
-            pct_a = parse_number(ws1.cell(kh_row + 1, 5).value)
-            pct_b = parse_number(ws1.cell(kh_row + 1, 6).value)
-            
-            cur.execute("""
-                INSERT INTO data_production_summary (
-                    month, year, line, size, product_line, data_type, unit,
-                    sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
-                    prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
-                ) VALUES (?, ?, 'DC1', '30x60', 'Phương Nam', 'Kế hoạch', 'm2', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40, ?, ?)
-            """, (month, year, sl_ep, a1, a, b, tot, pct_a1, pct_a, pct_b, p_days, avg_d, p_days * 40, f"Import DC1 T{month} KH m2"))
+            line_size = extract_size_from_text(c1, default="30x60")
+            prod_line = "Phương Nam"
+            if "matt" in c1:
+                prod_line = "Matt"
+            elif "panson" in c1:
+                prod_line = "Panson"
 
-            cur.execute("""
-                INSERT INTO data_production_summary (
-                    month, year, line, size, product_line, data_type, unit,
-                    sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
-                    prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
-                ) VALUES (?, ?, 'DC1', '30x60', 'Phương Nam', 'Kế hoạch', '%', 0, ?, ?, ?, 100, ?, ?, ?, 0, 0, 0, 0, ?)
-            """, (month, year, pct_a1, pct_a, pct_b, pct_a1, pct_a, pct_b, f"Import DC1 T{month} KH %"))
+            if c1.startswith("kế hoạch") or ("kế hoạch" in c1 and ("30" in c1 or "40" in c1 or "50" in c1 or "60" in c1)):
+                sl_ep = parse_number(ws1.cell(r, col_map1['sl_ep']).value)
+                a1 = parse_number(ws1.cell(r, col_map1['a1']).value)
+                a = parse_number(ws1.cell(r, col_map1['a']).value)
+                b = parse_number(ws1.cell(r, col_map1['b']).value)
+                tot = parse_number(ws1.cell(r, col_map1['total']).value)
+                p_days = parse_number(ws1.cell(r, col_map1['days']).value)
+                avg_d = parse_number(ws1.cell(r, col_map1['avg_day']).value)
 
-        if th_row:
-            sl_ep = parse_number(ws1.cell(th_row, 3).value)
-            a1 = parse_number(ws1.cell(th_row, 4).value)
-            a = parse_number(ws1.cell(th_row, 5).value)
-            b = parse_number(ws1.cell(th_row, 6).value)
-            tot = parse_number(ws1.cell(th_row, 7).value)
-            p_days = parse_number(ws1.cell(th_row, 8).value)
-            avg_d = parse_number(ws1.cell(th_row, 9).value)
-            
-            pct_a1 = parse_number(ws1.cell(th_row + 1, 4).value)
-            pct_a = parse_number(ws1.cell(th_row + 1, 5).value)
-            pct_b = parse_number(ws1.cell(th_row + 1, 6).value)
+                if sl_ep == 0 and a1 == 0 and tot == 0 and p_days == 0:
+                    continue
 
-            cur.execute("""
-                INSERT INTO data_production_summary (
-                    month, year, line, size, product_line, data_type, unit,
-                    sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
-                    prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
-                ) VALUES (?, ?, 'DC1', '30x60', 'Phương Nam', 'Thực hiện', 'm2', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 20, ?, ?)
-            """, (month, year, sl_ep, a1, a, b, tot, pct_a1, pct_a, pct_b, p_days, avg_d, p_days * 20, f"Import DC1 T{month} TH m2"))
+                pct_a1 = parse_number(ws1.cell(r + 1, col_map1['a1']).value)
+                pct_a = parse_number(ws1.cell(r + 1, col_map1['a']).value)
+                pct_b = parse_number(ws1.cell(r + 1, col_map1['b']).value)
 
-            cur.execute("""
-                INSERT INTO data_production_summary (
-                    month, year, line, size, product_line, data_type, unit,
-                    sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
-                    prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
-                ) VALUES (?, ?, 'DC1', '30x60', 'Phương Nam', 'Thực hiện', '%', 0, ?, ?, ?, 100, ?, ?, ?, 0, 0, 0, 0, ?)
-            """, (month, year, pct_a1, pct_a, pct_b, pct_a1, pct_a, pct_b, f"Import DC1 T{month} TH %"))
+                cur.execute("""
+                    INSERT INTO data_production_summary (
+                        month, year, line, size, product_line, data_type, unit,
+                        sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
+                        prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
+                    ) VALUES (?, ?, 'DC1', ?, ?, 'Kế hoạch', 'm2', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 40, ?, ?)
+                """, (month, year, line_size, prod_line, sl_ep, a1, a, b, tot, pct_a1, pct_a, pct_b, p_days, avg_d, p_days * 40, f"Import DC1 T{month} Row {r} KH m2"))
+
+                cur.execute("""
+                    INSERT INTO data_production_summary (
+                        month, year, line, size, product_line, data_type, unit,
+                        sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
+                        prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
+                    ) VALUES (?, ?, 'DC1', ?, ?, 'Kế hoạch', '%', 0, ?, ?, ?, 100, ?, ?, ?, 0, 0, 0, 0, ?)
+                """, (month, year, line_size, prod_line, pct_a1, pct_a, pct_b, pct_a1, pct_a, pct_b, f"Import DC1 T{month} Row {r} KH %"))
+
+            elif c1.startswith("thực hiện") or ("thực hiện" in c1 and ("30" in c1 or "40" in c1 or "50" in c1 or "60" in c1)):
+                sl_ep = parse_number(ws1.cell(r, col_map1['sl_ep']).value)
+                a1 = parse_number(ws1.cell(r, col_map1['a1']).value)
+                a = parse_number(ws1.cell(r, col_map1['a']).value)
+                b = parse_number(ws1.cell(r, col_map1['b']).value)
+                tot = parse_number(ws1.cell(r, col_map1['total']).value)
+                p_days = parse_number(ws1.cell(r, col_map1['days']).value)
+                avg_d = parse_number(ws1.cell(r, col_map1['avg_day']).value)
+
+                if sl_ep == 0 and a1 == 0 and tot == 0 and p_days == 0:
+                    continue
+
+                pct_a1 = parse_number(ws1.cell(r + 1, col_map1['a1']).value)
+                pct_a = parse_number(ws1.cell(r + 1, col_map1['a']).value)
+                pct_b = parse_number(ws1.cell(r + 1, col_map1['b']).value)
+                stop_2mf = parse_number(ws1.cell(r + 1, col_map1.get('stop_2mf', 13)).value, 20.0)
+
+                cur.execute("""
+                    INSERT INTO data_production_summary (
+                        month, year, line, size, product_line, data_type, unit,
+                        sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
+                        prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
+                    ) VALUES (?, ?, 'DC1', ?, ?, 'Thực hiện', 'm2', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (month, year, line_size, prod_line, sl_ep, a1, a, b, tot, pct_a1, pct_a, pct_b, p_days, avg_d, stop_2mf, p_days * stop_2mf, f"Import DC1 T{month} Row {r} TH m2"))
+
+                cur.execute("""
+                    INSERT INTO data_production_summary (
+                        month, year, line, size, product_line, data_type, unit,
+                        sl_ep, a1, a, b, recovery_total, pct_a1, pct_a, pct_b,
+                        prod_days, avg_per_day, stop_time_2mf, stop_time_total, source_row
+                    ) VALUES (?, ?, 'DC1', ?, ?, 'Thực hiện', '%', 0, ?, ?, ?, 100, ?, ?, ?, 0, 0, 0, 0, ?)
+                """, (month, year, line_size, prod_line, pct_a1, pct_a, pct_b, pct_a1, pct_a, pct_b, f"Import DC1 T{month} Row {r} TH %"))
 
         # Section II: Thương hiệu DC1
         sec2_start = None
@@ -146,7 +229,6 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 if brand_name.lower() in ["kh/th", "tổng", "ghi chú", "thực hiện", ""] or brand_name.startswith("II."):
                     continue
                 
-                # Check if row has glaze header or note (e.g. 'Sản lượng men Matt' or 'men Phương Nam')
                 row_text = " ".join([str(ws1.cell(r, c).value or "") for c in range(1, 15)]).lower()
                 if "men matt" in row_text:
                     current_glaze = "Matt"
@@ -198,34 +280,19 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
     # =========================================================================
     if file_dc2_bytes:
         wb2 = openpyxl.load_workbook(io.BytesIO(file_dc2_bytes), data_only=True)
-        target_sheet = None
-        for s in wb2.sheetnames:
-            if f"T{month}" in s.upper() or f"THÁNG {month}" in s.upper() or f"THANG {month}" in s.upper():
-                target_sheet = s
-                break
-        if not target_sheet:
-            target_sheet = wb2.sheetnames[0]
-            
+        target_sheet = find_monthly_sheet(wb2.sheetnames, month, year)
         ws2 = wb2[target_sheet]
         logs.append(f"[DC2] Đang bóc tách sheet: '{target_sheet}'...")
 
-        # Section I: Quét các khối Kế hoạch & Thực hiện trong DC2
+        col_map2 = detect_production_columns(ws2, start_row=1, max_row=20)
+
+        # Section I: Quét các khối Kế hoạch & Thực hiện trong DC2 hoàn toàn động
         for r in range(1, min(35, ws2.max_row + 1)):
             c1 = str(ws2.cell(r, 1).value or "").strip().lower()
             if not c1:
                 continue
             
-            line_size = "40x80"
-            if "50*50" in c1 or "50x50" in c1:
-                line_size = "50x50"
-            elif "60*60" in c1 or "60x60" in c1:
-                line_size = "60x60"
-            elif "40*80" in c1 or "40x80" in c1:
-                line_size = "40x80"
-
-            # Nếu trong tháng 9 hoặc 10, DC2 không chạy 50x50 mà có dòng 50x50 là sót lại từ file cũ thì bỏ qua
-            if month in (9, 10) and line_size == "50x50":
-                continue
+            line_size = extract_size_from_text(c1, default="40x80")
 
             prod_line = "Panson"
             if line_size == "50x50":
@@ -244,18 +311,22 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 else:
                     prod_line = "Panson"
 
-            if c1.startswith("kế hoạch"):
-                sl_ep = parse_number(ws2.cell(r, 3).value)
-                a1 = parse_number(ws2.cell(r, 4).value)
-                a = parse_number(ws2.cell(r, 5).value)
-                b = parse_number(ws2.cell(r, 6).value)
-                tot = parse_number(ws2.cell(r, 7).value)
-                p_days = parse_number(ws2.cell(r, 8).value)
-                avg_d = parse_number(ws2.cell(r, 9).value)
+            if c1.startswith("kế hoạch") or ("kế hoạch" in c1 and ("40" in c1 or "50" in c1 or "60" in c1 or "30" in c1 or "80" in c1)):
+                sl_ep = parse_number(ws2.cell(r, col_map2['sl_ep']).value)
+                a1 = parse_number(ws2.cell(r, col_map2['a1']).value)
+                a = parse_number(ws2.cell(r, col_map2['a']).value)
+                b = parse_number(ws2.cell(r, col_map2['b']).value)
+                tot = parse_number(ws2.cell(r, col_map2['total']).value)
+                p_days = parse_number(ws2.cell(r, col_map2['days']).value)
+                avg_d = parse_number(ws2.cell(r, col_map2['avg_day']).value)
 
-                pct_a1 = parse_number(ws2.cell(r + 1, 4).value)
-                pct_a = parse_number(ws2.cell(r + 1, 5).value)
-                pct_b = parse_number(ws2.cell(r + 1, 6).value)
+                # Bỏ qua dòng mẫu không phát sinh sản lượng hoặc ngày chạy
+                if sl_ep == 0 and a1 == 0 and tot == 0 and p_days == 0:
+                    continue
+
+                pct_a1 = parse_number(ws2.cell(r + 1, col_map2['a1']).value)
+                pct_a = parse_number(ws2.cell(r + 1, col_map2['a']).value)
+                pct_b = parse_number(ws2.cell(r + 1, col_map2['b']).value)
 
                 cur.execute("""
                     INSERT INTO data_production_summary (
@@ -273,19 +344,23 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                     ) VALUES (?, ?, 'DC2', ?, ?, 'Kế hoạch', '%', 0, ?, ?, ?, 100, ?, ?, ?, 0, 0, 0, 0, ?)
                 """, (month, year, line_size, prod_line, pct_a1, pct_a, pct_b, pct_a1, pct_a, pct_b, f"Import DC2 T{month} Row {r} KH %"))
 
-            elif c1.startswith("thực hiện"):
-                sl_ep = parse_number(ws2.cell(r, 3).value)
-                a1 = parse_number(ws2.cell(r, 4).value)
-                a = parse_number(ws2.cell(r, 5).value)
-                b = parse_number(ws2.cell(r, 6).value)
-                tot = parse_number(ws2.cell(r, 7).value)
-                p_days = parse_number(ws2.cell(r, 8).value)
-                avg_d = parse_number(ws2.cell(r, 9).value)
+            elif c1.startswith("thực hiện") or ("thực hiện" in c1 and ("40" in c1 or "50" in c1 or "60" in c1 or "30" in c1 or "80" in c1)):
+                sl_ep = parse_number(ws2.cell(r, col_map2['sl_ep']).value)
+                a1 = parse_number(ws2.cell(r, col_map2['a1']).value)
+                a = parse_number(ws2.cell(r, col_map2['a']).value)
+                b = parse_number(ws2.cell(r, col_map2['b']).value)
+                tot = parse_number(ws2.cell(r, col_map2['total']).value)
+                p_days = parse_number(ws2.cell(r, col_map2['days']).value)
+                avg_d = parse_number(ws2.cell(r, col_map2['avg_day']).value)
 
-                pct_a1 = parse_number(ws2.cell(r + 1, 4).value)
-                pct_a = parse_number(ws2.cell(r + 1, 5).value)
-                pct_b = parse_number(ws2.cell(r + 1, 6).value)
-                stop_2mf = parse_number(ws2.cell(r + 1, 13).value, 30.0)
+                # Bỏ qua dòng mẫu không phát sinh sản lượng hoặc ngày chạy
+                if sl_ep == 0 and a1 == 0 and tot == 0 and p_days == 0:
+                    continue
+
+                pct_a1 = parse_number(ws2.cell(r + 1, col_map2['a1']).value)
+                pct_a = parse_number(ws2.cell(r + 1, col_map2['a']).value)
+                pct_b = parse_number(ws2.cell(r + 1, col_map2['b']).value)
+                stop_2mf = parse_number(ws2.cell(r + 1, col_map2.get('stop_2mf', 13)).value, 30.0)
 
                 cur.execute("""
                     INSERT INTO data_production_summary (
@@ -308,27 +383,24 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
         cur_glaze = "Panson"
         is_mat_sec = False
         
-        # Lấy danh sách kích thước thực tế sản xuất trong Tháng (Data I) để lọc bỏ bảng rác cũ sót lại
+        # Lấy danh sách kích thước thực tế sản xuất trong Tháng (Data I) để tự động lọc bỏ các bảng rác cũ sót lại trong template
         cur.execute("SELECT DISTINCT size FROM data_production_summary WHERE month = ? AND year = ? AND line = 'DC2'", (month, year))
         active_sizes_sec1 = [r[0] for r in cur.fetchall()]
         if not active_sizes_sec1:
             active_sizes_sec1 = ["40x80", "50x50", "60x60"]
 
-        for r in range(25, min(250, ws2.max_row + 1)):
+        for r in range(25, ws2.max_row + 1):
             c1 = ws2.cell(r, 1).value
             c2 = ws2.cell(r, 2).value
             line_str = str(c1 or c2 or "").strip()
 
-            if "500x500" in line_str or "50x50" in line_str or "50*50" in line_str:
-                cur_size = "50x50"
-            elif "400x800" in line_str or "40x80" in line_str or "40*80" in line_str:
-                cur_size = "40x80"
-            elif "600x600" in line_str or "60x60" in line_str or "60*60" in line_str or "60x600" in line_str:
-                cur_size = "60x60"
+            detected_sz = extract_size_from_text(line_str, default=None)
+            if detected_sz:
+                cur_size = detected_sz
 
             if "men matt" in line_str.lower():
                 cur_glaze = "Matt"
-            elif "men bóng" in line_str.lower():
+            elif "men bóng" in line_str.lower() or "men bong" in line_str.lower():
                 cur_glaze = "Bóng"
             elif "panson" in line_str.lower():
                 cur_glaze = "Panson"
@@ -336,7 +408,7 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
             if "tiêu hao vật tư" in line_str.lower():
                 is_mat_sec = True
                 continue
-            if "nhân sự" in line_str.lower() or "khiếu nại" in line_str.lower():
+            if "nhân sự" in line_str.lower() or "khiếu nại" in line_str.lower() or "iv." in line_str.lower():
                 is_mat_sec = False
                 continue
 
@@ -550,7 +622,6 @@ def import_monthly_data(conn, month, year, file_dc1_bytes=None, file_dc2_bytes=N
                 r_with_ash = 0.0
                 r_tot = 0.0
             else:
-                # Tự tính suất tiêu hao nếu file Excel chưa tính
                 if r_lump == 0 and prod_m2 > 0 and issued > 0:
                     r_lump = round(issued / prod_m2, 2)
                 if r_with_ash == 0 and prod_m2 > 0 and (issued + ash_w) > 0:
