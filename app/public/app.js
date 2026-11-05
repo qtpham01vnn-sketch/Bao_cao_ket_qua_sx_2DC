@@ -2502,6 +2502,7 @@ async function loadDashboardData() {
     // 6. Render Brand Distribution Doughnut & Table
     renderBrandDistChart(data.brand_distribution || [], data.is_brand_selected);
     renderDashboardBrandTable(data.brand_table || [], currentDashBrandP2);
+    renderP2MonthlyBreakdown(data.p2_monthly_breakdown || [], currentDashMonthP2);
 
     // 7. Store Raw Part III Materials Data
     const matSec = data.materials_section || {};
@@ -2736,6 +2737,117 @@ function renderBrandDistChart(brands, isBrandSelected) {
   }
 }
 
+
+function renderP2MonthlyBreakdown(breakdownList, currentMonthP2) {
+  const container = document.getElementById("p2-monthly-breakdown-bar");
+  const badgeEl = document.getElementById("p2-breakdown-total-badge");
+  const chipsEl = document.getElementById("p2-breakdown-chips");
+  const actionBtnEl = document.getElementById("p2-breakdown-action-btn");
+
+  if (!container || !chipsEl) return;
+
+  const grandTotal = (breakdownList || []).reduce((acc, x) => acc + (x.total_m2 || 0), 0);
+  const activeMonthsSet = new Set((breakdownList || []).map(x => String(x.month)));
+
+  // 1. Update Month Slicer Buttons on Toolbar (Highlight active months, dim inactive months)
+  const allMonths = ["1", "3", "4", "5", "6", "7", "8", "9", "10"];
+  allMonths.forEach(m => {
+    const btn = document.getElementById("btn-p2-month-" + m);
+    if (!btn) return;
+
+    const isActiveInFilter = activeMonthsSet.has(m);
+    const isSelected = (currentMonthP2 === m);
+
+    if (isSelected) {
+      btn.className = "p2-slicer-btn px-2.5 py-1 rounded text-xs font-black bg-emerald-600 text-white shadow-lg ring-2 ring-emerald-400 transition";
+      btn.title = `Tháng ${m} (Đang lọc)`;
+    } else if (isActiveInFilter) {
+      btn.className = "p2-slicer-btn px-2.5 py-1 rounded text-xs font-bold bg-[#0d2242] border border-cyan-400/80 text-cyan-200 hover:border-emerald-400 shadow-sm transition";
+      btn.title = `Tháng ${m}: Có sản lượng phát sinh (Click để xem)`;
+    } else {
+      btn.className = "p2-slicer-btn px-2 py-1 rounded text-xs font-medium bg-[#070f1e] border border-slate-800 text-slate-500 opacity-35 hover:opacity-75 transition";
+      btn.title = `Tháng ${m}: Không có sản lượng theo tiêu chí này`;
+    }
+  });
+
+  const btnAll = document.getElementById("btn-p2-month-all");
+  if (btnAll) {
+    if (currentMonthP2 === "all") {
+      btnAll.className = "p2-slicer-btn px-2.5 py-1 rounded text-xs font-black bg-emerald-600 text-white shadow-lg ring-2 ring-emerald-400 transition";
+    } else {
+      btnAll.className = "p2-slicer-btn px-2 py-1 rounded text-xs font-bold bg-[#09152b] border border-slate-700 text-slate-300 hover:border-emerald-400 transition";
+    }
+  }
+
+  // 2. Render Badge & Action Button
+  if (badgeEl) {
+    if (breakdownList.length === 0) {
+      badgeEl.innerText = "0 m² (Không có tháng nào)";
+      badgeEl.className = "px-2.5 py-0.5 rounded text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 font-mono";
+    } else {
+      badgeEl.innerText = `${formatNumber(grandTotal, 2)} m² (${breakdownList.length} tháng chạy)`;
+      badgeEl.className = "px-2.5 py-0.5 rounded text-xs font-black bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 font-mono";
+    }
+  }
+
+  if (actionBtnEl) {
+    if (currentMonthP2 !== "all") {
+      actionBtnEl.innerHTML = `
+        <button type="button" onclick="setDashMonthP2('all')" class="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md transition animate-pulse" title="Quay lại xem toàn bộ kỳ">
+          <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+          <span>Xem Toàn Bộ Kỳ (${formatNumber(grandTotal, 0)} m²)</span>
+        </button>
+      `;
+    } else {
+      actionBtnEl.innerHTML = `
+        <span class="text-[11px] text-cyan-300/80 italic font-medium flex items-center gap-1">
+          <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i>
+          <span>Click vào từng tháng để lọc xem chi tiết</span>
+        </span>
+      `;
+    }
+  }
+
+  // 3. Render Chips for each active month
+  if (breakdownList.length === 0) {
+    chipsEl.innerHTML = `<div class="text-xs text-slate-500 italic py-1">Không phát sinh sản lượng theo các tiêu chí (DC, Kích thước, Men) đang chọn.</div>`;
+    return;
+  }
+
+  chipsEl.innerHTML = breakdownList.map(item => {
+    const m = String(item.month);
+    const isSelected = (currentMonthP2 === m);
+    const pct = grandTotal > 0 ? (item.total_m2 / grandTotal * 100) : 0;
+
+    return `
+      <button type="button" onclick="setDashMonthP2('${m}')" 
+              class="group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg border transition-all text-left ${isSelected 
+                ? 'bg-emerald-600/90 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-400/50 scale-[1.02]' 
+                : 'bg-[#0e2142] hover:bg-[#153160] border-cyan-500/40 hover:border-cyan-300 text-slate-200 shadow-sm'}"
+              title="Click để lọc xem riêng số liệu Tháng ${m}">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full ${isSelected ? 'bg-white animate-ping' : 'bg-emerald-400'}"></span>
+          <span class="font-bold text-xs ${isSelected ? 'text-white' : 'text-slate-100'}">Tháng ${m}</span>
+        </div>
+        <div class="h-3 w-px bg-slate-600/60"></div>
+        <span class="font-mono font-black text-xs ${isSelected ? 'text-white' : 'text-cyan-300'}">
+          ${formatNumber(item.total_m2, 2)} m²
+        </span>
+        <span class="text-[10px] font-semibold ${isSelected ? 'text-emerald-100' : 'text-amber-300'}">
+          (${formatNumber(pct, 1)}%)
+        </span>
+        <span class="text-[9.5px] px-1.5 py-0.5 rounded font-bold ${isSelected ? 'bg-black/30 text-white' : 'bg-[#09152b] text-slate-300 border border-slate-700'}">
+          ${item.brand_count} TH
+        </span>
+      </button>
+    `;
+  }).join("");
+
+  if (window.lucide && lucide.createIcons) {
+    lucide.createIcons();
+  }
+}
+
 function renderDashboardBrandTable(brandList, currentBrandFilter) {
   const tbody = document.getElementById("dash-brand-table-body");
   const tfoot = document.getElementById("dash-brand-table-foot");
@@ -2748,7 +2860,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
   if (!tbody || !brandList) return;
 
   if (brandList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">Không có dữ liệu thương hiệu phù hợp</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-500">Không có dữ liệu thương hiệu phù hợp</td></tr>`;
     if (tfoot) tfoot.innerHTML = "";
     return;
   }
@@ -2789,6 +2901,17 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40 font-semibold">${b.lines || '-'}</td>
         <td class="p-2 text-center text-slate-300 border border-[#1e3a6a]/40">${b.sizes || '-'}</td>
         <td class="p-2 text-center border border-[#1e3a6a]/40">${glazeBadge}</td>
+        <td class="p-2 text-center border border-[#1e3a6a]/40">
+          ${(() => {
+            const rawM = String(b.months || '').trim();
+            if (!rawM) return '<span class="text-slate-500 italic text-[10px]">-</span>';
+            const mList = rawM.split(',').map(x => x.trim()).filter(Boolean).sort((x, y) => Number(x) - Number(y));
+            return `<div class="flex items-center justify-center gap-1 flex-wrap">${mList.map(m => {
+              const isCur = (currentDashMonthP2 === m);
+              return `<button type="button" onclick="event.stopPropagation(); setDashMonthP2('${m}')" class="px-1.5 py-0.5 rounded text-[9.5px] font-bold ${isCur ? 'bg-emerald-500 text-black ring-1 ring-white' : 'bg-[#152e59] text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500 hover:text-black'} transition" title="Lọc xem riêng Tháng ${m}">T${m}</button>`;
+            }).join("")}</div>`;
+          })()}
+        </td>
         <td class="p-2 text-right font-bold text-emerald-400 border border-[#1e3a6a]/40">${formatNumber(b.a1_m2, 2)}</td>
         <td class="p-2 text-right font-bold text-blue-400 border border-[#1e3a6a]/40">${formatNumber(b.a_m2, 2)}</td>
         <td class="p-2 text-right font-medium text-amber-400 border border-[#1e3a6a]/40">${formatNumber(b.b_m2, 2)}</td>
@@ -2814,7 +2937,7 @@ function renderDashboardBrandTable(brandList, currentBrandFilter) {
   if (tfoot) {
     tfoot.innerHTML = `
       <tr class="bg-[#09152b] text-white border-t-2 border-emerald-500/60 font-black">
-        <td colspan="5" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
+        <td colspan="6" class="p-2 text-center uppercase tracking-wider text-emerald-300 text-[11px]">TỔNG CỘNG TẤT CẢ THƯƠNG HIỆU</td>
         <td class="p-2 text-right text-emerald-400 text-xs">${formatNumber(sumA1, 2)}</td>
         <td class="p-2 text-right text-blue-400 text-xs">${formatNumber(sumA, 2)}</td>
         <td class="p-2 text-right text-amber-400 text-xs">${formatNumber(sumB, 2)}</td>
@@ -5190,6 +5313,43 @@ function updateCoalKPIs(kpi) {
   const elTotalUsedAll = document.getElementById("coal-kpi-total-used-all");
   if (elTotalUsedAll) elTotalUsedAll.innerText = `${formatNumber(kpi.total_used_all, 0)} kg`;
 }
+
+
+function autoDetectMonthFromFilename(file) {
+  if (!file || !file.name) return;
+  const name = file.name.toLowerCase();
+  for (let m = 12; m >= 1; m--) {
+    const pats = [
+      new RegExp(`tháng\\s*0?${m}\\b`, 'i'),
+      new RegExp(`thang\\s*0?${m}\\b`, 'i'),
+      new RegExp(`\\bt0?${m}\\b`, 'i'),
+      new RegExp(`\\b0?${m}\\.2026\\b`, 'i'),
+      new RegExp(`\\b0?${m}-2026\\b`, 'i'),
+    ];
+    if (pats.some(p => p.test(name))) {
+      const select = document.getElementById("import-month-select");
+      if (select) {
+        select.value = String(m);
+        console.log(`Auto-detected month ${m} from filename: ${file.name}`);
+      }
+      break;
+    }
+  }
+}
+
+// Bind auto-detect on file inputs when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  ['file-dc1', 'file-dc2', 'file-coal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          autoDetectMonthFromFilename(e.target.files[0]);
+        }
+      });
+    }
+  });
+});
 
 async function submitMonthlyImport() {
   const month = document.getElementById("import-month-select").value;

@@ -1,5 +1,5 @@
 // Service Worker for PWA Offline Support & Installation
-const CACHE_NAME = 'pxsx-pn-v20260905-v99';
+const CACHE_NAME = 'pxsx-pn-v20261105-breakdown-v2';
 
 self.addEventListener('install', event => {
   self.skipWaiting();

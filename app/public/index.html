@@ -61,7 +61,7 @@
       document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=20261104_mobile_v2" />
+  <link rel="stylesheet" href="style.css?v=20261105_monthly_breakdown_v2" />
 </head>
 <body class="bg-[#091428] text-slate-100 transition-colors duration-300 font-sans antialiased overflow-hidden">
   
@@ -672,6 +672,23 @@
             </div>
           </div>
 
+          <!-- Monthly Active Breakdown Strip (Trực quan hóa các tháng chạy & khối lượng từng tháng) -->
+          <div id="p2-monthly-breakdown-bar" class="p-3 bg-[#0a172c] rounded-xl border border-cyan-500/30 shadow-md">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                  <i data-lucide="calendar-check-2" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Các Tháng Phát Sinh Sản Xuất:</span>
+                </div>
+                <span id="p2-breakdown-total-badge" class="px-2.5 py-0.5 rounded text-xs font-black bg-emerald-950/90 border border-emerald-500/60 text-emerald-300 font-mono">Đang tải...</span>
+              </div>
+              <div id="p2-breakdown-action-btn"></div>
+            </div>
+            <div id="p2-breakdown-chips" class="flex flex-wrap items-center gap-2 mt-2.5">
+              <!-- Dynamically populated chips -->
+            </div>
+          </div>
+
           <!-- Brand Breakdown Section (Donut + Table) -->
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <!-- Brand Doughnut Chart (col-span-4) -->
@@ -696,6 +713,7 @@
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Dây Chuyền</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40">Kích Thước</th>
                       <th class="p-2.5 text-center border border-[#1e3a6a]/40 text-amber-300">Dòng Men</th>
+                      <th class="p-2.5 text-center border border-[#1e3a6a]/40 text-cyan-300" title="Các tháng phát sinh sản xuất của thương hiệu này">Tháng Chạy</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-emerald-300">Sản Lượng A1 (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-blue-300">Sản Lượng A (m²)</th>
                       <th class="p-2.5 text-right border border-[#1e3a6a]/40 text-amber-300">Sản Lượng B (m²)</th>
@@ -2239,8 +2257,16 @@
                 <div>
                   <label class="block text-xs font-semibold text-slate-300 mb-1">Tháng báo cáo:</label>
                   <select id="import-month-select" class="w-full bg-[#091428] border border-blue-500/30 text-xs text-white rounded-lg p-2 focus:outline-none">
+                    <option value="1">Tháng 01/2026</option>
+                    <option value="2">Tháng 02/2026</option>
+                    <option value="3">Tháng 03/2026</option>
+                    <option value="4">Tháng 04/2026</option>
+                    <option value="5">Tháng 05/2026</option>
+                    <option value="6">Tháng 06/2026</option>
+                    <option value="7">Tháng 07/2026</option>
+                    <option value="8">Tháng 08/2026</option>
                     <option value="9">Tháng 09/2026</option>
-                    <option value="10">Tháng 10/2026</option>
+                    <option value="10" selected>Tháng 10/2026 (Mới nhất)</option>
                     <option value="11">Tháng 11/2026</option>
                     <option value="12">Tháng 12/2026</option>
                   </select>
@@ -3404,6 +3430,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261104_mobile_v2"></script>
+  <script src="app.js?v=20261105_monthly_breakdown_v2"></script>
 </body>
 </html>

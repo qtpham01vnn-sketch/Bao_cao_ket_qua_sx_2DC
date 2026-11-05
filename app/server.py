@@ -208,9 +208,9 @@ except Exception as e:
 
 class ProductionAppHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        pub_dir = os.path.join(BASE_DIR, "public")
+        pub_dir = os.path.join(WORKSPACE_DIR, "public")
         if not os.path.exists(pub_dir):
-            pub_dir = os.path.join(WORKSPACE_DIR, "public")
+            pub_dir = os.path.join(BASE_DIR, "public")
         if os.path.exists(pub_dir):
             try:
                 super().__init__(*args, directory=pub_dir, **kwargs)
